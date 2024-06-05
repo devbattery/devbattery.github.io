@@ -3,12 +3,6 @@
 <div class="masthead">
     <div class="masthead__inner-wrap">
         <div class="masthead__menu">
-            <!-- 추가 -->
-            <li class="masthead__menu-item">
-                <a id="toggle-theme"></a>
-            </li>
-            <!-- ... -->
-
             <nav id="site-nav" class="greedy-nav">
                 {% unless logo_path == empty %}
                 <a class="site-logo" href="{{ '/' | relative_url }}"
@@ -24,7 +18,7 @@
                     >{% endif %}
                 </a>
                 <ul class="visible-links">
-                    {%- for link in site.data.navigation.main -%}
+                    <!-- {%- for link in site.data.navigation.main -%}
                     <li class="masthead__menu-item">
                         <a
                             href="{{ link.url | relative_url }}"
@@ -47,7 +41,52 @@
                             >{{ link.title }}</a
                         >
                     </li>
-                    {%- endfor -%}
+                    {%- endfor -%} -->
+                    <li class="masthead__menu-item">
+                        <a id="toggle-theme"></a>
+                    </li>
+                    <li class="masthead__menu-item">
+                        <a
+                            href="https://github.com/devbattery"
+                            {%
+                            if
+                            link.description
+                            %}
+                            title="{{ link.description }}"
+                            {%
+                            endif
+                            %}
+                            ><i class="fa-brands fa-github"></i
+                        ></a>
+                    </li>
+                    <li class="masthead__menu-item">
+                        <a
+                            href="/tags/"
+                            {%
+                            if
+                            link.description
+                            %}
+                            title="{{ link.description }}"
+                            {%
+                            endif
+                            %}
+                            ><i class="fas fa-tag"></i
+                        ></a>
+                    </li>
+                    <li class="masthead__menu-item">
+                        <a
+                            href="/search/"
+                            {%
+                            if
+                            link.description
+                            %}
+                            title="{{ link.description }}"
+                            {%
+                            endif
+                            %}
+                            ><i class="fas fa-search"></i
+                        ></a>
+                    </li>
                 </ul>
                 {% if site.search == true %}
                 <button class="search__toggle" type="button">
