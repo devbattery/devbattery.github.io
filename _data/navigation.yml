@@ -1,12 +1,63 @@
 # main links
 main:
-  - title: "Quick-Start Guide"
-    url: https://mmistakes.github.io/minimal-mistakes/docs/quick-start-guide/
-  # - title: "About"
-  #   url: https://mmistakes.github.io/minimal-mistakes/about/
-  # - title: "Sample Posts"
-  #   url: /year-archive/
-  # - title: "Sample Collections"
-  #   url: /collection-archive/
-  # - title: "Sitemap"
-  #   url: /sitemap/
+    - title: "About"
+      url: /about/
+
+    - title: "Category"
+      url: /categories/
+
+    - title: "Tag"
+      url: /tags/
+
+    # - title: "Categories"
+    #   url: /categories/
+
+# sidebar navigation (categories)
+categories:
+    - title: "📈 Algorithm"
+      children:
+          - title: "Recap"
+            url: /recap/
+            category: "Recap"
+          - title: "LeetCode"
+            url: /leetcode/
+            category: "LeetCode"
+          - title: "HackerRank"
+            url: /hackerrank/
+            category: "HackerRank"
+          - title: "Codeforces"
+            url: /codeforces/
+            category: "Codeforces"
+          - title: "Programmers"
+            url: /programmers/
+            category: "Programmers"
+          - title: "Baekjoon"
+            url: /baekjoon/
+            category: "Baekjoon"
+          - title: "Inflearn"
+            url: /inflearn/
+            category: "Inflearn"
+    - title: "🧑🏻‍💻 Programming"
+      children:
+          - title: "Java"
+            url: /java/
+            category: "Java"
+          - title: "Spring"
+            url: /spring/
+            category: "Spring"
+    - title: "🖥️ Computer Science"
+      children:
+          - title: "Network"
+            url: /network/
+            category: "Network"
+          - title: "Database"
+            url: /database/
+            category: "Database"
+          - title: "Data Structure"
+            url: /data-structure/
+            category: "data-structure"
+    - title: "🍀 CodeSquad"
+      children:
+          - title: "Today I Learned"
+            url: /til/
+            category: "TIL"
