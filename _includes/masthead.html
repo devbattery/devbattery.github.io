@@ -47,6 +47,20 @@
                     </li>
                     <li class="masthead__menu-item">
                         <a
+                            href="/about/"
+                            {%
+                            if
+                            link.description
+                            %}
+                            title="{{ link.description }}"
+                            {%
+                            endif
+                            %}
+                            ><i class="fa-solid fa-address-card"></i
+                        ></a>
+                    </li>
+                    <li class="masthead__menu-item">
+                        <a
                             href="https://github.com/devbattery"
                             {%
                             if
@@ -70,7 +84,7 @@
                             {%
                             endif
                             %}
-                            ><i class="fas fa-tag"></i
+                            ><i class="fa-solid fa-tags"></i
                         ></a>
                     </li>
                 </ul>
