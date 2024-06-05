@@ -1,7 +1,5 @@
 <meta charset="utf-8" />
 
-<link rel="icon" type="image/png" href="/assets/favicon.ico">
-
 {% include seo.html %} {% unless site.atom_feed.hide %}
 <link
     href="{% if site.atom_feed.path %}{{ site.atom_feed.path }}{% else %}{{ '/feed.xml' | relative_url }}{% endif %}"
