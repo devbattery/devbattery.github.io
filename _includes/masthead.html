@@ -73,20 +73,6 @@
                             ><i class="fas fa-tag"></i
                         ></a>
                     </li>
-                    <li class="masthead__menu-item">
-                        <a
-                            href="/search/"
-                            {%
-                            if
-                            link.description
-                            %}
-                            title="{{ link.description }}"
-                            {%
-                            endif
-                            %}
-                            ><i class="fas fa-search"></i
-                        ></a>
-                    </li>
                 </ul>
                 {% if site.search == true %}
                 <button class="search__toggle" type="button">
