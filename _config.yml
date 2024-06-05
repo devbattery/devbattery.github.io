@@ -18,9 +18,9 @@ minimal_mistakes_skin: "default" # "air", "aqua", "contrast", "dark", "dirt", "n
 locale: "en-US"
 title: "Dev Battery"
 title_separator: "-"
-subtitle: # site tagline that appears below site title in masthead
+subtitle: "Develop Like A Battery"
 name: "Sully"
-description: "Developing Battery"
+description: "Develop Like A Battery"
 url: "https://devbattery.com/"
 baseurl: # the subpath of your site, e.g. "/blog"
 repository: "devbattery/devbattery.github.io"
@@ -220,7 +220,7 @@ sass:
 
 # Outputting
 permalink: /:categories/:title/
-timezone: # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+timezone: Asia/Seoul
 
 # Pagination with jekyll-paginate
 paginate: 5 # amount of posts to show
@@ -307,13 +307,15 @@ defaults:
       values:
           layout: single
           author_profile: true
-          read_time: true
+          read_time: false
           comments: # true
           share: true
           related: true
+          show_date: true
           mathjax: true
       sidebar:
           nav: "categories"
 
+date_format: "%Y-%m-%d"
 after_footer_scripts:
     - /assets/js/custom/dark-theme.js
