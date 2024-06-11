@@ -17,8 +17,8 @@ minimal_mistakes_skin: "default" # "air", "aqua", "contrast", "dark", "dirt", "n
 # Site Settings
 locale: "en-US"
 title: "Dev Battery"
-title_separator: "-"
-subtitle: #
+title_separator: "|"
+subtitle: "Develop Like A Battery"
 name: "Sully"
 description: "Develop Like A Battery"
 url: "https://devbattery.com"
