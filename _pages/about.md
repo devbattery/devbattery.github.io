@@ -10,7 +10,7 @@ sidebar:
 
 기술 부채를 좋아하는 백엔드 개발자 정원준입니다.
 
-- <a href="mailto:won4885@gmail.com">🧑🏻‍💻 Email</a>
+- <a href="mailto:devbattery@outlook.com">🧑🏻‍💻 Email</a>
 - <a href="https://github.com/devbattery">🐈‍⬛ GitHub</a>
 - <a href="https://devbattery.com">🧤 Blog</a>
 
