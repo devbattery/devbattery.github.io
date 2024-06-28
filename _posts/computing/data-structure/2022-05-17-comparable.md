@@ -17,7 +17,7 @@ date: 2022-05-17
 last_modified_at: 2022-05-17
 ---
 
-**오버라이드**
+# 오버라이드
 
 ```java
 String one = "hello world";
@@ -44,9 +44,7 @@ if(one.equals(two))
 
 <br>
 
-**Comparable 인터페이스**
-
- 
+# Comparable 인터페이스
 
 객체에서 원하는 자료형으로 비교하기 위해, Comparable 인터페이스를 활용합니다. 그리고 Comparable 인터페이스는 같은 자료형의 다른 객체 하나를 인자로 받아와 비교하는 compareTo 함수를 사용합니다. a.compareTo(b)는  a가 b보다 작을 때는 0보다 작은 수, a와 b가 같으면 0, a가 b보다 크면 0보다 큰 수를 반환합니다.
 
@@ -58,4 +56,6 @@ if(((Comparable<T>) data).compareTo(obj)==0)
 
 <br>
 
-[**Source**](https://www.boostcourse.org/cs204/joinLectures/145114)
+# Source
+
+- [BoostCourse](https://www.boostcourse.org/cs204/joinLectures/145114)
