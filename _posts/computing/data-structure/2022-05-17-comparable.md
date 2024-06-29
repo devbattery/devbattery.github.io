@@ -1,5 +1,5 @@
 ---
-title: "[자료구조] Comparable 인터페이스"
+title: "[Data Structure] Comparable 인터페이스"
 excerpt: "객체지향 정리"
 
 categories:
