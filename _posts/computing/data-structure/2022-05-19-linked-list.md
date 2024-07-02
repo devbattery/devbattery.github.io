@@ -17,7 +17,7 @@ date: 2022-05-19
 last_modified_at: 2022-05-19
 ---
 
-**연결 리스트**
+# 연결 리스트
 
 <br>
 
@@ -35,16 +35,15 @@ last_modified_at: 2022-05-19
 
 <br>
 
-**배열과의 차이점**
+## 배열과의 차이점
 
 배열 또한 순서대로 여러 데이터를 저장할 때 사용한다는 공통점이 있습니다. 하지만 배열은 필요한 요소보다 너무 크게 만들거나 너무 작게 만들어 배열의 크기를 조정해야 한다는 문제점이 있습니다.
 
 배열과 다르게, 연결 리스트는 항상 맞는 크기로 만들어지도록 설계되어 있습니다. 그래서 순차적인 데이터나 많은 양의 데이터가 있을 때 자주 사용됩니다.
 
 <br>
-<HR>
 
-**노드와 크기**
+### 노드와 크기
 
 ```java
 public class LinkedList <E> implements ListI<E>{
@@ -76,16 +75,15 @@ data의 자료형은 E입니다. E는 정해지지 않은 자료형이고 이렇
 
 <br>
 
-**노드의 개수를 세는 효율적인 방법**
+### 노드의 개수를 세는 효율적인 방법
 
 노드의 개수를 직접 세는 방법보다 int 타입인 변수 currentSize를 만들어 노드의 개수를 세는 방법이 더 효율적입니다.
 
 노드의 개수를 직접 셀 경우, 요소가 $n$개면 $n$번 세야 합니다. 따라서, 하나씩 세는 것의 시간 복잡도는 $θ(n)$입니다. 하지만 currentSize라는 변수를 만들어놓고 리스트에 요소를 추가할 때마다 currentSize의 값을 늘려 놓으면, 리스트의 크기를 바로 알 수 있습니다. 이럴 경우, 시간 복잡도는 정확히 1입니다.
 
 <br>
-<HR>
 
-**경계 조건**
+## 경계 조건
 
 Boundary Conditions
 
@@ -99,7 +97,7 @@ Boundary Conditions
 
 - Working in the middle
 
- <br>
+<br>
 
 어떤 자료 구조든 아래의 경계 조건에서 문제가 생기진 않을지 생각해봐야 합니다.
 
@@ -114,9 +112,8 @@ Boundary Conditions
 5. 자료 구조의 중간 부분을 처리할 때
 
 <br>
-<HR>
 
-**addFirst 메소드**
+### addFirst 메서드
 
 새로운 node를 연결 리스트의 앞부분에 추가하는 방법은 다음과 같습니다.
 
@@ -137,9 +134,8 @@ public void addFirst(E obj){
 위 코드는 5가지 경계 조건에 대하여 생각하였을 때에도 문제가 없습니다. 그리고 새로운 요소를 추가하기 위해 뒷부분을 살펴볼 필요가 없기 때문에 시간 복잡도는 1입니다.
 
 <br>
-<HR>
 
-**addLast 메소드**
+### addLast 메서드
 
 addLast 메소드에서는 연결 리스트의 마지막을 가리키는 임시 포인터를 사용합니다. 연결 리스트의 요소를 확인하려면 무조건 head에서 시작해야 하는데, 연결 리스트의 마지막까지 도달하는 데 next를 너무 많이 사용해야 하기 때문입니다.
 
@@ -156,7 +152,7 @@ public void addLast(E obj){
 
 <br>
 
-문제 1. 경계 조건
+### 문제 1. 경계 조건
 
 head가 비어있는 경우에는 tmp가 null이 되고, tmp.next를 찾지 못하는 NullPointerException 에러가 발생합니다. 이 문제를 해결하기 위해 리스트 맨 뒤에 추가하려 하는데 리스트가 비어있다면, addFirst 메소드처럼 노드를 추가합니다. 이 내용을 추가한 코드는 아래와 같습니다.
 
@@ -178,7 +174,7 @@ public void addLast(E obj){
 
 <br>
 
-문제 2. 시간 복잡도
+### 문제 2. 시간 복잡도
 
 연결 리스트의 마지막 노드를 찾을 때 리스트의 맨 앞부터 시작해서 마지막 요소까지 살펴보면 시간 복잡도는 $O(n)$ 입니다. 하지만 tail 포인터를 사용하면 이 시간 복잡도를 $O(1)$ 로 만들 수 있습니다. 리스트의 마지막을 가리키는 tail 포인터를 head, currentSize와 같은 전역 변수로 설정하고, 아래와 같이 tail 포인터를 추가하면 됩니다.
 
@@ -198,21 +194,20 @@ public void addLast(E obj){
 ```
 
 <br>
-<HR>
 
-**removeFirst 메소드**
+### removeFirst 메소드
 
 보통의 경우, head=head.next를 하면 head가 다음 노드를 가리키게 되고 첫 번째 노드가 제거됩니다. 하지만 다음과 같은 경계 조건에서 에러가 발생하므로 코드를 추가해야 합니다.
 
 <br>
 
-경계 조건 1. 자료 구조가 비어있는 경우
+### 경계 조건 1. 자료 구조가 비어있는 경우
 
 head가 null을 가리키는 경우입니다. 이 때, head가 head.next를 가리키게 하면 NullPointerException 에러가 발생하게 됩니다. 그래서 이 상황에서는 아무것도 하지 않고 null을 반환하면 됩니다.
 
 <br>
 
-경계 조건 2. 자료 구조에 단 하나의 요소가 들어있을 때
+### 경계 조건 2. 자료 구조에 단 하나의 요소가 들어있을 때
 
 head 포인터, tail 포인터 모두 null을 가리키게 해야 합니다.
 
@@ -239,9 +234,8 @@ public E removefirst(){
 ```
 
 <br>
-<HR>
 
-**removeLast 메소드**
+### removeLast 메소드
 
 마지막 노드를 마지막에서 2번째 노드로 옮겨 연결리스트의 마지막 노드를 제거합니다. 단일 연결 리스트이기 때문에 2번째 노드를 찾으려면 head에서부터 시작해야 합니다.
 
@@ -275,9 +269,8 @@ public E removeLast(){
 ```
 
 <br>
-<HR>
 
-**find**
+### find
 
 Comparable 인터페이스를 사용하여 노드를 찾습니다.
 
@@ -295,7 +288,7 @@ public boolean contains(E obj){
 
 <br>
 
-**remove**s
+### remove
 
 1. Comparable 인터페이스를 사용하여 제거하고 싶은 요소의 위치를 찾습니다.
 
@@ -326,15 +319,10 @@ public E remove(E obj){
 ```
 
 <br>
-<HR>
 
-**peek 메소드**
-
-
+### peek 메서드
 
 peek 메소드는 하나의 요소를 살펴보기 위해 쓰는 메소드입니다. 추가, 제거하는 것이 아니라 그 요소의 내용을 읽는 함수입니다.
-
- 
 
 peekFirst는 아래와 같이 구현할 수 있습니다. 리스트가 비어있으면 NullPointerException 에러가 발생하기 때문에 따로 처리해줍니다.
 
@@ -345,6 +333,7 @@ public E peekFirst(){
 	return head.data;
 }
 ```
+
 <br>
 
 같은 방식으로 하여, peekLast는 아래와 같이 구현할 수 있습니다. 임시 포인터를 활용하여 시간 복잡도가 $O(n)$ 인 peekLast 함수를 만들 수도 있습니다.
@@ -358,14 +347,10 @@ public E peekLast(){
 ```
 
 <br>
-<HR>
 
-**연결리스트 테스트**
-
- 
+## 연결리스트 테스트
 
 연결리스트를 직접 만들어 지금까지 배운 메소드를 테스트할 수 있습니다. ListI 인터페이스를 구현한 LinkedList를 테스트하는 방법은 다음과 같습니다.
-
 
 ```java
 public class Tester {
@@ -381,13 +366,9 @@ public class Tester {
 }
 ```
 
-
 <br>
-<HR>
 
-**반복자**
-
- 
+### 반복자
 
 배열의 각각의 원소를 출력할 때, 다음과 같이 코드를 작성합니다.
 
@@ -397,6 +378,7 @@ for (int i=0; i<arr.length; i++){
 	system.out.println(arr[i]);
 }
 ```
+
 혹은, 다음과 같이 나타낼 수 있습니다.
 
 ```java
@@ -405,9 +387,11 @@ for (int x:arr){
 	system.out.println(x);
 }
 ```
+
 <br>
 
 하지만 객체에서 두 번째 방식으로 반복문이 동작하도록 하기 위해서는 Iterator 인터페이스를 구현해야 합니다. Iterator 인터페이스를 구현하는 코드는 다음과 같습니다.
+
 ```java
 
 public Iterator<E> iterator(){
@@ -435,53 +419,53 @@ public class LinkedList<E> implements ListI<E>{
 ```
 
 <br>
-<HR>
 
+# 이중 연결 리스트
 
-**이중 연결 리스트**
-
- <br>
+<br>
 
 ![](https://cphinf.pstatic.net/mooc/20210430_118/16197119285919hQqr_PNG/mceclip0.png)
 
- <br>
+<br>
 
 이중 연결 리스트는 단일 연결 리스트에 바로 전의 노드를 가리키는 previous 포인터를 추가한 연결 리스트입니다.
 
- 
+<br>
 
 removeLast 메소드를 사용할 때, 단일 연결 리스트는 tail 포인터가 있더라도 $O(n)$ 의 시간 복잡도로 모든 노드를 한 번씩 거쳐야 한다는 단점이 있었습니다. 하지만 이중 연결 리스트는 tail 포인터가 가리키는 노드에서 previous 포인터가 가리키는 노드를 찾으면 되기 때문에 시간 복잡도가 $O(1)$ 이 됩니다.
 
- 
+<br>
 
 이중 연결 리스트의 단점은 previous 포인터가 추가되기 때문에 노드를 추가하는 과정이 더 복잡해진다는 것입니다.
 
+<br>
+
+## 원형 연결 리스트
 
 <br>
-<HR>
-
-**원형 연결 리스트**
-
- <br>
 
 ![](https://cphinf.pstatic.net/mooc/20210430_229/1619711619511jY4pI_PNG/mceclip1.png)
 
- <br>
+<br>
 
 원형 연결 리스트는 마지막 next 포인터가 연결 리스트의 노드를 가리키는 연결 리스트입니다.
 
- <br>
+<br>
 
 원형 연결 리스트의 마지막 next 포인터가 head를 가리키는지 확인하는 방법은 다음과 같습니다.
+
 - head에서 시작하여 t==null이 될 때까지 반복한다면, 시간복잡도는 $O(n)$ 입니다.
 - tail 포인터를 사용할 경우, 시간복잡도는 $O(1)$ 입니다.
 
- <br>
+<br>
 
 마지막 next 포인터가 임의의 노드를 가리킨다면 확인하는 방법은 다음과 같습니다.
+
 - tail에서 시작하여 tail 포인터가 다시 나타나는지 확인합니다. 시간복잡도는 $O(n)$ 입니다.
 - 임시 포인터 2개를 사용하여 시작점을 잡고 currentSize만큼 떨어진 노드까지 확인한 후 시작점을 다음으로 옮겨 같은 노드가 나타날 때까지 반복합니다. 시간복잡도는 $O(n^2)$ 입니다.
 
 <br>
 
-[**Source**](https://www.boostcourse.org/cs204/joinLectures/145114)
+# Source
+
+- [BoostCourse](https://www.boostcourse.org/cs204/joinLectures/145114)
