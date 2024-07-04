@@ -1,5 +1,5 @@
 ---
-title: "[자료구조] Linked List (연결 리스트)"
+title: "[Data Structure] Linked List (연결 리스트)"
 excerpt: "Linked List 정리"
 
 categories:

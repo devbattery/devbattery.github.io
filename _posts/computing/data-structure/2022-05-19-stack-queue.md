@@ -1,5 +1,5 @@
 ---
-title: "[자료구조] Stack and Queue (스택과 큐)"
+title: "[Data Structure] Stack and Queue (스택과 큐)"
 excerpt: "스택과 큐 정리"
 
 categories:
