@@ -3,7 +3,7 @@ title: "[Database] 데이터베이스와 아키텍처 구성 1 - 데이터베이
 excerpt: "database, architecture"
 
 categories:
-  - data-structure
+  - Database
 tags:
   - [database, architecture]
 
