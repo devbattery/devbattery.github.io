@@ -1,11 +1,11 @@
 ---
 title: "[Database] 데이터베이스와 아키텍처 구성 1 - 데이터베이스 첫걸음"
-excerpt: "database, architecture"
+excerpt: "database, architecture, clustering, replication"
 
 categories:
   - Database
 tags:
-  - [database, architecture]
+  - [database, architecture, clustering, replication]
 
 toc: true
 toc_sticky: true
