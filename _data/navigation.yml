@@ -61,3 +61,6 @@ categories:
           - title: "Today I Learned"
             url: /til/
             category: "TIL"
+          - title: "Project"
+            url: /project/
+            category: "Project"
