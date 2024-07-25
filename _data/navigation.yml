@@ -39,6 +39,9 @@ categories:
             category: "Inflearn"
     - title: "🧑🏻‍💻 Programming"
       children:
+          - title: "Aws"
+            url: /aws/
+            category: "Aws"
           - title: "Java"
             url: /java/
             category: "Java"
