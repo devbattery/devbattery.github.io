@@ -3,7 +3,7 @@ title: "[Project] Bee Market 프로젝트 정리"
 excerpt: ""
 
 categories:
-  - TIL
+  - Project
 tags:
   - [codesquad, bee-market]
 
