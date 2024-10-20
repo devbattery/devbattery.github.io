@@ -113,8 +113,8 @@ analytics:
 author:
     name: "Sully"
     avatar: "/assets/images/bio-photo.png"
-    bio: "**Stay Foolish**"
-    location: "Korea"
+    bio: "Wonjun Jeong"
+    location: "Korea Republic"
     email:
     links:
         - label: "Email"
@@ -263,6 +263,7 @@ whitelist:
     - jekyll-gist
     - jekyll-feed
     - jekyll-include-cache
+    - jekyll-seo-tag
 
 # Archives
 #  Type
