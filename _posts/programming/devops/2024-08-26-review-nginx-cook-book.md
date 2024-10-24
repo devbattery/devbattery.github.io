@@ -10,11 +10,14 @@ tags:
 toc: true
 toc_sticky: true
 
+sidebar:
+  nav: "categories"
+
 date: 2024-08-26
 last_modified_at: 2024-08-26
 ---
 
-> 한빛미디어 <나는 리뷰어다> 활동을 위해서 책을 제공받아 작성된 서평입니다.
+> 한빛미디어 \<나는 리뷰어다\> 활동을 위해서 책을 제공받아 작성된 서평입니다.
 
 ![](https://image.yes24.com/goods/116438200/XL)
 
