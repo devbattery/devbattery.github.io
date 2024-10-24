@@ -1,69 +1,72 @@
 # main links
 main:
-    - title: "About"
-      url: /about/
+  - title: "About"
+    url: /about/
 
-    - title: "Category"
-      url: /categories/
+  - title: "Category"
+    url: /categories/
 
-    - title: "Tag"
-      url: /tags/
+  - title: "Tag"
+    url: /tags/
 
     # - title: "Categories"
     #   url: /categories/
 
 # sidebar navigation (categories)
 categories:
-    - title: "📈 Algorithm"
-      children:
-          - title: "Recap"
-            url: /recap/
-            category: "Recap"
-          - title: "LeetCode"
-            url: /leetcode/
-            category: "LeetCode"
-          - title: "HackerRank"
-            url: /hackerrank/
-            category: "HackerRank"
-          - title: "Codeforces"
-            url: /codeforces/
-            category: "Codeforces"
-          - title: "Programmers"
-            url: /programmers/
-            category: "Programmers"
-          - title: "Baekjoon"
-            url: /baekjoon/
-            category: "Baekjoon"
-          - title: "Inflearn"
-            url: /inflearn/
-            category: "Inflearn"
+  title: "📈 Algorithm"
+  children:
+    - title: "Recap"
+      url: /recap/
+      category: "Recap"
+    - title: "LeetCode"
+      url: /leetcode/
+      category: "LeetCode"
+    - title: "HackerRank"
+      url: /hackerrank/
+      category: "HackerRank"
+    - title: "Codeforces"
+      url: /codeforces/
+      category: "Codeforces"
+    - title: "Programmers"
+      url: /programmers/
+      category: "Programmers"
+    - title: "Baekjoon"
+      url: /baekjoon/
+      category: "Baekjoon"
+    - title: "Inflearn"
+      url: /inflearn/
+      category: "Inflearn"
     - title: "🧑🏻‍💻 Programming"
       children:
-          - title: "DevOps"
-            url: /devops/
-            category: "DevOps"
-          - title: "Java"
-            url: /java/
-            category: "Java"
-          - title: "Spring"
-            url: /spring/
-            category: "Spring"
+        - title: "DevOps"
+          url: /devops/
+          category: "DevOps"
+        - title: "Java"
+          url: /java/
+          category: "Java"
+        - title: "Spring"
+          url: /spring/
+          category: "Spring"
+        - title: "Vue"
+          url: /vue/
+          category: "Vue"
     - title: "🖥️ Computer Science"
       children:
-          - title: "Network"
-            url: /network/
-            category: "Network"
-          - title: "Database"
-            url: /database/
-            category: "Database"
-          - title: "Data Structure"
-            url: /data-structure/
-            category: "data-structure"
+        - title: "Network"
+          url: /network/
+          category: "Network"
+        - title: "Database"
+          url: /database/
+          category: "Database"
+        - title: "Data Structure"
+          url: /data-structure/
+          category: "data-structure"
     - title: "🍀 CodeSquad"
       children:
-          - title: "Project"
-            url: /project/
-            category: "Project"
-          - title: "Today I Learned"
-            url: /til/
-            category: "TIL"
+        - title: "Project"
+          url: /project/
+          category: "Project"
+        - title: "Today I Learned"
+          url: /til/
+          category: "TIL"
