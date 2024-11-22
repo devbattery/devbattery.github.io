@@ -211,7 +211,7 @@ kramdown:
     entity_output: as_char
     toc_levels: 1..6
     smart_quotes: lsquo,rsquo,ldquo,rdquo
-    enable_coderay: false
+    # enable_coderay: true
 
 # Sass/SCSS
 sass:
@@ -258,7 +258,6 @@ plugins:
 
 # mimic GitHub Pages with --safe
 whitelist:
-    - jekyll-paginate
     - jekyll-sitemap
     - jekyll-gist
     - jekyll-feed
@@ -323,3 +322,6 @@ after_footer_scripts:
     - /assets/js/custom/dark-theme.js
     - https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js
     - assets/js/clipboardrouge.js
+
+sitemap:
+  path: sitemap.xml
