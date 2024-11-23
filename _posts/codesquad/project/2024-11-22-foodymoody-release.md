@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2024-11-22
-last_modified_at: 2024-11-22
+last_modified_at: 2024-11-23
 ---
 
 > [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody) 중 배포 과정에 대한 설명입니다.
@@ -505,7 +505,7 @@ Dockerfile과 CI/CD 워크플로우가 어떻게 협력하여 애플리케이션
 
 ---
 
-## 5. Nginx 설정
+## Nginx 설정
 
 배포 시 Nginx를 사용하여 트래픽을 관리하고, 프론트엔드와 백엔드 사이의 리버스 프록시 역할을 수행할 수 있습니다. Nginx 설정은 주로 EC2 인스턴스 내에서 관리되며, Docker Compose를 통해 설정할 수도 있습니다.
 
@@ -581,12 +581,3 @@ services:
    - 프론트엔드는 호스트의 포트 5000, 백엔드는 포트 8080에 매핑됩니다.
 
 즉, Nginx를 리버스 프록시로 설정하여 프론트엔드와 백엔드 서비스로 트래픽을 효율적으로 분배합니다. 이를 통해 도메인 관리 및 보안 설정을 집중화할 수 있습니다.
-
----
-
-**요약**
-
-- **Dockerfile:** 프론트엔드와 백엔드 각각의 Dockerfile을 통해 컨테이너 환경을 구성하고, 애플리케이션을 패키징합니다.
-- **GitHub Actions 워크플로우:** `be-cd.yml`, `be-ci.yml`, `coveralls-report.yml`, `fe-cd.yml`을 통해 코드 변경 시 자동으로 빌드, 테스트, 도커 이미지 생성 및 배포가 이루어집니다.
-- **배포 과정:** 도커 이미지를 도커 허브에 푸시한 후, EC2 인스턴스에 SSH로 접속하여 Docker Compose를 통해 애플리케이션을 배포합니다.
-- **Nginx 설정:** 리버스 프록시로 Nginx를 설정하여 트래픽을 프론트엔드와 백엔드로 분배하고, 보안성을 강화합니다.
