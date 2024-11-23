@@ -1,45 +1,49 @@
 ---
-title: "👋🏻 안녕하세요!"
+title: "정원준 - 기술 부채를 좋아하는 신입 개발자"
 permalink: /about/
 layout: single
 comments: true
 author_profile: true
-sidebar:
-  nav: "categories"
+mathjax: true
+
+# sidebar:
+#   nav: "categories"
 ---
 
-신입 개발자 정원준입니다. <br>
+---
+
+안녕하세요! 신입 개발자 정원준입니다.  
 기술 부채가 쌓이는 것을 두려워하지 않으며, 기록하고 시대의 흐름에 맞춰 따라가는 것을 좋아합니다.
 
-**Blog:** [https://devbattery.com](https://devbattery.com/) <br>
-**Email:** [devbattery@outlook.com](mailto:devbattery@outlook.com) <br>
-**GitHub**: <https://github.com/devbattery> <br>
+## Contact & Channels
 
-<br>
+**Email** | [devbattery@outlook.com](mailto:devbattery@outlook.com)  
+**GitHub** | <https://github.com/devbattery>
+**Blog** | [https://devbattery.com](https://devbattery.com/)
 
-## 교육
+## Education
 
----
-
-> **코드스쿼드 마스터즈** (2023.01 - 2023.11)
+> [**코드스쿼드 마스터즈**](https://codesquad.kr/masters/) (2023.01 - 2023.11)
 >
-> - CS16 과정 및 Java 백엔드 과정
+> - [CS16와 Java 백엔드 및 팀 프로젝트 과정](http://devbattery/til/recap/)
 
 > **동양미래대학교** (2020.03 - 2022.01)
 >
 > - 컴퓨터정보공학과: 웹/앱 어플리케이션, IoT 기술, 네트워크 관리 등의 경험
 
-<br>
+## Project
 
-## 프로젝트
-
----
-
-### Foody Moody
+### [Foody Moody](https://github.com/foody-moody/foodymoody)
 
 (2023.10 - 2024.03)
 
 > “맛집 공유 SNS 플랫폼”
+
+[**GitHub Actions 기반 자동화 배포**](http://localhost:4000/project/foodymoody-release/)
+
+- GitHub Actions를 활용한 CI/CD 파이프라인 구축으로 프론트엔드(React)와 백엔드(Spring Boot) 자동화 배포 구현
+- Docker 컨테이너화 및 Docker Hub를 통한 이미지 관리로 일관된 배포 환경 구성
+- EC2 인스턴스에 Nginx 리버스 프록시를 활용한 트래픽 관리 및 HTTPS 보안 설정
 
 **게시물 피드 API 설계 및 구현**
 
@@ -54,9 +58,9 @@ sidebar:
 - 낙관적 락을 구현하여 좋아요와 저장 작업이 하나의 트랜잭션 내에서 실행되도록 구현
 - 단일 UPDATE 쿼리로 처리하여 Race Condition 방지
 
-**N + 1 문제 해결**
+**N+1 문제 해결**
 
-- 피드를 조회할 때, FETCH JOIN을 사용하여 각각의 엔티티를 한 번의 쿼리로 조인하는 것으로 N + 1 문제 해결
+- 피드를 조회할 때, FETCH JOIN을 사용하여 각각의 엔티티를 한 번의 쿼리로 조인하는 것으로 N+1 문제 해결
 
 **테스트**
 
@@ -69,15 +73,7 @@ sidebar:
 - 프론트와의 협업을 위해 REST Docs를 사용하여 HTTP API 명세서 제작
 - 백엔드 팀원들과의 꾸준한 협업 프로그래밍
 
-**GitHub**: <https://github.com/foody-moody/foodymoody>
-
-**Notion**: [Home](https://www.notion.so/Home-768dc8f7eb53427889fcc4901164d413?pvs=21)
-
-<br>
-
-## 기술
-
----
+## Skills
 
 **언어 및 프레임워크**
 

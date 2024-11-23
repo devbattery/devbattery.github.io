@@ -1,5 +1,5 @@
 ---
-title: "[FoodyMoody] Docker와 Nginx를 활용한 GitHub Actions 기반 CI/CD 자동화 배포"
+title: "[Project] Docker와 Nginx를 활용한 GitHub Actions 기반 CI/CD 자동화 배포"
 excerpt: "ci-cd, docker, nginx, github-actions"
 
 categories:
