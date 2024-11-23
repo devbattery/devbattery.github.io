@@ -1,5 +1,9 @@
 <meta charset="utf-8" />
 
+{% if page.use_math %}
+  {% include mathjax_support.html %}
+{% endif %}
+
 {% include seo.html %} {% unless site.atom_feed.hide %}
 <link
     href="{% if site.atom_feed.path %}{{ site.atom_feed.path }}{% else %}{{ '/feed.xml' | relative_url }}{% endif %}"
