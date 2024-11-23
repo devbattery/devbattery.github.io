@@ -25,7 +25,7 @@ mathjax: true
 
 > [**코드스쿼드 마스터즈**](https://codesquad.kr/masters/) (2023.01 - 2023.11)
 >
-> - [CS16와 Java 백엔드 및 팀 프로젝트 과정](http://devbattery/til/recap/)
+> - [CS16와 Java 백엔드 및 팀 프로젝트 과정](http://devbattery.com/til/recap/)
 
 > **동양미래대학교** (2020.03 - 2022.01)
 >
@@ -39,7 +39,7 @@ mathjax: true
 
 > “맛집 공유 SNS 플랫폼”
 
-[**GitHub Actions 기반 자동화 배포**](http://localhost:4000/project/foodymoody-release/)
+[**GitHub Actions 기반 자동화 배포**](http://devbattery.com/project/foodymoody-release/)
 
 - GitHub Actions를 활용한 CI/CD 파이프라인 구축으로 프론트엔드(React)와 백엔드(Spring Boot) 자동화 배포 구현
 - Docker 컨테이너화 및 Docker Hub를 통한 이미지 관리로 일관된 배포 환경 구성
