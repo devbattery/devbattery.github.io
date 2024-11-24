@@ -23,19 +23,19 @@ mathjax: true
 
 ## Education
 
-> [**코드스쿼드 마스터즈**](https://codesquad.kr/masters/) (2023.01 - 2023.11)
+> [**코드스쿼드 마스터즈**](https://codesquad.kr/masters/) `2023.01 - 2023.11`
 >
-> - [CS16와 Java 백엔드 및 팀 프로젝트 과정](http://devbattery.com/til/recap/)
+> - [CS16과 Java 백엔드 및 팀 프로젝트 과정](http://devbattery.com/til/recap/)
 
-> **동양미래대학교** (2020.03 - 2022.01)
+> **동양미래대학교** `2020.03 - 2022.01`
 >
-> - 컴퓨터정보공학과: 웹/앱 어플리케이션, IoT 기술, 네트워크 관리 등의 경험
+> - 컴퓨터정보공학과: 웹/앱 어플리케이션, IoT, 네트워크 관리 등의 경험
 
 ## Project
 
 ### [Foody Moody](https://github.com/foody-moody/foodymoody)
 
-(2023.10 - 2024.03)
+`2023.10 - 2024.03`
 
 > “맛집 공유 SNS 플랫폼”
 
