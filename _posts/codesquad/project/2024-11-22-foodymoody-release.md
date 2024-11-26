@@ -1,11 +1,11 @@
 ---
-title: "[Project] Docker와 Nginx를 활용한 GitHub Actions 기반 CI/CD 자동화 배포"
-excerpt: "ci-cd, docker, nginx, github-actions"
+title: "[Project] Docker를 활용한 GitHub Actions 기반 CI/CD 자동화 배포"
+excerpt: "ci-cd, docker, github-actions"
 
 categories:
   - Project
 tags:
-  - [ci-cd, docker, nginx, github-actions]
+  - [ci-cd, docker, github-actions]
 
 toc: true
 toc_sticky: true
@@ -14,16 +14,10 @@ sidebar:
   nav: "categories"
 
 date: 2024-11-22
-last_modified_at: 2024-11-23
+last_modified_at: 2024-11-26
 ---
 
-> [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody) 중 배포 과정에 대한 설명입니다.
-
-- **CI/CD**: GitHub Actions를 활용하여 자동화된 빌드 및 배포 파이프라인을 구성했습니다.
-- **Docker**: 각 서비스는 Docker 컨테이너로 패키징되어 관리됩니다.
-- **Nginx**: 리버스 프록시로 설정하여 트래픽을 적절히 분배하고 SSL을 관리할 수 있습니다.
-
----
+> [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody) 중 **자동화 배포**에 대한 설명입니다.
 
 ## Dockerfile
 
@@ -74,13 +68,13 @@ ENTRYPOINT ["java","-Dspring.config.location=file:/be/conf/","-jar","app.jar","-
 3. **컨테이너 실행 시 명령어 설정**
    - `ENTRYPOINT ["java","-Dspring.config.location=file:/be/conf/","-jar","app.jar","--spring.profiles.active=dev"]`: 컨테이너가 시작될 때 Java를 사용하여 `app.jar` 파일을 실행하며, 추가적인 Spring 설정 파일 위치와 활성 프로파일을 지정합니다.
 
-즉, 백엔드 Dockerfile은 OpenJDK 환경에서 Spring Boot 애플리케이션을 실행하는 컨테이너를 생성합니다. 설정 파일 경로와 프로파일을 명시적으로 지정하여 환경 설정을 유연하게 관리합니다.
+즉, 백엔드 Dockerfile은 OpenJDK 환경에서 Spring Boot 애플리케이션을 실행하는 컨테이너를 생성합니다. 유연한 설정을 위해 설정 파일 경로와 프로파일을 명시적으로 지정합니다.
 
 ---
 
 ## CI/CD 워크플로우
 
-GitHub Actions를 활용하여 CI/CD 파이프라인을 구축합니다. 각각의 워크플로우(`.yml` 파일들)는 특정 이벤트(예: Push, Pull Request 등)에 반응하여 자동으로 빌드, 테스트, 배포를 수행합니다. 주요 워크플로우는 다음과 같습니다.
+GitHub Actions를 활용하여 CI/CD 파이프라인을 구축합니다. 각각의 워크플로우(`.yml` 파일들)는 특정 이벤트ex. Push, Pull Request 등)에 반응하여 자동으로 빌드, 테스트, 배포를 수행합니다.
 
 ### 백엔드 배포 워크플로우 (`be-cd.yml`)
 
@@ -154,9 +148,9 @@ jobs:
 1. **워크플로우 트리거**
    - `push` 이벤트가 `release` 브랜치에 발생하고, `be/**` 경로 내 파일이 변경되면 워크플로우가 실행됩니다.
 2. **환경 변수 설정**
-   - `ROOT_PATH`: 백엔드 코드의 루트 디렉토리 경로.
-   - `MAIN_RESOURCE_PATH`: 백엔드 메인 리소스 디렉토리 경로.
-   - `TEST_RESOURCE_PATH`: 백엔드 테스트 리소스 디렉토리 경로.
+   - `ROOT_PATH`: 백엔드 코드의 루트 디렉토리 경로
+   - `MAIN_RESOURCE_PATH`: 백엔드 메인 리소스 디렉토리 경로
+   - `TEST_RESOURCE_PATH`: 백엔드 테스트 리소스 디렉토리 경로
 3. **작업 단계 (`jobs.be-cd.steps`)**
    - **레포지토리 체크아웃**
      - `actions/checkout@v4`를 사용하여 현재 레포지토리를 체크아웃합니다.
@@ -240,7 +234,7 @@ jobs:
      - `gradlew build` 명령어를 실행하여 백엔드 애플리케이션을 빌드합니다.
      - 이 단계에서 테스트도 함께 실행됩니다.
 
-즉,`be-ci.yml`은 `dev-be` 브랜치로의 풀 리퀘스트가 발생할 때 자동으로 백엔드 애플리케이션을 빌드하고 테스트하여 코드의 품질을 검증합니다.
+즉,`be-ci.yml`은 `dev-be` 브랜치로의 풀 리퀘스트가 발생할 때 자동으로 백엔드 애플리케이션을 빌드하고 테스트합니다.
 
 ### 커버리지 리포트 워크플로우 (`coveralls-report.yml`)
 
@@ -392,11 +386,7 @@ jobs:
 
 즉, `fe-cd.yml`은 `release` 브랜치에 프론트엔드 관련 코드가 푸시될 때 자동으로 빌드, 도커 이미지 생성 및 푸시, 그리고 EC2 인스턴스에 배포하는 과정을 자동화합니다.
 
----
-
 ## 배포 과정
-
-Dockerfile과 CI/CD 워크플로우가 어떻게 협력하여 애플리케이션을 빌드하고 배포하는지 살펴보겠습니다.
 
 ### Docker 이미지 빌드 및 푸시
 
@@ -503,81 +493,7 @@ Dockerfile과 CI/CD 워크플로우가 어떻게 협력하여 애플리케이션
 
 즉, 도커 이미지를 빌드하고 도커 허브에 푸시한 후, SSH를 통해 EC2 인스턴스에 접속하여 Docker Compose를 사용해 애플리케이션을 배포합니다. 이를 통해 최신 버전의 애플리케이션이 실행 중인 컨테이너로 교체됩니다.
 
----
+## 무중단 배포
 
-## Nginx 설정
-
-배포 시 Nginx를 사용하여 트래픽을 관리하고, 프론트엔드와 백엔드 사이의 리버스 프록시 역할을 수행할 수 있습니다. Nginx 설정은 주로 EC2 인스턴스 내에서 관리되며, Docker Compose를 통해 설정할 수도 있습니다.
-
-**예시 Nginx 설정 (`nginx.conf`):**
-
-```
-server {
-    listen 80;
-    server_name your_domain.com;
-
-    location /api/ {
-        proxy_pass http://backend:8080/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    location / {
-        proxy_pass http://frontend:5000/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-1. **서버 블록 설정**
-   - `listen 80;`: Nginx가 포트 80에서 요청을 수신하도록 설정합니다.
-   - `server_name your_domain.com;`: 요청을 수신할 도메인을 지정합니다.
-2. **API 요청 처리**
-   - `location /api/`: `/api/` 경로로 시작하는 모든 요청을 처리합니다.
-   - `proxy_pass http://backend:8080/;`: 백엔드 서비스(예: Spring Boot 애플리케이션)로 요청을 전달합니다.
-   - `proxy_set_header`: 원본 요청의 헤더를 백엔드로 전달합니다.
-3. **프론트엔드 요청 처리**
-   - `location /`: 그 외의 모든 요청을 처리합니다.
-   - `proxy_pass http://frontend:5000/;`: 프론트엔드 서비스(예: React 애플리케이션)로 요청을 전달합니다.
-   - `proxy_set_header`: 원본 요청의 헤더를 프론트엔드로 전달합니다.
-
-**Docker Compose와 함께 사용하는 예시:**
-
-```yaml
-version: "3"
-
-services:
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - frontend
-      - backend
-
-  frontend:
-    image: your-frontend-docker-image
-    container_name: frontend
-    ports:
-      - "5000:5000"
-
-  backend:
-    image: your-backend-docker-image
-    container_name: backend
-    ports:
-      - "8080:8080"
-```
-
-1. **nginx 서비스**
-   - Nginx 이미지를 사용하여 컨테이너를 생성합니다.
-   - 호스트의 포트 80을 Nginx 컨테이너의 포트 80에 매핑합니다.
-   - Nginx 설정 파일(`nginx.conf`)을 컨테이너 내의 설정 경로로 마운트합니다.
-   - 프론트엔드와 백엔드 서비스가 시작된 후에 Nginx가 시작되도록 `depends_on`을 설정합니다.
-2. **프론트엔드 및 백엔드 서비스**
-   - 각각의 도커 이미지를 사용하여 컨테이너를 생성합니다.
-   - 프론트엔드는 호스트의 포트 5000, 백엔드는 포트 8080에 매핑됩니다.
-
-즉, Nginx를 리버스 프록시로 설정하여 프론트엔드와 백엔드 서비스로 트래픽을 효율적으로 분배합니다. 이를 통해 도메인 관리 및 보안 설정을 집중화할 수 있습니다.
+이제 이 자동화 파일을 가지고 AWS 홈페이지에 들어가 본격적인 세팅이 필요합니다.  
+이 작업은 추후 2편 포스트로 돌아오겠습니다.
