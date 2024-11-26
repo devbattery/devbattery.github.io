@@ -37,17 +37,19 @@ mathjax: true
 
 `2023.10 - 2024.03`
 
+- [API 문서](http://ec2-3-36-72-44.ap-northeast-2.compute.amazonaws.com:8080/api/docs)
+
 > “맛집 공유 SNS 플랫폼”
 
 [**GitHub Actions 기반 자동화 배포**](http://devbattery.com/project/foodymoody-release/)
 
-- GitHub Actions를 활용한 CI/CD 파이프라인 구축으로 프론트엔드(React)와 백엔드(Spring Boot) 자동화 배포 구현
-- Docker 컨테이너화 및 Docker Hub를 통한 이미지 관리로 일관된 배포 환경 구성
-- EC2 인스턴스에 Nginx 리버스 프록시를 활용한 트래픽 관리 및 HTTPS 보안 설정
+- GitHub Actions를 활용한 CI/CD 파이프라인 구축으로 React 프론트엔드와 Spring Boot 백엔드 자동화 배포 구현
+- Docker 컨테이너와 Docker Hub를 활용한 일관된 배포 환경 구성
+- AWS EC2와 ELB를 통해 HTTPS 보안을 적용하고 무중단 배포 구현
 
 **게시물 피드 API 설계 및 구현**
 
-- 프론트와 회의 후 결정난 피그마를 표본으로 하여, 전반적인 게시물 피드 CRUD와 관련된 API 구현
+- 프론트와 회의 후 결정난 [피그마](https://www.figma.com/design/b3hQCZhASDYHL80SloR0cx/FoodyMoody)를 표본으로 하여, 전반적인 게시물 피드 CRUD와 관련된 API 구현
 
 **좋아요 기능 구현**
 
@@ -56,7 +58,7 @@ mathjax: true
 **좋아요 동시성 문제 해결**
 
 - 낙관적 락을 구현하여 좋아요와 저장 작업이 하나의 트랜잭션 내에서 실행되도록 구현
-- 단일 UPDATE 쿼리로 처리하여 Race Condition 방지
+- 단일 UPDATE 쿼리로 처리하여, 여러 스레드가 동시에 좋아요를 누를 때 발생하는 Race Condition 방지
 
 **N+1 문제 해결**
 
@@ -77,26 +79,25 @@ mathjax: true
 
 **언어 및 프레임워크**
 
-- Java
-- Spring Boot
+- Java, Spring Boot
 - Python
 
 **데이터베이스**
 
-- MySQL
-- JPA
+- MySQL, JPA (ORM)
 
 **테스트 및 버전 관리**
 
-- JUnit, REST Assured, REST Docs, Git
+- JUnit, REST Assured, REST Docs
+- Git
 
 **배포**
 
 - GitHub Actions
-- AWS (EC2 / S3 / CodeDeploy)
+- AWS (EC2 / S3 / CodeDeploy / ELB)
 
 **협업 및 기타 도구**
 
 - Slack
-- IntelliJ
-- GitHub
+- Github
+- Intellij
