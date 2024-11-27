@@ -6,8 +6,8 @@ comments: true
 author_profile: true
 mathjax: true
 
-# sidebar:
-#   nav: "categories"
+sidebar:
+  nav: "categories"
 ---
 
 ---
