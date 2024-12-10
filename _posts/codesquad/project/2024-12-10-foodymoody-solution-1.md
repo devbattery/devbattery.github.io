@@ -1,11 +1,11 @@
 ---
 title: "[Project] 개발 DB에서 운영 DB로 마이그레이션 중 발생한 문제 해결 과정"
-excerpt: "foodymoody, database"
+excerpt: "foodymoody, solution"
 
 categories:
   - Project
 tags:
-  - [foodymoody, database]
+  - [foodymoody, solution]
 
 toc: true
 toc_sticky: true
