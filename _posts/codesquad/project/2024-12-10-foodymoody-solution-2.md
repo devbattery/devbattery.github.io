@@ -307,6 +307,6 @@ public class UpdateMemberProfileUseCase {
 
 ## 해결 완료
 
-<img width="561" alt="Screenshot 2024-12-10 at 13 16 18" src="https://github.com/user-attachments/assets/b1170861-574a-4d8c-989d-728d94458483">
+<img width="565" alt="Screenshot 2024-12-10 at 15 52 10" src="https://github.com/user-attachments/assets/c14a5b26-4d99-4648-8cf5-fb4e6e94bf50">
 
 > [해당 이슈 + 커밋](https://github.com/foody-moody/foodymoody/issues/635)
