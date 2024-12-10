@@ -1,5 +1,5 @@
 ---
-title: "[Project] "Spring Data Redis - Could not safely identify store assignment for repository candidate interface" 에러 해결"
+title: "[Project] Spring Data Redis - Could not safely identify store assignment for repository candidate interface 에러 해결"
 excerpt: "foodymoody, solution"
 
 categories:
