@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2024-12-11
-last_modified_at: 2024-12-11
+last_modified_at: 2024-12-13
 ---
 
 > [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody)에 대한 설명입니다.
