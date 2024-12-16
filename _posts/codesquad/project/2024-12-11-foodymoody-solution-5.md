@@ -170,7 +170,7 @@ export const OAuthButton = () => {
     console.log('isDev', isDev);
 
     // const LOCAL_URL = 'http://localhost:5173';
-    const GOOGLE_URL = https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${VITE_REDIRECT_ADDRESS}&access_type=offline;
+    const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${VITE_REDIRECT_ADDRESS}&access_type=offline`;
 ```
 
 - `VITE_GOOGLE_CLIENT_ID`
@@ -223,7 +223,8 @@ RedirectAddress https://foodymoody.store/redirect/oauth
 <img width="507" alt="Screenshot 2024-12-11 at 10 43 38" src="https://github.com/user-attachments/assets/8e4d2d0f-6e6a-4e07-8397-93c676c611e5">
 
 - 허용해 주니 아까처럼 로그인창도 잘 뜨고, 로그인도 잘 되는 것 같다.
-- 하지만 `https://foodymoody.store/redirect/oauth?code=4%2F0AanRRrtGJpJ4aeiSGXkq4JYEQLtl7U-cMBRE0YSOqapKbBWWC_o7_0CkwRRJIxwIi3xSqw&scope=email+profile+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&authuser=0&prompt=consent` 이와 같은 리다이렉트 URL이 나오면서 400 에러가 발생한다.
+- 하지만 아래와 같은 리다이렉트 URL이 나오면서 400 에러가 발생한다.
+  - <https://foodymoody.store/redirect/oauth?code=4%2F0AanRRrtGJpJ4aeiSGXkq4JYEQLtl7U-cMBRE0YSOqapKbBWWC_o7_0CkwRRJIxwIi3xSqw&scope=email+profile+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&authuser=0&prompt=consent>
 
 ### 3rd 해결 시도
 
