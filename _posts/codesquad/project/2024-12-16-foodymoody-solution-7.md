@@ -13,8 +13,8 @@ toc_sticky: true
 sidebar:
   nav: "categories"
 
-date: 2024-12-13
-last_modified_at: 2024-12-13
+date: 2024-12-16
+last_modified_at: 2024-12-16
 ---
 
 > [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody)에 대한 설명입니다.
