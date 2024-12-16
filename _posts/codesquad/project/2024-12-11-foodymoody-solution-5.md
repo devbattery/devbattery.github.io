@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2024-12-11
-last_modified_at: 2024-12-13
+last_modified_at: 2024-12-16
 ---
 
 > [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody)에 대한 설명입니다.
@@ -31,23 +31,22 @@ last_modified_at: 2024-12-13
 
 결국 원인은 프론트 코드에 있었다. 아무리 검색을 해 봐도 프론트 코드의 오류로 인해 발생한 포스트가 없었기 때문에 더 오래 걸렸던 것 같다. 이런 걸 보면 결국 오류를 해결해주는 건 검색이 아닌 나 자신의 사고인 것 같다. 프론트쪽의 문제가 아닐까하고 계속 의문을 품어왔지만, 리액트 코드를 봐도 전혀 모르겠기도 했고 보통 백엔드의 문제로 401 에러가 발생한다는 사고 방식으로 생각했던 게 문제의 원인이었다.
 
-
 ### 이전 코드
 
 ```jsx
-import { styled } from 'styled-components';
-import { GoogleIcon } from '../icon/icons';
-import { PATH } from 'constants/path';
+import { styled } from "styled-components";
+import { GoogleIcon } from "../icon/icons";
+import { PATH } from "constants/path";
 
 const { MODE, VITE_GOOGLE_CLIENT_ID } = import.meta.env;
 
 export const OAuthButton = () => {
-  const isDev = MODE === 'development';
-  console.log('isDev', isDev);
+  const isDev = MODE === "development";
+  console.log("isDev", isDev);
 
-  const LOCAL_URL = 'http://localhost:5173';
+  const LOCAL_URL = "http://localhost:5173";
   const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${
-    isDev ? LOCAL_URL + PATH.GOOGLE : 'https://foodymoody.site' + PATH.GOOGLE
+    isDev ? LOCAL_URL + PATH.GOOGLE : "https://foodymoody.site" + PATH.GOOGLE
   }&access_type=offline`;
   // const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?
   // 	client_id=${VITE_GOOGLE_CLIENT_ID}
@@ -94,57 +93,57 @@ const Text = styled.p`
 ### 수정 코드
 
 ```jsx
-import { styled } from 'styled-components';
-import { GoogleIcon } from '../icon/icons';
+import { styled } from "styled-components";
+import { GoogleIcon } from "../icon/icons";
 // import { PATH } from 'constants/path';
 
 const { MODE, VITE_GOOGLE_CLIENT_ID, VITE_REDIRECT_ADDRESS } = import.meta.env;
 
 export const OAuthButton = () => {
-    const isDev = MODE === 'development';
-    console.log('isDev', isDev);
+  const isDev = MODE === "development";
+  console.log("isDev", isDev);
 
-    // const LOCAL_URL = 'http://localhost:5173';
-    const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${VITE_REDIRECT_ADDRESS}&access_type=offline`;
-    // const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?
-    // 	client_id=${VITE_GOOGLE_CLIENT_ID}
-    // 	&redirect_uri=${isDev ? LOCAL_URL + PATH.GOOGLE : VITE_API_URL + PATH.GOOGLE}
-    // 	&response_type=code
-    // 	&scope=email profile`;
-    const handleOauthLogin = () => {
-        location.replace(GOOGLE_URL); // 이동
-        // window.open(GOOGLE_URL, '_blank', 'width=500,height=600,left=50,top=10'); // 새창
-    };
+  // const LOCAL_URL = 'http://localhost:5173';
+  const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${VITE_REDIRECT_ADDRESS}&access_type=offline`;
+  // const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?
+  // 	client_id=${VITE_GOOGLE_CLIENT_ID}
+  // 	&redirect_uri=${isDev ? LOCAL_URL + PATH.GOOGLE : VITE_API_URL + PATH.GOOGLE}
+  // 	&response_type=code
+  // 	&scope=email profile`;
+  const handleOauthLogin = () => {
+    location.replace(GOOGLE_URL); // 이동
+    // window.open(GOOGLE_URL, '_blank', 'width=500,height=600,left=50,top=10'); // 새창
+  };
 
-    return (
-        <Wrapper onClick={handleOauthLogin} type="button">
-            <GoogleIcon />
-            <Text>Google로 계속하기</Text>
-        </Wrapper>
-    );
+  return (
+    <Wrapper onClick={handleOauthLogin} type="button">
+      <GoogleIcon />
+      <Text>Google로 계속하기</Text>
+    </Wrapper>
+  );
 };
 
 const Wrapper = styled.button`
-    width: 100%;
-    display: flex;
-    align-items: center;
-    height: 48px;
-    padding: 16px;
-    border-radius: 4px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 16px;
+  border-radius: 4px;
 
-    cursor: pointer;
-    border: 1px solid ${({ theme: { colors } }) => colors.textTertiary};
-    background-color: ${({ theme: { colors } }) => colors.white};
-    transition: all 0.2s ease-in-out;
-    &:hover {
-        background-color: ${({ theme: { colors } }) => colors.bgGray50};
-    }
+  cursor: pointer;
+  border: 1px solid ${({ theme: { colors } }) => colors.textTertiary};
+  background-color: ${({ theme: { colors } }) => colors.white};
+  transition: all 0.2s ease-in-out;
+  &:hover {
+    background-color: ${({ theme: { colors } }) => colors.bgGray50};
+  }
 `;
 
 const Text = styled.p`
-    font: ${({ theme: { fonts } }) => fonts.displayB14};
-    color: ${({ theme: { colors } }) => colors.textSecondary};
-    flex: 1;
+  font: ${({ theme: { fonts } }) => fonts.displayB14};
+  color: ${({ theme: { colors } }) => colors.textSecondary};
+  flex: 1;
 `;
 ```
 
@@ -171,7 +170,7 @@ export const OAuthButton = () => {
     console.log('isDev', isDev);
 
     // const LOCAL_URL = 'http://localhost:5173';
-    const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${VITE_REDIRECT_ADDRESS}&access_type=offline`;
+    const GOOGLE_URL = https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${VITE_REDIRECT_ADDRESS}&access_type=offline;
 ```
 
 - `VITE_GOOGLE_CLIENT_ID`
@@ -198,16 +197,16 @@ export const OAuthButton = () => {
 redirect_url 부분에서 프론트의 코드가 괜히 그렇게 되어 있던 건 아닌 거 같아서 좀 찾아봤더니 redirect 백엔드의 url과 프론트엔드의 url은 다르다고 하는 것 같다.
 
 ```jsx
-const isDev = MODE === 'development';
-console.log('isDev', isDev);
+const isDev = MODE === "development";
+console.log("isDev", isDev);
 
-const LOCAL_URL = 'http://localhost:5173';
+const LOCAL_URL = "http://localhost:5173";
 // const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${VITE_REDIRECT_ADDRESS}&access_type=offline`;
 
-console.log('RedirectAddress', 'https://foodymoody.store' + PATH.GOOGLE);
+console.log("RedirectAddress", "https://foodymoody.store" + PATH.GOOGLE);
 
 const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${
-    isDev ? LOCAL_URL + PATH.GOOGLE : 'https://foodymoody.store' + PATH.GOOGLE
+  isDev ? LOCAL_URL + PATH.GOOGLE : "https://foodymoody.store" + PATH.GOOGLE
 }&access_type=offline`;
 ```
 
@@ -265,18 +264,17 @@ GOOGLE: '/api/auth/oauth/google',
 다음에는 무조건 이렇게만 해야겠다라는 마음으로 그동안의 실패 원인을 아주 간단하게만 작성하겠다.
 
 ```jsx
-    const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${
-        isDev ? LOCAL_URL + PATH.GOOGLE : 'https://foodymoody.store' + PATH.GOOGLE
-    }&access_type=offline`;
-    console.log('RedirectAddress', 'https://foodymoody.store' + PATH.GOOGLE);
+const GOOGLE_URL = `https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email&client_id=${VITE_GOOGLE_CLIENT_ID}&response_type=code&redirect_uri=${
+  isDev ? LOCAL_URL + PATH.GOOGLE : "https://foodymoody.store" + PATH.GOOGLE
+}&access_type=offline`;
+console.log("RedirectAddress", "https://foodymoody.store" + PATH.GOOGLE);
 ```
 
 ```jsx
 export const PATH = {
   // ... 생략
-  GOOGLE: '/login/oauth2/code/google', // 원인 -> GOOGLE: '/redirect/oauth',
+  GOOGLE: "/login/oauth2/code/google", // 원인 -> GOOGLE: '/redirect/oauth',
 };
-
 ```
 
 - 문제 발생 redirect url
