@@ -19,6 +19,9 @@ body {
         /* when primary navigation is visible, the content in the background won't scroll */
         overflow: hidden;
     }
+
+    /* 긴 단어 줄바꿈 스타일 */
+    overflow-wrap: break-word; /* 대부분의 경우 */
 }
 
 h1,
