@@ -21,25 +21,16 @@ sidebar:
 **GitHub** | <https://github.com/devbattery>
 **Blog** | [https://devbattery.com](https://devbattery.com/)
 
-## Education
-
-> [**코드스쿼드 마스터즈**](https://codesquad.kr/masters/) `2023.01 - 2023.11`
->
-> - [CS16과 Java 백엔드 및 팀 프로젝트 과정](http://devbattery.com/til/recap/)
-
-> **동양미래대학교** `2020.03 - 2022.01`
->
-> - 컴퓨터정보공학과: 웹/앱 어플리케이션, IoT, 네트워크 관리 등의 경험
-
 ## Project
 
 ### [Foody Moody](https://github.com/foody-moody/foodymoody)
 
-`2023.10 - 2024.03`
-
-- [API 문서](http://ec2-3-36-72-44.ap-northeast-2.compute.amazonaws.com:8080/api/docs)
-
 > “맛집 공유 SNS 플랫폼”
+
+`2023.10 - 2024.03`의 기간 동안 팀 프로그래밍 후, `2024.11`부터 혼자 유지 보수를 진행 중입니다.
+
+- [DNS](https://foodymoody.store)
+- [API 문서](https://foodymoody.store/api/docs)
 
 [**GitHub Actions 기반 자동화 배포**](http://devbattery.com/project/foodymoody-release/)
 
@@ -79,12 +70,13 @@ sidebar:
 
 **언어 및 프레임워크**
 
-- Java, Spring Boot
+- Java, Spring Boot, Spring Data JPA
 - Python
 
 **데이터베이스**
 
-- MySQL, JPA (ORM)
+- MySQL
+- Elastic Search
 
 **테스트 및 버전 관리**
 
