@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2024-11-22
-last_modified_at: 2024-11-26
+last_modified_at: 2024-12-21
 ---
 
 > [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody) 중 **자동화 배포**에 대한 설명입니다.
@@ -74,7 +74,7 @@ ENTRYPOINT ["java","-Dspring.config.location=file:/be/conf/","-jar","app.jar","-
 
 ## CI/CD 워크플로우
 
-GitHub Actions를 활용하여 CI/CD 파이프라인을 구축합니다. 각각의 워크플로우(`.yml` 파일들)는 특정 이벤트ex. Push, Pull Request 등)에 반응하여 자동으로 빌드, 테스트, 배포를 수행합니다.
+GitHub Actions를 활용하여 CI/CD 파이프라인을 구축합니다. 각각의 워크플로우(`.yml` 파일들)는 특정 이벤트(ex. Push, Pull Request 등)에 반응하여 자동으로 빌드, 테스트, 배포를 수행합니다.
 
 ### 백엔드 배포 워크플로우 (`be-cd.yml`)
 
@@ -492,6 +492,35 @@ jobs:
 ```
 
 즉, 도커 이미지를 빌드하고 도커 허브에 푸시한 후, SSH를 통해 EC2 인스턴스에 접속하여 Docker Compose를 사용해 애플리케이션을 배포합니다. 이를 통해 최신 버전의 애플리케이션이 실행 중인 컨테이너로 교체됩니다.
+
+## 정리
+
+### 핵심 기술
+
+- **Docker:** 애플리케이션을 컨테이너화하여 환경에 구애받지 않고 일관되게 실행하도록 지원합니다.
+  - `Dockerfile.fe`: 프론트엔드 애플리케이션용 Dockerfile
+  - `Dockerfile.be`: 백엔드 애플리케이션용 Dockerfile
+- **Docker Compose:** 여러 개의 Docker 컨테이너를 정의하고 실행하는 오케스트레이션 도구. 프론트엔드와 백엔드 컨테이너를 함께 관리합니다.
+  - `docker-compose-fe-app.yml`: 프론트엔드 배포용
+  - `docker-compose-be-app.yml`: 백엔드 배포용
+- **GitHub Actions:** CI/CD (지속적 통합 및 지속적 배포) 자동화를 위한 플랫폼. 코드 변경, 풀 리퀘스트 등 특정 이벤트에 따라 빌드, 테스트, 배포 등의 작업을 자동화합니다.
+  - `be-cd.yml`: 백엔드 배포 워크플로우
+  - `be-ci.yml`: 백엔드 CI (빌드 및 테스트) 워크플로우
+  - `coveralls-report.yml`: 테스트 커버리지 리포트 생성 및 업로드 워크플로우
+  - `fe-cd.yml`: 프론트엔드 배포 워크플로우
+- **Docker Hub:** Docker 이미지를 저장하고 공유하는 레지스트리 서비스. 빌드된 이미지를 Docker Hub에 푸시하고, EC2 인스턴스에서 이를 풀(pull)하여 배포합니다.
+
+### 배포 방식
+
+1. **코드 변경 및 푸시:** `release` 브랜치에 코드를 푸시합니다.
+2. **GitHub Actions 트리거:** `release` 브랜치에 대한 푸시 이벤트 또는 `dev-be`에 대한 PR 이벤트를 감지하여 해당 워크플로우가 실행됩니다.
+3. **빌드 및 테스트:**
+   - 프론트엔드: `npm install`로 의존성을 설치하고 `npm run build`로 빌드합니다.
+   - 백엔드: `gradlew build`로 빌드 및 테스트를 수행합니다.
+4. **Docker 이미지 빌드 및 푸시:** 각 서비스의 Dockerfile을 사용하여 Docker 이미지를 빌드하고 Docker Hub에 푸시합니다.
+5. **EC2 배포:**
+   - GitHub Actions에서 SSH를 통해 EC2 인스턴스에 접속합니다.
+   - Docker Compose를 사용하여 최신 이미지를 풀(pull)하고, 기존 컨테이너를 중지/삭제한 후 새 컨테이너를 실행합니다.
 
 ## 무중단 배포
 
