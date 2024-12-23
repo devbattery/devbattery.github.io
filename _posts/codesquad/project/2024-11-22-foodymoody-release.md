@@ -19,6 +19,87 @@ last_modified_at: 2024-12-21
 
 > [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody) 중 **자동화 배포**에 대한 설명입니다.
 
+## Docker Compose
+
+### 백엔드 Docker Compose `docker-compose-be-app.yml`
+
+```yaml
+version: "1.0"
+
+services:
+  be-app:
+    image: won4885/foodymoody_be_hub:latest
+    container_name: be-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=aws
+      - TZ=Asia/Seoul
+    networks:
+      - default-network
+    volumes:
+      - /home/ubuntu/be/conf:/be/conf/
+    restart: always
+
+networks:
+  default-network:
+    driver: bridge
+```
+
+- **`version: "1.0"`**: Docker Compose 파일의 버전을 명시합니다.
+- **`services:`**: 실행할 서비스들을 정의합니다.
+  - **`be-app:`**: 백엔드 서비스의 이름입니다.
+    - **`image: won4885/foodymoody_be_hub:latest`**: 사용할 Docker 이미지를 지정합니다. `won4885/foodymoody_be_hub`라는 Docker Hub 저장소에서 최신(`latest`) 버전의 이미지를 가져옵니다.
+    - **`container_name: be-app`**: 생성될 컨테이너의 이름을 `be-app`으로 지정합니다.
+    - **`ports: - "8080:8080"`**: 호스트의 8080 포트를 컨테이너의 8080 포트와 연결합니다. 즉, 외부에서 8080 포트로 접근하면 이 컨테이너로 연결됩니다.
+    - **`environment:`**: 컨테이너 내에서 사용할 환경 변수를 설정합니다.
+      - **`SPRING_PROFILES_ACTIVE=aws`**: Spring Boot 애플리케이션의 프로파일을 `aws`로 설정합니다. 이를 통해 AWS 환경에 맞는 설정이 적용될 것입니다.
+      - **`TZ=Asia/Seoul`**: 컨테이너의 시간대를 서울 시간으로 설정합니다.
+    - **`networks: - default-network`**: 컨테이너가 `default-network`라는 네트워크에 연결됩니다.
+    - **`volumes: - /home/ubuntu/be/conf:/be/conf/`**: 호스트의 `/home/ubuntu/be/conf` 디렉토리를 컨테이너의 `/be/conf/` 디렉토리와 연결합니다. 이를 통해 호스트에서 설정 파일을 수정하면 컨테이너에도 바로 반영됩니다.
+    - **`restart: always`**: 컨테이너가 종료될 경우 항상 재시작하도록 설정합니다.
+- **`networks:`**: 사용할 네트워크를 정의합니다.
+  - **`default-network:`**: `default-network`라는 이름의 네트워크를 정의합니다.
+    - **`driver: bridge`**: 네트워크 드라이버를 `bridge`로 설정합니다. `bridge` 네트워크는 동일한 호스트 내의 컨테이너 간 통신을 가능하게 합니다.
+
+### 프론트엔드 Docker Compose `docker-compose-fe-app.yml`
+
+```yaml
+version: "1.0"
+
+services:
+  fe-app:
+    image: won4885/foodymoody_fe_hub:latest
+    container_name: fe-app
+    ports:
+      - "80:3000"
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - default-network
+    volumes:
+      - /home/ubuntu/be/conf:/be/conf/ # 이 부분은 fe-app에 필요한 설정인지 확인 필요
+    restart: always
+
+networks:
+  default-network:
+    driver: bridge
+```
+
+- **`version: "1.0"`**: Docker Compose 파일의 버전을 명시합니다.
+- **`services:`**: 실행할 서비스들을 정의합니다.
+  - **`fe-app:`**: 프론트엔드 서비스의 이름입니다.
+    - **`image: won4885/foodymoody_fe_hub:latest`**: 사용할 Docker 이미지를 지정합니다. `won4885/foodymoody_fe_hub`라는 Docker Hub 저장소에서 최신(`latest`) 버전의 이미지를 가져옵니다.
+    - **`container_name: fe-app`**: 생성될 컨테이너의 이름을 `fe-app`으로 지정합니다.
+    - **`ports: - "80:3000"`**: 호스트의 80 포트를 컨테이너의 3000 포트와 연결합니다. 즉, 외부에서 80 포트로 접근하면 이 컨테이너로 연결됩니다. 일반적으로 프론트엔드는 80 포트(HTTP) 또는 443 포트(HTTPS)를 사용합니다.
+    - **`environment: - TZ=Asia/Seoul`**: 컨테이너의 시간대를 서울 시간으로 설정합니다.
+    - **`networks: - default-network`**: 컨테이너가 `default-network`라는 네트워크에 연결됩니다.
+    - **`volumes: - /home/ubuntu/be/conf:/be/conf/`**: **이 부분은 주의가 필요합니다.** 프론트엔드 컨테이너가 백엔드의 설정 디렉토리를 마운트하고 있습니다. 프론트엔드에 필요한 설정인지 확인해야 합니다. 만약 필요 없는 설정이라면 이 부분을 제거하는 것이 좋습니다.
+    - **`restart: always`**: 컨테이너가 종료될 경우 항상 재시작하도록 설정합니다.
+- **`networks:`**: 사용할 네트워크를 정의합니다.
+  - **`default-network:`**: `default-network`라는 이름의 네트워크를 정의합니다.
+    - **`driver: bridge`**: 네트워크 드라이버를 `bridge`로 설정합니다.
+
 ## Dockerfile
 
 Dockerfile은 애플리케이션을 컨테이너화하기 위한 설정 파일입니다. 각 서비스(프론트엔드와 백엔드)마다 별도의 Dockerfile이 존재하며, 이를 통해 필요한 환경을 구성하고 애플리케이션을 패키징합니다.
