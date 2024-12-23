@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2024-11-22
-last_modified_at: 2024-12-21
+last_modified_at: 2024-12-23
 ---
 
 > [FoodyMoody 프로젝트](https://github.com/foody-moody/foodymoody) 중 **자동화 배포**에 대한 설명입니다.
@@ -78,7 +78,7 @@ services:
     networks:
       - default-network
     volumes:
-      - /home/ubuntu/be/conf:/be/conf/ # 이 부분은 fe-app에 필요한 설정인지 확인 필요
+      - /home/ubuntu/be/conf:/be/conf/
     restart: always
 
 networks:
@@ -94,7 +94,6 @@ networks:
     - **`ports: - "80:3000"`**: 호스트의 80 포트를 컨테이너의 3000 포트와 연결합니다. 즉, 외부에서 80 포트로 접근하면 이 컨테이너로 연결됩니다. 일반적으로 프론트엔드는 80 포트(HTTP) 또는 443 포트(HTTPS)를 사용합니다.
     - **`environment: - TZ=Asia/Seoul`**: 컨테이너의 시간대를 서울 시간으로 설정합니다.
     - **`networks: - default-network`**: 컨테이너가 `default-network`라는 네트워크에 연결됩니다.
-    - **`volumes: - /home/ubuntu/be/conf:/be/conf/`**: **이 부분은 주의가 필요합니다.** 프론트엔드 컨테이너가 백엔드의 설정 디렉토리를 마운트하고 있습니다. 프론트엔드에 필요한 설정인지 확인해야 합니다. 만약 필요 없는 설정이라면 이 부분을 제거하는 것이 좋습니다.
     - **`restart: always`**: 컨테이너가 종료될 경우 항상 재시작하도록 설정합니다.
 - **`networks:`**: 사용할 네트워크를 정의합니다.
   - **`default-network:`**: `default-network`라는 이름의 네트워크를 정의합니다.
