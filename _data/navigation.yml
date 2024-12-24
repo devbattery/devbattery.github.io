@@ -14,6 +14,12 @@ main:
 
 # sidebar navigation (categories)
 categories:
+  - title: "🕹️ Project"
+    children:
+      - title: "Project"
+        url: /project/
+        category: "Project"
+
   - title: "📈 Algorithm"
     children:
       - title: "Recap"
@@ -67,9 +73,6 @@ categories:
 
   - title: "🍀 CodeSquad"
     children:
-      - title: "Project"
-        url: /project/
-        category: "Project"
       - title: "Today I Learned"
         url: /til/
         category: "TIL"
