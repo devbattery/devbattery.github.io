@@ -10,24 +10,6 @@ search/google-search-scripts.html %} {%- when "algolia" -%} {% include_cached
 search/algolia-search-scripts.html %} {%- endcase -%} {% endif %} {% include
 analytics.html %} {% include /comments-providers/scripts.html %}
 
-<!-- {% if page.mathjax %}
-<script type="text/javascript">
-  window.MathJax = {
-    tex: {
-      inlineMath: [['$','$'], ['\\(','\\)']],
-      displayMath: [['$$','$$'], ['\\[','\\]']],
-      processEscapes: true
-    },
-    svg: {
-      fontCache: 'global'
-    }
-  };
-</script>
-<script type="text/javascript" id="MathJax-script" async
-  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
-</script>
-{% endif %} -->
-
 <script
   type="text/javascript"
   async
@@ -36,14 +18,37 @@ analytics.html %} {% include /comments-providers/scripts.html %}
 
 <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
-  extensions: ["tex2jax.js"],
-  jax: ["input/TeX", "output/HTML-CSS"],
-  tex2jax: {
-  inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-  displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
-  processEscapes: true
-  },
-  "HTML-CSS": { availableFonts: ["TeX"] }
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX", "output/HTML-CSS"],
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+      processEscapes: true
+    },
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+<!-- Clipboard.js 추가 -->
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+  // Initialize Clipboard.js
+  var clipboard = new ClipboardJS(".copy-button");
+
+  // Success event handling (optional)
+  clipboard.on("success", function (e) {
+    e.trigger.textContent = "Copied!";
+    setTimeout(function () {
+      e.trigger.textContent = "Copy";
+    }, 2000); // Reset button text after 2 seconds
+
+    e.clearSelection();
+  });
+
+  // Error event handling (optional)
+  clipboard.on("error", function (e) {
+    console.error("Action:", e.action);
+    console.error("Trigger:", e.trigger);
   });
 </script>
 

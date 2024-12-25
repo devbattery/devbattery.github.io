@@ -14,7 +14,7 @@ main:
 
 # sidebar navigation (categories)
 categories:
-  - title: "🕹️ Project"
+  - title: "🕹️ Issue"
     children:
       - title: "Project"
         url: /project/
