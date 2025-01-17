@@ -1,5 +1,5 @@
 ---
-title: "정원준 - 기술 부채를 좋아하는 신입 개발자"
+title: "정원준 - 최신 트렌드에 뒤쳐지지 않으려 노력하는 개발자"
 permalink: /about/
 layout: single
 comments: true
@@ -13,22 +13,23 @@ sidebar:
 ---
 
 안녕하세요! 신입 개발자 정원준입니다.  
-기술 부채가 쌓이는 것을 두려워하지 않으며, 기록하고 시대의 흐름에 맞춰 따라가는 것을 좋아합니다.
+유행하는 기술을 무작정 사용하는 것이 아닌, 자주 사용되는 이유를 먼저 알고 사용하려 노력합니다.
 
 ## Contact & Channels
 
 **Email** | [devbattery@outlook.com](mailto:devbattery@outlook.com)  
-**GitHub** | <https://github.com/devbattery>
+**GitHub** | <https://github.com/devbattery>  
 **Blog** | [https://devbattery.com](https://devbattery.com/)
 
 ## Project
 
 ### [Foody Moody](https://github.com/foody-moody/foodymoody)
 
+`2023.10 - 2024.03`의 기간 동안 팀 프로그래밍 후, 혼자 유지 보수를 진행 중입니다.
+
 > “맛집 공유 SNS 플랫폼”
 
-`2023.10 - 2024.03`의 기간 동안 팀 프로그래밍 후, `2024.11`부터 혼자 유지 보수를 진행 중입니다.
-
+- [레포지토리](https://github.com/foody-moody/foodymoody)
 - [DNS](https://foodymoody.store)
 - [API 문서](https://foodymoody.store/api/docs)
 
@@ -70,26 +71,25 @@ sidebar:
 
 **언어 및 프레임워크**
 
-- Java, Spring Boot, Spring Data JPA
-- Python
+- Java, Python
+- Spring Boot, Spring Data JPA
+
+**실시간 통신**
+
+- WebSocket + Redis Pub/Sub
+- SSE + Redis Pub/Sub
 
 **데이터베이스**
 
 - MySQL
+- MongoDB, Redis
 - Elastic Search
 
-**테스트 및 버전 관리**
+**테스트**
 
 - JUnit, REST Assured, REST Docs
-- Git
 
 **배포**
 
 - GitHub Actions
-- AWS (EC2 / S3 / CodeDeploy / ELB)
-
-**협업 및 기타 도구**
-
-- Slack
-- Github
-- Intellij
+- AWS (EC2, S3, CodeDeploy ELB)
