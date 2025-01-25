@@ -14,10 +14,16 @@ sidebar:
   nav: "categories"
 
 date: 2025-01-22
-last_modified_at: 2025-01-22
+last_modified_at: 2025-01-25
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
+
+## 서론
+
+Movlit 프로젝트는 채팅방 기능을 제공합니다. 그 중 그룹 채팅 방을 생성하는 기능이 있습니다.  
+그룹 채팅 방은 하나의 컨텐츠당 하나의 방만 존재해야 하기 때문에, 동시성 해결이 꼭 필요했습니다.
+
 
 ## 동시성 문제 해결 전략
 
