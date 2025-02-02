@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2025-01-22
-last_modified_at: 2025-01-26
+last_modified_at: 2025-01-27
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
@@ -141,8 +141,6 @@ Map<String, String> response = getPureResponse(responseOpt);
 - **비동기 처리를 통한 응답성 향상**: `ThreadPoolExecutor`를 사용하여 채팅방 생성 요청을 비동기적으로 처리함으로써, 사용자는 요청 후 즉시 응답을 받을 수 있습니다. 이는 사용자 경험을 향상시키고, 시스템의 전반적인 응답성을 높입니다.
 - **스레드 안전성**: Redis는 싱글 스레드로 동작하기 때문에, Redis 큐에 대한 연산은 원자적(atomic)입니다. 따라서 여러 스레드가 동시에 Redis 큐에 접근하더라도 데이터의 일관성이 보장됩니다. 또한, `ThreadPoolExecutor`는 내부적으로 스레드 안전성을 보장하므로, 여러 스레드가 동시에 작업을 수행하더라도 동시성 문제가 발생하지 않습니다.
 
-### 결론
+## 결론
 
 `GroupChatroomCreationWorker`는 Redis 큐와 `ThreadPoolExecutor`를 활용하여 그룹 채팅방 생성 요청을 효율적으로 처리하고, 동시성 문제를 해결합니다. 이를 통해 여러 사용자가 동시에 채팅방 생성을 요청하더라도 시스템의 안정성과 응답성을 유지할 수 있습니다.
-
-이러한 전략은 분산 환경에서도 적용 가능하며, Redis와 같은 메시지 큐 시스템을 활용하여 마이크로서비스 아키텍처에서도 동시성 문제를 효과적으로 관리할 수 있습니다.
