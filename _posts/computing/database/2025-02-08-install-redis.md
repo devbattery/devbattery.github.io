@@ -3,7 +3,7 @@ title: "[DataBase] Docker로 Redis 설치 방법 - MacOS M4"
 excerpt: "database, docker, redis"
 
 categories:
-    - Java
+    - Database
 tags:
     - [database, docker, redis]
 
