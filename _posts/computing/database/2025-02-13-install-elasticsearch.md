@@ -115,7 +115,7 @@ networks:
     driver: bridge
 ```
 
-## Dockerfile.es
+### Dockerfile.es
 
 ```yml
 FROM docker.elastic.co/elasticsearch/elasticsearch:8.7.1
@@ -125,7 +125,7 @@ RUN elasticsearch-plugin install --batch analysis-nori
 
 - nori 플러그인은 우리 팀이 구현한 프로젝트에서 nori 토크나이저를 사용하기 때문에 넣어주었다.
 
-## Elastic Search Container 생성 및 실행
+### Elastic Search Container 생성 및 실행
 
 ```bash
 docker-compose down --rmi all 
