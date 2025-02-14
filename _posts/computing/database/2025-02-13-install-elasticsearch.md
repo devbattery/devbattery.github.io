@@ -137,6 +137,15 @@ docker-compose up -d
   - 왜냐하면 이 글까지 들어온 사람들은 분명 삽집을 하느라 많은 이미지가 쌓여있을 것이다.
 - 위와 같이 실행하면 그동안 안 되던 게 드디어 될 것이다.
 
+### Elastic Search 비밀번호 설정
+
+```bash
+/usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic -i
+```
+
+- 위 명령어를 실행하면, elastic search의 비밀번호를 설정할 수 있다.
+  - Spring Boot에 연결하기 위해서는 비밀번호 설정이 필수다.
+
 ## 결론
 
 어떻게든 해결이 되었는데, 다른 사이드 프로젝트를 또 진행한다면 Elastic Search는 적용 안 하고 그냥 MySQL을 적용하여 검색 엔진을 만들어볼 것 같다.
