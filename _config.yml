@@ -19,7 +19,7 @@ locale: "en-US"
 title: "Dev Battery"
 title_separator: "|"
 subtitle: "Develop Like A Battery"
-name: "Sully"
+name: "Wonjun Jeong"
 description: "Develop Like A Battery"
 url: "https://devbattery.com"
 baseurl: # the subpath of your site, e.g. "/blog"
@@ -111,9 +111,9 @@ analytics:
 
 # Site Author
 author:
-    name: "Sully"
+    name: "Wonjun Jeong"
     avatar: "/assets/images/bio-photo.png"
-    bio: "Wonjun Jeong"
+    bio: "Backend Developer"
     location: "Korea Republic"
     email:
     links:
