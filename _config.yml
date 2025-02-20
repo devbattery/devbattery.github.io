@@ -152,7 +152,6 @@ sass:
 permalink: /:categories/:title/
 timezone: Asia/Seoul
 
-# Pagination (using jekyll-paginate-v2)
 pagination:
   enabled: true
   debug: false
@@ -170,7 +169,7 @@ pagination:
 
 # Plugins
 plugins:
-  - jekyll-paginate-v2
+  - jekyll-paginate
   - jekyll-sitemap
   - jekyll-gist
   - jekyll-feed
