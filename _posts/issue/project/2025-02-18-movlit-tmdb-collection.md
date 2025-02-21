@@ -14,37 +14,47 @@ sidebar:
   nav: "categories"
 
 date: 2025-02-18
-last_modified_at: 2025-02-18
+last_modified_at: 2025-02-21
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
+## 개요
+
+- **TMDB**: 영화, TV 시리즈 관련 데이터베이스 API를 무료로 제공.
+- **Spring Boot**: REST API 서버를 빠르게 구축.
+- **JpaRepository**: 수집된 데이터를 DB에 영속화.
+
+아키텍처 개념도(간단 예시):
+
+```
+[TMDB API] <---> [TmdbApiClient] <---> [MovieCollectionService] <---> [JPA Repository] <---> [DB]
+```
+
+- **Controller**: 외부 호출(HTTP 요청) → Service 메서드 호출.
+- **TmdbApiClient**: 외부 TMDB API 호출 담당.
+- **Service**: 비즈니스 로직 & 데이터 처리.
+- **Repository**: DB 저장.
+
 ---
 
-# Spring Boot로 구축한 영화 데이터 수집 시스템
+## MovieCollectionController: API 엔드포인트
 
-Spring Boot 기반 애플리케이션에서 TMDB API를 호출하여 영화 관련 데이터를 수집하고, 이를 내부 도메인 엔티티로 변환하여 저장하는 과정을 말씀드리겠습니다. REST 컨트롤러, API 클라이언트, 그리고 서비스 계층의 구현을 통해 어떻게 데이터 수집 워크플로우를 구성하는지에 대한 포스트입니다.
+수집 로직을 실행하는 **HTTP GET 요청**을 정의하는 컨트롤러 클래스입니다.  
+프론트엔드나 관리자 페이지에서 `GET /collect/movie/discover`처럼 호출하면 **TMDB 데이터가 DB에 저장**되는 구조입니다.
 
----
-
-## 1. REST 엔드포인트 구성 – MovieCollectionController
-
-데이터 수집 작업은 여러 HTTP GET 엔드포인트를 통해 외부 호출로 트리거됩니다.  
-컨트롤러 클래스에서는 다음과 같은 엔드포인트를 제공하고 있습니다.
-
-- **/collect/movie/discover**  
-  영화 목록(Discover Movies)을 수집합니다.
-  
-- **/collect/movie/keywords**  
-  각 영화에 대한 키워드를 수집합니다.
-  
-- **/collect/movie/genres**  
-  영화 장르 정보를 수집합니다.
-  
-- **/collect/movie/discover/crew**  
-  영화 출연진 및 감독 등 크루 정보를 수집합니다.
-
+````java
 ```java
+package movlit.be.data_collection.movie;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.movie_collect.application.service.MovieCollectionService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 @RestController
 @RequestMapping("/collect/movie")
 @RequiredArgsConstructor
@@ -76,26 +86,42 @@ public class MovieCollectionController {
         movieCollectionService.collectMovieCrew();
         return ResponseEntity.ok().build();
     }
-}
-```
 
-> **포인트:** 컨트롤러는 단순히 서비스 계층의 메서드를 호출하는 역할만 수행하여, 관심사의 분리를 명확하게 하고 테스트 용이성을 높였습니다.
+}
+````
+
+### 주요 포인트
+
+- **각 메서드**는 `MovieCollectionService`의 해당 로직 메서드를 호출한 뒤, 단순히 `OK`(HTTP 200) 응답을 반환.
+- 실제 데이터 수집/가공 로직은 **Service** 내부에 위치.
 
 ---
 
-## 2. TMDB API 호출 – TmdbApiClient
+## TmdbApiClient: TMDB API 호출 클라이언트
 
-외부 TMDB API와의 통신은 `RestTemplate`을 사용하여 구현했습니다.  
-API 키, 액세스 토큰, 그리고 언어/지역 등의 파라미터를 상수로 관리하여 요청 URL을 동적으로 생성합니다.
+**RestTemplate**를 사용해 TMDB 엔드포인트에 HTTP 요청을 보내고, 응답을 `Map` 혹은 `List<Map<String, Object>>` 형태로 받아옵니다.
 
+````java
 ```java
+package movlit.be.movie_collect.application;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
 @Component
 public class TmdbApiClient {
 
     private final RestTemplate restTemplate;
     private final String apiKey;
 
-    // API 호출에 사용할 상수들
+    // API 호출에 사용할 상수
     private static final String LANGUAGE_KO = "&language=ko";
     private static final String REGION_KR = "&region=KR";
     private static final String INCLUDE_ADULT_FALSE = "&include_adult=false";
@@ -110,12 +136,13 @@ public class TmdbApiClient {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Type", "application/json");
         headers.add("Authorization", "Bearer " + accessToken);
+
         this.restTemplate = builder.build();
-        this.restTemplate.getMessageConverters().add(0,
-                new StringHttpMessageConverter(StandardCharsets.UTF_8));
+        this.restTemplate.getMessageConverters().add(
+            0, new StringHttpMessageConverter(StandardCharsets.UTF_8)
+        );
     }
 
-    // Discover API를 호출하여 영화 목록 반환
     public List<Map<String, Object>> fetchDiscoverMovies(String page) {
         String url = "https://api.themoviedb.org/3/discover/movie?api_key=" + apiKey +
                 "&page=" + page + LANGUAGE_KO + REGION_KR + INCLUDE_ADULT_FALSE +
@@ -127,139 +154,864 @@ public class TmdbApiClient {
         return (List<Map<String, Object>>) response.get("results");
     }
 
-    // 영화 상세 정보, 키워드, 크레딧 등을 호출하는 추가 메서드들...
-}
-```
+    public Map<String, Object> fetchMovieDetails(String apiId) {
+        String url = "https://api.themoviedb.org/3/movie/" + apiId + "?api_key=" + apiKey + "&language=ko-KR";
+        return restTemplate.getForObject(url, Map.class);
+    }
 
-> **포인트:**  
-> - **REST Template 설정:** 메시지 컨버터를 추가하여 UTF-8 인코딩 문제를 방지하고, HTTP 헤더를 통해 API 인증을 처리합니다.  
-> - **동적 URL 생성:** 파라미터들을 상수로 정의하여 재사용성과 가독성을 높였습니다.
+    public Map<String, Object> fetchMovieKeywords(Long movieId) {
+        String url = "https://api.themoviedb.org/3/movie/" + movieId + "/keywords?api_key=" + apiKey;
+        return restTemplate.getForObject(url, Map.class);
+    }
+
+    public Map<String, Object> fetchMovieCredits(Long movieId) {
+        String url = "https://api.themoviedb.org/3/movie/" + movieId + "/credits?api_key=" + apiKey + LANGUAGE_KO;
+        return restTemplate.getForObject(url, Map.class);
+    }
+
+}
+````
+
+### 주요 포인트
+
+- **`@Value("${tmdb.key}")`**: `application.yml` 또는 환경변수에서 TMDB API 키를 주입받아 사용.
+- `Bearer [accessToken]`을 사용한 인증 방식.
+- 주요 메서드:
+  - `fetchDiscoverMovies`: 인기 영화 목록(Discover) 호출.
+  - `fetchMovieDetails`: 단일 영화 상세 정보.
+  - `fetchMovieKeywords`: 영화 키워드.
+  - `fetchMovieCredits`: 영화 출연진 및 스탭(감독, 작가 등) 정보.
+
+> **Tip**: 에러 처리, 예외 처리를 더욱 견고하게 하려면 `try-catch` 또는 RestTemplate의 `ResponseErrorHandler`를 활용할 수 있습니다.
 
 ---
 
-## 3. 데이터 수집 서비스 – MovieCollectionService
+## MovieCollectionService: 수집 로직의 핵심 구현
 
-서비스 계층에서는 TMDB API로부터 수집한 데이터를 내부 도메인 엔티티로 변환하여 저장하는 로직을 구현했습니다.  
-주요 기능별 메서드를 살펴보겠습니다.
+`MovieCollectionService`는 다음 기능을 제공합니다.
 
-### 3.1 Discover 영화 수집
+1. **영화 목록 수집** (Discover)
+2. **영화 키워드 수집**
+3. **영화 장르 수집**
+4. **크루(감독, 배우) 수집**
 
-`collectDiscoverMovies()` 메서드는 페이지 단위로 TMDB의 Discover API를 호출하여 영화 데이터를 수집합니다.
+**비즈니스 로직**과 **DB 저장**(`JpaRepository.saveAll()`) 로직이 함께 들어있습니다.
 
-- **페이징 처리 및 Sleep 제어:**  
-  최대 페이지 수와 일정 주기마다 스레드를 일시 중지하여 API 호출 제한(rate limit)을 고려했습니다.
-
-- **데이터 변환:**  
-  수집된 데이터는 `convertToMovieEntity` 메서드를 통해 도메인 엔티티로 변환되며, 영화 포스터 및 배경 이미지 URL을 가공하고, 미래 개봉 영화는 스킵하는 등의 조건 처리가 이루어집니다.
-
+````java
 ```java
-public void collectDiscoverMovies() {
-    for (int i = 1; i <= MAX_DISCOVER_PAGE; i++) {
-        List<Map<String, Object>> discoverResults = tmdbApiClient.fetchDiscoverMovies(String.valueOf(i));
-        if (discoverResults.isEmpty()) {
-            break;
-        }
-        List<MovieEntity> movieEntities = new ArrayList<>();
-        for (Map<String, Object> result : discoverResults) {
-            String apiId = String.valueOf(result.get("id"));
-            Map<String, Object> detailResult = tmdbApiClient.fetchMovieDetails(apiId);
-            MovieEntity movie = convertToMovieEntity(result, detailResult);
-            if (movie != null) {
-                movieEntities.add(movie);
-                log.info("Processed movie id={}", movie.getMovieId());
+package movlit.be.movie_collect.application.service;
+
+import jakarta.transaction.Transactional;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.common.util.IdFactory;
+import movlit.be.common.util.ids.MovieCrewId;
+import movlit.be.movie.application.converter.detail.MovieConvertor;
+import movlit.be.movie.domain.MovieRole;
+import movlit.be.movie.domain.ProductionCountry;
+import movlit.be.movie.domain.entity.*;
+import movlit.be.movie.infra.persistence.jpa.MovieCrewJpaRepository;
+import movlit.be.movie.infra.persistence.jpa.MovieRCrewJpaRepository;
+import movlit.be.movie_collect.application.TmdbApiClient;
+import movlit.be.movie_collect.infra.jpa.MovieCollectRepository;
+import movlit.be.movie_collect.infra.jpa.MovieGenreCollectRepository;
+import movlit.be.movie_collect.infra.jpa.MovieTagRepository;
+import movlit.be.movie_heart_count.application.service.MovieHeartCountService;
+import org.springframework.stereotype.Service;
+
+@Slf4j
+@Service
+@Transactional
+@RequiredArgsConstructor
+public class MovieCollectionService {
+
+    private final TmdbApiClient tmdbApiClient;
+    private final MovieCollectRepository movieCollectRepository;
+    private final MovieTagRepository movieTagRepository;
+    private final MovieGenreCollectRepository movieGenreCollectRepository;
+    private final MovieCrewJpaRepository movieCrewJpaRepository;
+    private final MovieRCrewJpaRepository movieRCrewJpaRepository;
+    private final MovieHeartCountService movieHeartCountService;
+
+    // 상수 정의
+    private static final int MAX_DISCOVER_PAGE = 5;
+    private static final int DISCOVER_SLEEP_MOD = 2;
+    private static final int KEYWORD_GENRE_SLEEP_MOD = 40;
+    private static final int SLEEP_INTERVAL_MILLIS = 1000;
+
+    // 1) Discover 영화 수집
+    public void collectDiscoverMovies() {
+        for (int i = 1; i <= MAX_DISCOVER_PAGE; i++) {
+            List<Map<String, Object>> discoverResults = tmdbApiClient.fetchDiscoverMovies(String.valueOf(i));
+            if (discoverResults.isEmpty()) {
+                break;
+            }
+            List<MovieEntity> movieEntities = new ArrayList<>();
+            for (Map<String, Object> result : discoverResults) {
+                String apiId = String.valueOf(result.get("id"));
+                Map<String, Object> detailResult = tmdbApiClient.fetchMovieDetails(apiId);
+                MovieEntity movie = convertToMovieEntity(result, detailResult);
+                if (movie != null) {
+                    movieEntities.add(movie);
+                    log.info("Processed movie id={}", movie.getMovieId());
+                }
+            }
+            movieCollectRepository.saveAll(movieEntities);
+
+            // 페이지 진행 시, API 부하 줄이기 위해 일정 간격 sleep
+            if (i % DISCOVER_SLEEP_MOD == 0) {
+                sleep(SLEEP_INTERVAL_MILLIS);
             }
         }
-        movieCollectRepository.saveAll(movieEntities);
-        if (i % DISCOVER_SLEEP_MOD == 0) {
-            sleep(SLEEP_INTERVAL_MILLIS);
+    }
+
+    private MovieEntity convertToMovieEntity(Map<String, Object> result, Map<String, Object> detailResult) {
+        LocalDate today = LocalDate.now();
+        Integer id = (Integer) result.get("id");
+        String title = (String) result.get("title");
+        String originalTitle = (String) result.get("original_title");
+        String overview = (String) result.get("overview");
+        Double popularity = (Double) result.get("popularity");
+
+        String posterPath = Optional.ofNullable((String) result.get("poster_path")).orElse("");
+        if (!posterPath.isEmpty()) {
+            posterPath = "http://image.tmdb.org/t/p/original" + posterPath;
+        }
+
+        String backdropPath = Optional.ofNullable((String) result.get("backdrop_path")).orElse("");
+        if (!backdropPath.isEmpty()) {
+            backdropPath = "http://image.tmdb.org/t/p/original" + backdropPath;
+        }
+
+        String releaseDateStr = (String) result.get("release_date");
+        LocalDate releaseDate = LocalDate.parse(releaseDateStr, DateTimeFormatter.ISO_LOCAL_DATE);
+        if (releaseDate.isAfter(today)) {
+            return null; // 미래 개봉 영화는 스킵
+        }
+
+        String originalLanguage = (String) result.get("original_language");
+        Long voteCount = Long.valueOf((Integer) result.get("vote_count"));
+        Double voteAverage = (Double) result.get("vote_average");
+
+        // 제작 국가
+        String productionCountry = "NONE";
+        List<Map<String, Object>> productionCountries = (List<Map<String, Object>>) detailResult.get("production_countries");
+        if (productionCountries != null && !productionCountries.isEmpty()) {
+            productionCountry = ProductionCountry.getNameFromCode(
+                (String) productionCountries.get(0).get("iso_3166_1")
+            );
+        }
+
+        Integer runtime = (Integer) detailResult.get("runtime");
+        String status = (String) detailResult.get("status");
+        String tagline = (String) detailResult.get("tagline");
+
+        MovieEntity movie = MovieEntity.builder()
+                .movieId(Long.valueOf(id))
+                .title(title)
+                .originalTitle(originalTitle)
+                .overview(overview)
+                .popularity(popularity)
+                .posterPath(posterPath)
+                .backdropPath(backdropPath)
+                .releaseDate(releaseDate)
+                .originalLanguage(originalLanguage)
+                .voteCount(voteCount)
+                .voteAverage(voteAverage)
+                .productionCountry(productionCountry)
+                .runtime(runtime)
+                .status(status)
+                .tagline(tagline)
+                .regDt(LocalDateTime.now())
+                .updDt(LocalDateTime.now())
+                .delYn(false)
+                .build();
+
+        // 하트(좋아요) 카운트를 별도 테이블에 저장
+        movieHeartCountService.save(MovieConvertor.toMovieHeartCountEntity(movie.getMovieId()));
+        return movie;
+    }
+
+    // 2) 키워드 수집
+    public void collectMovieKeywords() {
+        List<MovieEntity> movies = movieCollectRepository.findAll();
+        int count = 0;
+        for (MovieEntity movie : movies) {
+            fetchAndSaveMovieKeywords(movie);
+            count++;
+            if (count % KEYWORD_GENRE_SLEEP_MOD == 0) {
+                sleep(SLEEP_INTERVAL_MILLIS);
+            }
+            log.info("Processed keywords for movie id={}", movie.getMovieId());
         }
     }
+
+    private List<MovieTagEntity> fetchAndSaveMovieKeywords(MovieEntity movie) {
+        Map<String, Object> keywordResponse = tmdbApiClient.fetchMovieKeywords(movie.getMovieId());
+        if (keywordResponse == null || keywordResponse.get("keywords") == null) {
+            return List.of();
+        }
+
+        List<Map<String, Object>> keywords = (List<Map<String, Object>>) keywordResponse.get("keywords");
+        List<MovieTagEntity> tagEntities = new ArrayList<>();
+        for (Map<String, Object> keyword : keywords) {
+            Long id = Long.valueOf((Integer) keyword.get("id"));
+            String name = (String) keyword.get("name");
+            MovieTagIdForEntity tagId = new MovieTagIdForEntity(id, movie.getMovieId());
+            MovieTagEntity tag = MovieTagEntity.builder()
+                    .movieTagIdForEntity(tagId)
+                    .name(name)
+                    .movieEntity(movie)
+                    .regDt(LocalDateTime.now())
+                    .updDt(LocalDateTime.now())
+                    .delYn(false)
+                    .build();
+            tagEntities.add(tag);
+        }
+        movieTagRepository.saveAll(tagEntities);
+        return tagEntities;
+    }
+
+    // 3) 장르 수집
+    public void collectMovieGenres() {
+        List<MovieEntity> movies = movieCollectRepository.findAll();
+        int count = 0;
+        for (MovieEntity movie : movies) {
+            fetchAndSaveMovieGenres(movie);
+            count++;
+            if (count % KEYWORD_GENRE_SLEEP_MOD == 0) {
+                sleep(SLEEP_INTERVAL_MILLIS);
+            }
+            log.info("Processed genres for movie id={}", movie.getMovieId());
+        }
+    }
+
+    private List<MovieGenreEntity> fetchAndSaveMovieGenres(MovieEntity movie) {
+        Map<String, Object> detailResponse = tmdbApiClient.fetchMovieDetails(movie.getMovieId().toString());
+        if (detailResponse == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> genres = (List<Map<String, Object>>) detailResponse.get("genres");
+        if (genres == null) {
+            return List.of();
+        }
+        Set<MovieGenreIdForEntity> genreIdSet = new LinkedHashSet<>();
+        for (Map<String, Object> genre : genres) {
+            Integer apiGenreId = (Integer) genre.get("id");
+            Long genreId = mapApiGenreIdToServiceGenreId(apiGenreId);
+            genreIdSet.add(new MovieGenreIdForEntity(movie.getMovieId(), genreId));
+        }
+
+        List<MovieGenreEntity> genreEntities = new ArrayList<>();
+        for (MovieGenreIdForEntity id : genreIdSet) {
+            MovieGenreEntity genreEntity = new MovieGenreEntity(id, movie);
+            genreEntities.add(genreEntity);
+        }
+        movieGenreCollectRepository.saveAll(genreEntities);
+        return genreEntities;
+    }
+
+    private Long mapApiGenreIdToServiceGenreId(int apiGenreId) {
+        // TMDB 장르 ID -> 우리 서비스 장르 ID 매핑
+        return switch (apiGenreId) {
+            case 28, 12 -> 1L;   // 액션, 모험
+            case 16 -> 2L;       // 애니메이션
+            case 35 -> 3L;       // 코미디
+            case 80 -> 4L;       // 범죄
+            case 99 -> 5L;       // 다큐
+            case 18, 10751 -> 6L;// 드라마, 가족
+            case 14 -> 7L;       // 판타지
+            case 36 -> 8L;       // 역사
+            case 10402 -> 9L;    // 음악
+            case 9648 -> 10L;    // 미스터리
+            case 10749 -> 11L;   // 로맨스
+            case 878 -> 12L;     // SF
+            case 10770 -> 13L;   // TV 영화
+            case 27, 53 -> 14L;  // 공포, 스릴러
+            case 10752 -> 15L;   // 전쟁
+            case 37 -> 16L;      // 서부
+            default -> 99999L;   // 없는 장르
+        };
+    }
+
+    // 4) 크루(감독, 배우) 수집
+    public void collectMovieCrew() {
+        List<MovieEntity> movies = movieCollectRepository.findAll();
+        List<MovieCrewEntity> crewEntities = new ArrayList<>();
+        List<MovieRCrewEntity> movieRCrewEntities = new ArrayList<>();
+
+        for (MovieEntity movie : movies) {
+            Map<String, Object> creditsResponse = tmdbApiClient.fetchMovieCredits(movie.getMovieId());
+            // 캐스트
+            List<Map<String, Object>> castList = (List<Map<String, Object>>) creditsResponse.get("cast");
+            if (castList != null) {
+                for (Map<String, Object> cast : castList) {
+                    MovieCrewEntity crewEntity = createMovieCrewEntityFromCast(cast);
+                    MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, crewEntity);
+                    crewEntities.add(crewEntity);
+                    movieRCrewEntities.add(rCrewEntity);
+                    log.info("Processed cast member: {}", crewEntity.getName());
+                }
+            }
+            // 크루(감독)
+            List<Map<String, Object>> crewList = (List<Map<String, Object>>) creditsResponse.get("crew");
+            if (crewList != null && !crewList.isEmpty()) {
+                Optional<Map<String, Object>> directorOpt = crewList.stream()
+                        .filter(crew -> "Director".equals(crew.get("job")))
+                        .findFirst();
+                if (directorOpt.isPresent()) {
+                    Map<String, Object> directorMap = directorOpt.get();
+                    MovieCrewEntity directorEntity = createMovieCrewEntityForDirector(directorMap);
+                    MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, directorEntity);
+                    crewEntities.add(directorEntity);
+                    movieRCrewEntities.add(rCrewEntity);
+                    log.info("Processed director: {}", directorEntity.getName());
+                }
+            }
+        }
+        // 일괄 저장
+        movieCrewJpaRepository.saveAll(crewEntities);
+        movieRCrewJpaRepository.saveAll(movieRCrewEntities);
+    }
+
+    private MovieCrewEntity createMovieCrewEntityFromCast(Map<String, Object> cast) {
+        MovieCrewId crewId = IdFactory.createMovieCrewId();
+        String name = (String) cast.get("name");
+        MovieRole role = MovieRole.CAST;
+        String charName = (String) cast.get("character");
+        String profileImgUrl = (String) cast.get("profile_path");
+        int orderNo = (Integer) cast.get("order");
+
+        return MovieCrewEntity.builder()
+                .movieCrewId(crewId)
+                .name(name)
+                .role(role)
+                .charName(charName)
+                .profileImgUrl(profileImgUrl)
+                .orderNo(orderNo)
+                .build();
+    }
+
+    private MovieCrewEntity createMovieCrewEntityForDirector(Map<String, Object> crew) {
+        MovieCrewId crewId = IdFactory.createMovieCrewId();
+        String name = (String) crew.get("name");
+        MovieRole role = MovieRole.DIRECTOR;
+        String charName = (String) crew.get("character");
+        String profileImgUrl = (String) crew.get("profile_path");
+        int orderNo = -1;
+
+        return MovieCrewEntity.builder()
+                .movieCrewId(crewId)
+                .name(name)
+                .role(role)
+                .charName(charName)
+                .profileImgUrl(profileImgUrl)
+                .orderNo(orderNo)
+                .build();
+    }
+
+    private MovieRCrewEntity createMovieRCrewEntity(MovieEntity movie, MovieCrewEntity crewEntity) {
+        MovieRCrewIdForEntity rCrewId = new MovieRCrewIdForEntity(movie.getMovieId(), crewEntity.getMovieCrewId());
+        return new MovieRCrewEntity(rCrewId, crewEntity, movie);
+    }
+
+    // 기타
+    private void sleep(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+    }
+
 }
-```
+````
 
-> **포인트:**  
-> - **데이터 유효성 검증:** 영화 개봉일을 비교하여 미래 개봉 영화는 저장하지 않습니다.  
-> - **로깅:** 각 영화가 처리될 때마다 로그를 남겨 모니터링에 유용합니다.
+### 1) 영화 목록 수집 `collectDiscoverMovies()`
 
-### 3.2 키워드 및 장르 수집
+- **Discover API**를 통해 1페이지부터 최대 `MAX_DISCOVER_PAGE`(5)까지 영화 목록을 가져옵니다.
+- 각 영화마다 상세 정보를 또 한 번 호출하여 제작 국가, 런타임 등의 추가 정보를 확보.
+- **DB 저장**: `movieCollectRepository.saveAll(movieEntities)`.
+- **미래 개봉 영화**는 현재 사용 목적상 스킵.
 
-각 영화에 대해 추가 정보를 수집하는 메서드(`collectMovieKeywords()`, `collectMovieGenres()`)는 영화 엔티티 목록을 순회하며, TMDB API에서 키워드와 장르 정보를 가져와 JPA Repository를 통해 저장합니다.
+### 2) 키워드 수집 `collectMovieKeywords()`
 
-- **키워드 저장:**  
-  영화 키워드는 `MovieTagEntity`로 저장되며, 영화와의 연관 관계를 관리합니다.
+- DB에 저장된 모든 영화(`MovieEntity`)를 대상으로 TMDB 키워드 목록 조회.
+- `KEYWORD_GENRE_SLEEP_MOD`(40)개 단위로 Thread Sleep하여 API Rate Limit 완화.
+- 수집한 키워드를 `MovieTagEntity` 형태로 DB에 저장.
 
-- **장르 매핑:**  
-  API에서 전달받은 장르 ID를 서비스 도메인에 맞게 매핑하기 위해 `mapApiGenreIdToServiceGenreId` 메서드를 사용합니다.
+### 3) 장르 수집 `collectMovieGenres()`
 
-```java
-private Long mapApiGenreIdToServiceGenreId(int apiGenreId) {
-    return switch (apiGenreId) {
-        case 28, 12 -> 1L;
-        case 16 -> 2L;
-        // 생략: 기타 케이스 처리...
-        default -> 99999L;
-    };
-}
-```
+- `MovieEntity` 마다 `fetchMovieDetails`로부터 `genres` 목록을 받고, 서비스 내부 장르 ID로 매핑.
+- 중복 제거를 위해 `LinkedHashSet` 사용.
+- **스위치**를 통해 TMDB 장르 ID → 프로젝트 내 장르 ID 변환.
 
-> **포인트:** API의 장르 체계를 내부 도메인에 맞춰 재정의하는 작업은 데이터 일관성을 유지하는 핵심 단계입니다.
+### 4) 크루(감독, 배우) 수집 `collectMovieCrew()`
 
-### 3.3 영화 크루 수집
+- TMDB `credits` API로 캐스트(`cast`)와 크루(`crew`)를 분리해서 가져옴.
+- **캐스트**는 `MovieRole.CAST`로, **감독**은 `MovieRole.DIRECTOR`로 저장.
+- 각각을 `MovieCrewEntity`로 만들고, 영화와의 **N:M 관계**를 `MovieRCrewEntity`로 연결.
 
-`collectMovieCrew()` 메서드는 영화의 출연진(캐스트)과 감독(Director) 정보를 수집합니다.
+#### 기타 팁 및 주의사항
 
-- **출연진과 감독 분리:**  
-  - 캐스트 정보는 리스트를 순회하며 `MovieCrewEntity`를 생성합니다.  
-  - 감독은 크루 목록에서 job이 "Director"인 항목을 필터링하여 처리합니다.
-
-- **관계 엔티티 생성:**  
-  영화와 크루 간의 관계는 별도의 엔티티(`MovieRCrewEntity`)로 관리됩니다.
-
-```java
-private MovieCrewEntity createMovieCrewEntityFromCast(Map<String, Object> cast) {
-    MovieCrewId crewId = IdFactory.createMovieCrewId();
-    String name = (String) cast.get("name");
-    MovieRole role = MovieRole.CAST;
-    String charName = (String) cast.get("character");
-    String profileImgUrl = (String) cast.get("profile_path");
-    int orderNo = (Integer) cast.get("order");
-    return MovieCrewEntity.builder()
-            .movieCrewId(crewId)
-            .name(name)
-            .role(role)
-            .charName(charName)
-            .profileImgUrl(profileImgUrl)
-            .orderNo(orderNo)
-            .build();
-}
-```
-
-> **포인트:**  
-> - **IdFactory 활용:** 각 크루 엔티티에 고유 식별자를 부여하여 데이터 무결성을 보장합니다.  
-> - **관계 관리:** 영화와 크루의 다대다 관계를 별도 관계 엔티티로 관리함으로써, 향후 검색 및 통계 집계가 용이해집니다.
+- 실제 TMDB API는 **사용량 제한**(Rate Limit)이 있으므로, 다량 호출 시 `sleep()`을 주거나 **별도 큐**로 처리 권장.
+- 데이터 품질 보장(예: 중복, 유효성 검사, 없는 필드 처리) 로직도 고려해야 함.
+- **병렬** 처리가 필요하다면 스레드 풀, `@Async` 또는 **Spring Batch**를 검토.
 
 ---
 
-## 4. 기술적 고려 사항 및 설계 포인트
+## 전체 소스 코드
 
-- **API 호출 제어:**  
-  여러 메서드에서 일정 건수마다 스레드 일시 중지(sleep)를 호출하여 API rate limit 문제를 예방합니다.
+> 아래는 본 글에서 다룬 주요 클래스의 전체 코드입니다.
 
-- **데이터 변환 및 검증:**  
-  외부 API에서 수신한 데이터를 내부 도메인 엔티티로 변환할 때, Optional 및 조건 검증을 통해 불필요한 데이터 저장을 방지합니다.
+### `MovieCollectionController.java`
 
-- **관심사의 분리:**  
-  컨트롤러, API 클라이언트, 서비스 계층으로 기능을 명확하게 분리하여 코드의 재사용성 및 유지보수성을 높였습니다.
+```java
+package movlit.be.data_collection.movie;
 
-- **로깅 및 모니터링:**  
-  각 처리 단계마다 로그를 남겨 데이터 수집 진행 상황과 문제 발생 시 빠른 대응이 가능하도록 설계되었습니다.
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.movie_collect.application.service.MovieCollectionService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/collect/movie")
+@RequiredArgsConstructor
+@Slf4j
+public class MovieCollectionController {
+
+    private final MovieCollectionService movieCollectionService;
+
+    @GetMapping("/discover")
+    public ResponseEntity<Void> collectDiscoverMovies() {
+        movieCollectionService.collectDiscoverMovies();
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/keywords")
+    public ResponseEntity<Void> collectMovieKeywords() {
+        movieCollectionService.collectMovieKeywords();
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/genres")
+    public ResponseEntity<Void> collectMovieGenres() {
+        movieCollectionService.collectMovieGenres();
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/discover/crew")
+    public ResponseEntity<Void> collectMovieCrew() {
+        movieCollectionService.collectMovieCrew();
+        return ResponseEntity.ok().build();
+    }
+
+}
+```
+
+### `TmdbApiClient.java`
+
+```java
+package movlit.be.movie_collect.application;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+@Component
+public class TmdbApiClient {
+
+    private final RestTemplate restTemplate;
+    private final String apiKey;
+
+    // API 호출에 사용할 상수
+    private static final String LANGUAGE_KO = "&language=ko";
+    private static final String REGION_KR = "&region=KR";
+    private static final String INCLUDE_ADULT_FALSE = "&include_adult=false";
+    private static final String RELEASE_DATE_GTE = "&release_date.gte=2023-01-01";
+    private static final String RELEASE_DATE_LTE = "&release_date.lte=2024-12-31";
+    private static final String SORT_BY = "&sort_by=vote_average";
+
+    public TmdbApiClient(RestTemplateBuilder builder,
+                         @Value("${tmdb.key}") String apiKey,
+                         @Value("${tmdb.accessToken}") String accessToken) {
+        this.apiKey = apiKey;
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/json");
+        headers.add("Authorization", "Bearer " + accessToken);
+
+        this.restTemplate = builder.build();
+        this.restTemplate.getMessageConverters().add(
+            0, new StringHttpMessageConverter(StandardCharsets.UTF_8)
+        );
+    }
+
+    public List<Map<String, Object>> fetchDiscoverMovies(String page) {
+        String url = "https://api.themoviedb.org/3/discover/movie?api_key=" + apiKey +
+                "&page=" + page + LANGUAGE_KO + REGION_KR + INCLUDE_ADULT_FALSE +
+                RELEASE_DATE_GTE + RELEASE_DATE_LTE + SORT_BY;
+        Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+        if (response == null || response.get("results") == null) {
+            return List.of();
+        }
+        return (List<Map<String, Object>>) response.get("results");
+    }
+
+    public Map<String, Object> fetchMovieDetails(String apiId) {
+        String url = "https://api.themoviedb.org/3/movie/" + apiId + "?api_key=" + apiKey + "&language=ko-KR";
+        return restTemplate.getForObject(url, Map.class);
+    }
+
+    public Map<String, Object> fetchMovieKeywords(Long movieId) {
+        String url = "https://api.themoviedb.org/3/movie/" + movieId + "/keywords?api_key=" + apiKey;
+        return restTemplate.getForObject(url, Map.class);
+    }
+
+    public Map<String, Object> fetchMovieCredits(Long movieId) {
+        String url = "https://api.themoviedb.org/3/movie/" + movieId + "/credits?api_key=" + apiKey + LANGUAGE_KO;
+        return restTemplate.getForObject(url, Map.class);
+    }
+
+}
+```
+
+### `MovieCollectionService.java`
+
+```java
+package movlit.be.movie_collect.application.service;
+
+import jakarta.transaction.Transactional;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.common.util.IdFactory;
+import movlit.be.common.util.ids.MovieCrewId;
+import movlit.be.movie.application.converter.detail.MovieConvertor;
+import movlit.be.movie.domain.MovieRole;
+import movlit.be.movie.domain.ProductionCountry;
+import movlit.be.movie.domain.entity.*;
+import movlit.be.movie.infra.persistence.jpa.MovieCrewJpaRepository;
+import movlit.be.movie.infra.persistence.jpa.MovieRCrewJpaRepository;
+import movlit.be.movie_collect.application.TmdbApiClient;
+import movlit.be.movie_collect.infra.jpa.MovieCollectRepository;
+import movlit.be.movie_collect.infra.jpa.MovieGenreCollectRepository;
+import movlit.be.movie_collect.infra.jpa.MovieTagRepository;
+import movlit.be.movie_heart_count.application.service.MovieHeartCountService;
+import org.springframework.stereotype.Service;
+
+@Slf4j
+@Service
+@Transactional
+@RequiredArgsConstructor
+public class MovieCollectionService {
+
+    private final TmdbApiClient tmdbApiClient;
+    private final MovieCollectRepository movieCollectRepository;
+    private final MovieTagRepository movieTagRepository;
+    private final MovieGenreCollectRepository movieGenreCollectRepository;
+    private final MovieCrewJpaRepository movieCrewJpaRepository;
+    private final MovieRCrewJpaRepository movieRCrewJpaRepository;
+    private final MovieHeartCountService movieHeartCountService;
+
+    // 상수 정의
+    private static final int MAX_DISCOVER_PAGE = 5;
+    private static final int DISCOVER_SLEEP_MOD = 2;
+    private static final int KEYWORD_GENRE_SLEEP_MOD = 40;
+    private static final int SLEEP_INTERVAL_MILLIS = 1000;
+
+    public void collectDiscoverMovies() {
+        for (int i = 1; i <= MAX_DISCOVER_PAGE; i++) {
+            List<Map<String, Object>> discoverResults = tmdbApiClient.fetchDiscoverMovies(String.valueOf(i));
+            if (discoverResults.isEmpty()) {
+                break;
+            }
+            List<MovieEntity> movieEntities = new ArrayList<>();
+            for (Map<String, Object> result : discoverResults) {
+                String apiId = String.valueOf(result.get("id"));
+                Map<String, Object> detailResult = tmdbApiClient.fetchMovieDetails(apiId);
+                MovieEntity movie = convertToMovieEntity(result, detailResult);
+                if (movie != null) {
+                    movieEntities.add(movie);
+                    log.info("Processed movie id={}", movie.getMovieId());
+                }
+            }
+            movieCollectRepository.saveAll(movieEntities);
+            if (i % DISCOVER_SLEEP_MOD == 0) {
+                sleep(SLEEP_INTERVAL_MILLIS);
+            }
+        }
+    }
+
+    private MovieEntity convertToMovieEntity(Map<String, Object> result, Map<String, Object> detailResult) {
+        LocalDate today = LocalDate.now();
+        Integer id = (Integer) result.get("id");
+        String title = (String) result.get("title");
+        String originalTitle = (String) result.get("original_title");
+        String overview = (String) result.get("overview");
+        Double popularity = (Double) result.get("popularity");
+
+        String posterPath = Optional.ofNullable((String) result.get("poster_path")).orElse("");
+        if (!posterPath.isEmpty()) {
+            posterPath = "http://image.tmdb.org/t/p/original" + posterPath;
+        }
+
+        String backdropPath = Optional.ofNullable((String) result.get("backdrop_path")).orElse("");
+        if (!backdropPath.isEmpty()) {
+            backdropPath = "http://image.tmdb.org/t/p/original" + backdropPath;
+        }
+
+        String releaseDateStr = (String) result.get("release_date");
+        LocalDate releaseDate = LocalDate.parse(releaseDateStr, DateTimeFormatter.ISO_LOCAL_DATE);
+        if (releaseDate.isAfter(today)) {
+            return null; // 미래 개봉 영화 스킵
+        }
+
+        String originalLanguage = (String) result.get("original_language");
+        Long voteCount = Long.valueOf((Integer) result.get("vote_count"));
+        Double voteAverage = (Double) result.get("vote_average");
+
+        String productionCountry = "NONE";
+        List<Map<String, Object>> productionCountries = (List<Map<String, Object>>) detailResult.get("production_countries");
+        if (productionCountries != null && !productionCountries.isEmpty()) {
+            productionCountry = ProductionCountry.getNameFromCode(
+                (String) productionCountries.get(0).get("iso_3166_1")
+            );
+        }
+        Integer runtime = (Integer) detailResult.get("runtime");
+        String status = (String) detailResult.get("status");
+        String tagline = (String) detailResult.get("tagline");
+
+        MovieEntity movie = MovieEntity.builder()
+                .movieId(Long.valueOf(id))
+                .title(title)
+                .originalTitle(originalTitle)
+                .overview(overview)
+                .popularity(popularity)
+                .posterPath(posterPath)
+                .backdropPath(backdropPath)
+                .releaseDate(releaseDate)
+                .originalLanguage(originalLanguage)
+                .voteCount(voteCount)
+                .voteAverage(voteAverage)
+                .productionCountry(productionCountry)
+                .runtime(runtime)
+                .status(status)
+                .tagline(tagline)
+                .regDt(LocalDateTime.now())
+                .updDt(LocalDateTime.now())
+                .delYn(false)
+                .build();
+
+        movieHeartCountService.save(MovieConvertor.toMovieHeartCountEntity(movie.getMovieId()));
+        return movie;
+    }
+
+    public void collectMovieKeywords() {
+        List<MovieEntity> movies = movieCollectRepository.findAll();
+        int count = 0;
+        for (MovieEntity movie : movies) {
+            fetchAndSaveMovieKeywords(movie);
+            count++;
+            if (count % KEYWORD_GENRE_SLEEP_MOD == 0) {
+                sleep(SLEEP_INTERVAL_MILLIS);
+            }
+            log.info("Processed keywords for movie id={}", movie.getMovieId());
+        }
+    }
+
+    private List<MovieTagEntity> fetchAndSaveMovieKeywords(MovieEntity movie) {
+        Map<String, Object> keywordResponse = tmdbApiClient.fetchMovieKeywords(movie.getMovieId());
+        if (keywordResponse == null || keywordResponse.get("keywords") == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> keywords = (List<Map<String, Object>>) keywordResponse.get("keywords");
+        List<MovieTagEntity> tagEntities = new ArrayList<>();
+        for (Map<String, Object> keyword : keywords) {
+            Long id = Long.valueOf((Integer) keyword.get("id"));
+            String name = (String) keyword.get("name");
+            MovieTagIdForEntity tagId = new MovieTagIdForEntity(id, movie.getMovieId());
+            MovieTagEntity tag = MovieTagEntity.builder()
+                    .movieTagIdForEntity(tagId)
+                    .name(name)
+                    .movieEntity(movie)
+                    .regDt(LocalDateTime.now())
+                    .updDt(LocalDateTime.now())
+                    .delYn(false)
+                    .build();
+            tagEntities.add(tag);
+        }
+        movieTagRepository.saveAll(tagEntities);
+        return tagEntities;
+    }
+
+    public void collectMovieGenres() {
+        List<MovieEntity> movies = movieCollectRepository.findAll();
+        int count = 0;
+        for (MovieEntity movie : movies) {
+            fetchAndSaveMovieGenres(movie);
+            count++;
+            if (count % KEYWORD_GENRE_SLEEP_MOD == 0) {
+                sleep(SLEEP_INTERVAL_MILLIS);
+            }
+            log.info("Processed genres for movie id={}", movie.getMovieId());
+        }
+    }
+
+    private List<MovieGenreEntity> fetchAndSaveMovieGenres(MovieEntity movie) {
+        Map<String, Object> detailResponse = tmdbApiClient.fetchMovieDetails(movie.getMovieId().toString());
+        if (detailResponse == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> genres = (List<Map<String, Object>>) detailResponse.get("genres");
+        if (genres == null) {
+            return List.of();
+        }
+        Set<MovieGenreIdForEntity> genreIdSet = new LinkedHashSet<>();
+        for (Map<String, Object> genre : genres) {
+            Integer apiGenreId = (Integer) genre.get("id");
+            Long genreId = mapApiGenreIdToServiceGenreId(apiGenreId);
+            genreIdSet.add(new MovieGenreIdForEntity(movie.getMovieId(), genreId));
+        }
+
+        List<MovieGenreEntity> genreEntities = new ArrayList<>();
+        for (MovieGenreIdForEntity id : genreIdSet) {
+            MovieGenreEntity genreEntity = new MovieGenreEntity(id, movie);
+            genreEntities.add(genreEntity);
+        }
+        movieGenreCollectRepository.saveAll(genreEntities);
+        return genreEntities;
+    }
+
+    private Long mapApiGenreIdToServiceGenreId(int apiGenreId) {
+        return switch (apiGenreId) {
+            case 28, 12 -> 1L;
+            case 16 -> 2L;
+            case 35 -> 3L;
+            case 80 -> 4L;
+            case 99 -> 5L;
+            case 18, 10751 -> 6L;
+            case 14 -> 7L;
+            case 36 -> 8L;
+            case 10402 -> 9L;
+            case 9648 -> 10L;
+            case 10749 -> 11L;
+            case 878 -> 12L;
+            case 10770 -> 13L;
+            case 27, 53 -> 14L;
+            case 10752 -> 15L;
+            case 37 -> 16L;
+            default -> 99999L;
+        };
+    }
+
+    public void collectMovieCrew() {
+        List<MovieEntity> movies = movieCollectRepository.findAll();
+        List<MovieCrewEntity> crewEntities = new ArrayList<>();
+        List<MovieRCrewEntity> movieRCrewEntities = new ArrayList<>();
+
+        for (MovieEntity movie : movies) {
+            Map<String, Object> creditsResponse = tmdbApiClient.fetchMovieCredits(movie.getMovieId());
+            List<Map<String, Object>> castList = (List<Map<String, Object>>) creditsResponse.get("cast");
+            if (castList != null) {
+                for (Map<String, Object> cast : castList) {
+                    MovieCrewEntity crewEntity = createMovieCrewEntityFromCast(cast);
+                    MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, crewEntity);
+                    crewEntities.add(crewEntity);
+                    movieRCrewEntities.add(rCrewEntity);
+                    log.info("Processed cast member: {}", crewEntity.getName());
+                }
+            }
+            List<Map<String, Object>> crewList = (List<Map<String, Object>>) creditsResponse.get("crew");
+            if (crewList != null && !crewList.isEmpty()) {
+                Optional<Map<String, Object>> directorOpt = crewList.stream()
+                        .filter(crew -> "Director".equals(crew.get("job")))
+                        .findFirst();
+                if (directorOpt.isPresent()) {
+                    Map<String, Object> directorMap = directorOpt.get();
+                    MovieCrewEntity directorEntity = createMovieCrewEntityForDirector(directorMap);
+                    MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, directorEntity);
+                    crewEntities.add(directorEntity);
+                    movieRCrewEntities.add(rCrewEntity);
+                    log.info("Processed director: {}", directorEntity.getName());
+                }
+            }
+        }
+        movieCrewJpaRepository.saveAll(crewEntities);
+        movieRCrewJpaRepository.saveAll(movieRCrewEntities);
+    }
+
+    private MovieCrewEntity createMovieCrewEntityFromCast(Map<String, Object> cast) {
+        MovieCrewId crewId = IdFactory.createMovieCrewId();
+        String name = (String) cast.get("name");
+        MovieRole role = MovieRole.CAST;
+        String charName = (String) cast.get("character");
+        String profileImgUrl = (String) cast.get("profile_path");
+        int orderNo = (Integer) cast.get("order");
+        return MovieCrewEntity.builder()
+                .movieCrewId(crewId)
+                .name(name)
+                .role(role)
+                .charName(charName)
+                .profileImgUrl(profileImgUrl)
+                .orderNo(orderNo)
+                .build();
+    }
+
+    private MovieCrewEntity createMovieCrewEntityForDirector(Map<String, Object> crew) {
+        MovieCrewId crewId = IdFactory.createMovieCrewId();
+        String name = (String) crew.get("name");
+        MovieRole role = MovieRole.DIRECTOR;
+        String charName = (String) crew.get("character");
+        String profileImgUrl = (String) crew.get("profile_path");
+        int orderNo = -1;
+        return MovieCrewEntity.builder()
+                .movieCrewId(crewId)
+                .name(name)
+                .role(role)
+                .charName(charName)
+                .profileImgUrl(profileImgUrl)
+                .orderNo(orderNo)
+                .build();
+    }
+
+    private MovieRCrewEntity createMovieRCrewEntity(MovieEntity movie, MovieCrewEntity crewEntity) {
+        MovieRCrewIdForEntity rCrewId = new MovieRCrewIdForEntity(movie.getMovieId(), crewEntity.getMovieCrewId());
+        return new MovieRCrewEntity(rCrewId, crewEntity, movie);
+    }
+
+    private void sleep(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+    }
+
+}
+```
 
 ---
 
-## 5. 결론
+## 결론
 
-- **REST API 엔드포인트**를 통해 작업을 트리거하고,  
-- **TmdbApiClient**로 외부 API 호출을 처리하며,  
-- **MovieCollectionService**에서 데이터를 변환, 검증, 저장하는 전반적인 워크플로우를 구성하였습니다.
-
-이와 같은 아키텍처 설계는 확장성과 유지보수성을 고려한 접근 방식으로, 향후 다른 외부 데이터 수집 작업에도 응용할 수 있습니다.  
+- **`RestTemplate`**나 **`WebClient`**를 통해 외부 API 호출 가능.
+- **`JpaRepository`**로 DB 영속화.
+- API 사용 시 `Rate Limit`과 예외 처리를 고려해야 안전한 데이터 수집이 가능합니다.
