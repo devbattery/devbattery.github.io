@@ -1,6 +1,6 @@
 ---
-title: "[Project] Spring Security로 구현한 인증/인가 로직"
-excerpt: "movlit, auth"
+title: "[Project] Spring Boot와 Spring Security로 JWT 기반 로그인 구현하기"
+excerpt: "movlit, spring, auth"
 
 categories:
   - Project
@@ -14,188 +14,886 @@ sidebar:
   nav: "categories"
 
 date: 2025-02-17
-last_modified_at: 2025-02-17
+last_modified_at: 2025-02-21
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
+## 프로젝트 개요
+
+1. **JWT 기반 인증**: `UsernamePasswordAuthenticationToken`과 JWT를 사용해 인증 로직을 수행.
+2. **Refresh Token 발급**: Access Token 만료 시, 저장해둔 Refresh Token을 통해 새로운 Access Token 재발급.
+3. **OAuth2 소셜 로그인**: Google, Kakao, Naver 등의 OAuth2 정보로 로그인.
+4. **로그아웃/Blacklist**: 로그아웃 시 Access Token을 Blacklist에 등록해 만료 전에도 효력 상실 처리.
+
 ---
 
-# Spring Boot 3.4와 Spring Security로 구현한 로그인 시스템
+## JwtRequestFilter: JWT 검증 필터
 
-이번 포스팅에서는 Spring Boot 3.4와 Spring Security를 기반으로 JWT 인증, OAuth2 소셜 로그인, 토큰 갱신 등 로그인 관련 기능을 어떻게 구현했는지 말씀드리겠습니다. 각 구성요소가 어떻게 서로 연동되어 보안 및 사용자 인증을 처리하는지 살펴보겠습니다.
+`OncePerRequestFilter`를 상속받아 요청마다 JWT를 확인하고, 검증된 사용자 정보를 `SecurityContextHolder`에 등록합니다.
 
----
-
-## 1. JWT 기반 인증 필터
-
-### JwtRequestFilter 개요
-
-JWT 기반 인증 로직의 핵심은 클라이언트 요청 헤더에 포함된 토큰을 추출, 검증한 후 SecurityContext에 사용자 인증 정보를 설정하는 것입니다. 이를 위해 `OncePerRequestFilter`를 상속한 `JwtRequestFilter`를 구현했습니다.
-
-- **토큰 추출 및 검증**  
-  `extractJwtFromHeader` 메서드를 통해 HTTP 요청의 Authorization 헤더에서 Bearer 토큰을 추출합니다. 추출한 토큰은 `JwtTokenUtil`을 통해 이메일 정보를 파싱하고, 유효성 검증 과정을 거칩니다.
-
-- **SecurityContext 설정**  
-  토큰이 유효하면, `MyMemberDetailsService`를 이용해 사용자 정보를 로드하고, `UsernamePasswordAuthenticationToken`을 생성하여 Spring Security의 `SecurityContextHolder`에 인증 객체를 설정합니다. 이를 통해 이후 요청에서 인증된 사용자 정보를 활용할 수 있습니다.
-
+````java
 ```java
-@Override
-protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-        throws ServletException, IOException {
-    Optional<String> jwtOptional = extractJwtFromHeader(request);
+package movlit.be.common.filter;
 
-    if (jwtOptional.isPresent()) {
-        String jwt = jwtOptional.get();
-        Optional<String> emailOptional = extractEmail(jwt, response);
+import io.jsonwebtoken.ExpiredJwtException;
+import io.micrometer.common.lang.NonNullApi;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.auth.application.service.MyMemberDetailsService;
+import movlit.be.common.util.JwtTokenUtil;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
-        if (emailOptional.isEmpty()) {
-            return;
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class JwtRequestFilter extends OncePerRequestFilter {
+
+    private final JwtTokenUtil jwtTokenUtil;
+    private final MyMemberDetailsService myMemberDetailsService;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain)
+            throws ServletException, IOException {
+
+        Optional<String> jwtOptional = extractJwtFromHeader(request);
+
+        if (jwtOptional.isPresent()) {
+            String jwt = jwtOptional.get();
+            Optional<String> emailOptional = extractEmail(jwt, response);
+
+            if (emailOptional.isEmpty()) {
+                return; // 이미 에러로 응답 처리
+            }
+
+            String email = emailOptional.get();
+
+            // SecurityContext에 인증 정보가 없으면 새로 설정
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = myMemberDetailsService.loadUserByUsername(email);
+
+                if (!authenticateUser(userDetails, jwt, request, response)) {
+                    return; // 잘못된 토큰 처리로 종료
+                }
+            }
         }
 
-        String email = emailOptional.get();
+        chain.doFilter(request, response);
+    }
 
-        if (SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = myMemberDetailsService.loadUserByUsername(email);
-            if (!authenticateUser(userDetails, jwt, request, response)) {
-                return;
+    private Optional<String> extractJwtFromHeader(HttpServletRequest request) {
+        String authorizationHeader = request.getHeader("Authorization");
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            return Optional.of(authorizationHeader.substring(7));
+        }
+        return Optional.empty();
+    }
+
+    private Optional<String> extractEmail(String jwt, HttpServletResponse response) throws IOException {
+        try {
+            return Optional.ofNullable(jwtTokenUtil.extractEmail(jwt));
+        } catch (ExpiredJwtException e) {
+            setUnauthorizedResponse(response, "Token Expired");
+        } catch (Exception e) {
+            setUnauthorizedResponse(response, "Invalid Token");
+        }
+        return Optional.empty();
+    }
+
+    private boolean authenticateUser(UserDetails userDetails,
+                                     String jwt,
+                                     HttpServletRequest request,
+                                     HttpServletResponse response) throws IOException {
+        try {
+            if (jwtTokenUtil.validateToken(jwt, userDetails.getUsername())) {
+                UsernamePasswordAuthenticationToken token =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                token.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(token);
+                return true;
+            } else {
+                setUnauthorizedResponse(response, "Invalid Token");
+                return false;
             }
+        } catch (ExpiredJwtException e) {
+            setUnauthorizedResponse(response, "Token Expired");
+            return false;
         }
     }
 
-    chain.doFilter(request, response);
-}
-```
+    private void setUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.getWriter().write(message);
+    }
 
-이처럼 필터 내부에서 JWT를 검증하여 사용자 인증 정보를 설정하는 방식은 API 요청의 보안을 강화하는 핵심 역할을 합니다.
+}
+````
+
+**주요 포인트**
+
+- `Bearer `로 시작하는 **Authorization 헤더**를 추출하여 JWT를 얻음.
+- 토큰 만료(`ExpiredJwtException`) 또는 기타 예외 발생 시 **401 Unauthorized** 처리.
+- 토큰이 정상이라면 `UserDetailsService`를 통해 UserDetails를 조회 후, `SecurityContextHolder`에 `Authentication` 설정.
 
 ---
 
-## 2. OAuth2 소셜 로그인 통합
+## AuthenticationService: 인증 처리 로직
 
-### 소셜 로그인 처리 흐름
+일반적인 ID/Password 인증 시, `AuthenticationManager`를 사용하여 검증하고 JWT 토큰을 발급합니다.
 
-OAuth2 로그인 기능을 통해 구글, 카카오, 네이버 등 다양한 소셜 로그인 제공자를 지원합니다. 각 제공자마다 사용자 정보 구조가 다르기 때문에, 인터페이스(`OAuth2UserInfo`)와 이를 구현한 클래스(`GoogleOAuth2UserInfo`, `KakaoOAuth2UserInfo`, `NaverOAuth2UserInfo`)를 정의하여 일관된 방식으로 사용자 정보를 추출합니다.
-
-- **OAuth2UserInfo 인터페이스**  
-  이메일, 프로필 이미지 URL, 생년월일 등 필요한 속성을 추출하는 메서드를 정의합니다.
-
-- **OAuth2AuthenticationSuccessHandler**  
-  소셜 로그인 성공 시, 사용자 이메일을 기반으로 인증 코드를 생성하고 이를 저장한 후, 프론트엔드 URL로 리다이렉트합니다. 이 과정에서 JWT Access Token도 헤더에 설정하여 클라이언트가 이후 요청에 활용할 수 있도록 합니다.
-
+````java
 ```java
-@Override
-public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-                                    Authentication authentication) throws IOException {
+package movlit.be.auth.application.service;
 
-    MyMemberDetails oAuth2User = (MyMemberDetails) authentication.getPrincipal();
-    String email = oAuth2User.getMember().getEmail();
+import java.util.Map;
+import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import movlit.be.common.exception.MemberNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.stereotype.Service;
+import movlit.be.auth.domain.repository.AuthCodeStorage;
+import movlit.be.auth.domain.repository.RefreshTokenStorage;
+import movlit.be.common.filter.dto.AuthenticationRequest;
+import movlit.be.common.filter.dto.AuthenticationResponse;
+import movlit.be.common.util.JwtTokenUtil;
 
-    String code = IdGenerator.generate();
-    authCodeStorage.saveCode(code, email);
+@Service
+@RequiredArgsConstructor
+public class AuthenticationService {
 
-    String accessToken = jwtTokenUtil.generateAccessToken(email);
-    response.setHeader("Authorization", "Bearer " + accessToken);
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenUtil jwtTokenUtil;
+    private final AuthCodeStorage authCodeStorage;
+    private final RefreshTokenStorage refreshTokenStorage;
 
-    String targetUrl = UriComponentsBuilder.fromUriString(url + "/oauth/callback")
-            .queryParam("code", code)
-            .build().toUriString();
+    public AuthenticationResponse authenticate(AuthenticationRequest request) throws Exception {
+        String email = request.getEmail();
+        String password = request.getPassword();
 
-    getRedirectStrategy().sendRedirect(request, response, targetUrl);
+        try {
+            // 인증 매니저를 통해 Spring Security의 AuthenticationProvider가
+            // 내부적으로 DB 조회/패스워드 대조 등의 과정을 수행함
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
+        } catch (BadCredentialsException e) {
+            throw new MemberNotFoundException(); // 예외 처리
+        }
+
+        // 인증 성공 시, Access & Refresh 토큰 생성
+        String accessToken = jwtTokenUtil.generateAccessToken(email);
+        String refreshToken = jwtTokenUtil.generateRefreshToken(email);
+        return new AuthenticationResponse(accessToken, refreshToken);
+    }
+
+    public ResponseEntity<?> refreshToken(String refreshToken) {
+        String email = jwtTokenUtil.extractEmail(refreshToken);
+
+        // refresh 토큰 자체 유효성 검증
+        if (!jwtTokenUtil.validateToken(refreshToken, email)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh Token");
+        }
+
+        // 유효하다면, 새 AccessToken만 발급
+        String newAccessToken = jwtTokenUtil.generateAccessToken(email);
+        return ResponseEntity.ok(new AuthenticationResponse(newAccessToken, refreshToken));
+    }
+
+    // OAuth2 소셜로그인 시, code 파라미터로 AccessToken 교환
+    public ResponseEntity<?> exchangeToken(String code) {
+        String email = authCodeStorage.fetchEmailForCode(code);
+
+        if (Objects.isNull(email)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "잘못된 code입니다. code = " + code));
+        }
+
+        String accessToken = jwtTokenUtil.generateAccessToken(email);
+        String refreshToken = jwtTokenUtil.generateRefreshToken(email);
+
+        refreshTokenStorage.saveRefreshToken(email, refreshToken);
+        authCodeStorage.removeCode(code);
+
+        return ResponseEntity.ok(new AuthenticationResponse(accessToken, refreshToken));
+    }
+
 }
-```
+````
 
-### MyOAuth2MemberService 역할
+**주요 포인트**
 
-소셜 로그인 시 전달받은 사용자 정보를 기반으로 기존 회원 여부를 확인합니다. 회원이 존재하지 않으면 신규 등록 로직(`registerOAuth2Member`)을 호출해 데이터베이스에 저장합니다. 이를 통해 소셜 로그인과 기존 회원 관리 로직을 통합적으로 관리할 수 있습니다.
+- `AuthenticationManager` 통해 Spring Security의 `AuthenticationProvider`가 사용자 검증 로직을 수행.
+- 인증 성공 시 JWT발급(`accessToken`, `refreshToken`).
+- 만료된 Access Token은 `refreshToken()` 메서드에서 새 Access Token으로 갱신.
 
 ---
 
-## 3. 인증 및 토큰 발행 서비스
+## Refresh Token Storage: `ConcurrentRefreshTokenStorage`
 
-### AuthenticationController와 서비스 계층
+Refresh Token을 **인메모리**에 저장하고, 사용자가 로그아웃 하거나 만료가 필요한 경우 Blacklist에 추가하는 로직을 예시로 보여줍니다.
 
-로그인 관련 엔드포인트는 크게 세 가지로 나뉩니다.
-
-- **/authenticate**  
-  전통적인 이메일/비밀번호 로그인으로, `AuthenticationRequest`를 받아 `AuthenticationService`의 `authenticate` 메서드를 호출합니다. 이 과정에서 Spring Security의 `AuthenticationManager`를 활용하여 자격 증명을 검증합니다.
-
-- **/api/refresh**  
-  기존 리프레시 토큰을 사용해 새로운 Access Token을 발급받습니다. 토큰 유효성 검증 후 새 토큰을 생성하는 로직이 포함되어 있습니다.
-
-- **/api/token**  
-  OAuth2 로그인 후 프론트엔드와 백엔드 간의 토큰 교환을 위해, 미리 저장된 인증 코드를 기반으로 Access Token과 Refresh Token을 발급합니다.
-
+````java
 ```java
-@PostMapping("/authenticate")
-public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest request)
-        throws Exception {
-    return ResponseEntity.ok(authenticationService.authenticate(request));
+package movlit.be.auth.infra.persistence;
+
+import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
+import movlit.be.auth.domain.repository.RefreshTokenStorage;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class ConcurrentRefreshTokenStorage implements RefreshTokenStorage {
+
+    private final ConcurrentHashMap<String, String> refreshTokens = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long> blacklist = new ConcurrentHashMap<>();
+
+    @Override
+    public void saveRefreshToken(String email, String refreshToken) {
+        refreshTokens.put(email, refreshToken);
+    }
+
+    @Override
+    public String findByToken(String email) {
+        return refreshTokens.get(email);
+    }
+
+    @Override
+    public void addBlacklist(String token, long exp) {
+        blacklist.put(token, exp);
+    }
+
+    @Override
+    public boolean isBlacklist(String token) {
+        return blacklist.containsKey(token);
+    }
+
+    @Override
+    public void deleteByToken(String email) {
+        refreshTokens.remove(email);
+    }
+
 }
-```
+````
 
-### 토큰 관리 및 블랙리스트 처리
+**주요 포인트**
 
-`AuthTokenService`와 `ConcurrentRefreshTokenStorage`를 통해 JWT 토큰을 발급하고, 리프레시 토큰을 저장합니다. 또한 토큰이 만료되거나 취소된 경우 블랙리스트에 추가하여 재사용을 방지하는 로직을 구현했습니다.
-
-```java
-public void revoke(String accessToken) {
-    long exp = jwtTokenUtil.extractExpirationAsLong(accessToken);
-    refreshTokenStorage.addBlacklist(accessToken, exp);
-}
-```
-
-이와 같이 토큰의 안전성을 강화하는 동시에, 간단한 ConcurrentHashMap을 활용한 스토리지 구현으로 동시성 이슈를 해결할 수 있었습니다.
+- `ConcurrentHashMap`으로 단순히 이메일 ↔ Refresh Token을 맵핑.
+- 로그아웃 처리 시 `addBlacklist()`로 Access Token 만료 전에도 유효하지 않도록 처리 가능.
+- 실제 운영 환경에서는 Redis 등의 영속화 스토어를 사용하기도 함.
 
 ---
 
-## 4. 보안 구성 및 CORS 설정
+## OAuth2 연동 구조
 
-### SecurityConfig에서의 설정
+소셜 로그인의 과정에서 `OAuth2AuthenticationSuccessHandler`를 사용하여, 인증 성공 후 **`code`**를 발급하고, **프론트엔드로 리다이렉트**하는 예시입니다.
 
-Spring Security의 전반적인 보안 설정은 `SecurityConfig` 클래스에서 이루어집니다. 주요 설정 포인트는 다음과 같습니다.
+````java
+```java
+package movlit.be.auth.application.service;// OAuth2AuthenticationSuccessHandler.java
 
-- **필터 체인 구성**  
-  `jwtRequestFilter`를 `UsernamePasswordAuthenticationFilter` 이전에 등록하여, 모든 요청에 대해 JWT 토큰 검증이 먼저 이루어지도록 합니다.
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.auth.domain.repository.AuthCodeStorage;
+import movlit.be.common.util.IdGenerator;
+import movlit.be.common.util.JwtTokenUtil;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
-- **엔드포인트 권한 설정**  
-  다양한 HTTP 메서드와 URL 패턴에 대해 접근 권한을 세밀하게 설정하였습니다. 이를 통해 공개 API와 인증이 필요한 API를 명확히 구분할 수 있습니다.
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-- **CORS 설정**  
-  `CorsConfigurationSource`를 등록하여, 프론트엔드 도메인에서의 요청을 허용함과 동시에 필요한 HTTP 메서드와 헤더를 지정합니다.
+    private final AuthCodeStorage authCodeStorage;
+    private final JwtTokenUtil jwtTokenUtil;
+
+    @Value("${share.url}")
+    private String url;
+
+    @Override
+    public void onAuthenticationSuccess(HttpServletRequest request,
+                                        HttpServletResponse response,
+                                        Authentication authentication)
+            throws IOException {
+
+        // OAuth2User로부터 email 정보를 가져옴
+        MyMemberDetails oAuth2User = (MyMemberDetails) authentication.getPrincipal();
+        String email = oAuth2User.getMember().getEmail();
+
+        // 자체적으로 code 발급 후 저장
+        String code = IdGenerator.generate();
+        authCodeStorage.saveCode(code, email);
+
+        // 임의로 Access Token을 바로 발급해서 Header에 넣어주는 예시
+        String accessToken = jwtTokenUtil.generateAccessToken(email);
+        response.setHeader("Authorization", "Bearer " + accessToken);
+
+        // code를 프론트엔드로 전달하기 위해 리다이렉트 URL 구성
+        String targetUrl = UriComponentsBuilder.fromUriString(url + "/oauth/callback")
+                .queryParam("code", code)
+                .build().toUriString();
+
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+    }
+
+}
+````
+
+**주요 포인트**
+
+- 소셜 로그인 성공 시 추가 정보(예: 닉네임, 생년월일) 등을 가져와야 할 경우 `OAuth2UserService`에서 처리.
+- `onAuthenticationSuccess()` 내부에서 `authCodeStorage.saveCode(code, email)` 형태로 임시 발급 코드를 저장.
+- 프론트엔드가 `code`를 받으면 다시 백엔드의 `/api/token`에 요청하여 최종적으로 JWT 발급 가능.
+
+---
+
+## SecurityConfig: 핵심 보안 설정
+
+스프링 시큐리티 설정의 핵심은 `SecurityFilterChain` 구성입니다. `JwtRequestFilter`를 시큐리티 필터 체인에서 `UsernamePasswordAuthenticationFilter` 앞단에 등록합니다.
+
+````java
+```java
+package movlit.be.common.config;
+
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import movlit.be.auth.application.service.MyOAuth2MemberService;
+import movlit.be.auth.application.service.OAuth2AuthenticationSuccessHandler;
+import movlit.be.common.filter.JwtRequestFilter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    @Value("${share.url}")
+    private String url; // 배포 환경의 프론트엔드 URL
+
+    private final MyOAuth2MemberService myOAuth2MemberService;
+    private final JwtRequestFilter jwtRequestFilter;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   CorsConfigurationSource corsConfigurationSource)
+            throws Exception {
+
+        http
+            .cors(Customizer.withDefaults())
+            .csrf(AbstractHttpConfigurer::disable)
+            .headers(headers -> headers.frameOptions(FrameOptionsConfig::disable))  // H2 콘솔 사용 시
+            .authorizeHttpRequests(auth -> auth
+                // permitAll() URL 및 메서드 예시
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/testBook/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/books/{bookId}/detail").permitAll()
+                // ... 기타 공개 경로 설정 ...
+                .anyRequest().authenticated() // 나머지는 인증 필요
+            )
+            .formLogin(AbstractHttpConfigurer::disable)
+            .logout(logout -> logout
+                .logoutUrl("/api/members/logout")
+                .permitAll()
+                .logoutSuccessHandler((request, response, authentication) ->
+                    response.setStatus(HttpServletResponse.SC_NO_CONTENT)
+                )
+                .deleteCookies("refreshToken")
+            )
+            .oauth2Login(oauth -> oauth
+                .userInfoEndpoint(userInfo -> userInfo.userService(myOAuth2MemberService))
+                .successHandler(oAuth2AuthenticationSuccessHandler)
+            )
+            // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
+            .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // 배포 주소 허용
+        configuration.setAllowedOrigins(List.of(url));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    // Authentication Manager 빈 등록
+    @Bean
+    public AuthenticationManager authenticationManager(
+        AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+}
+````
+
+**주요 포인트**
+
+- `HttpSecurity` 빌더를 통해 **CORS** 허용, **CSRF 비활성화**, **URL별 권한** 설정.
+- OAuth2 로그인을 사용 시, `oauth2Login().userInfoEndpoint().userService(...)` 설정.
+- `jwtRequestFilter`를 시큐리티 체인에 **추가**하여 Controller 진입 전 JWT 검사 수행.
+
+---
+
+## 정리
+
+- **JWT + Refresh Token**을 통한 인증 구조와 **소셜 로그인**까지 종합적으로 다룬 예시입니다.
+- 실무에서는 인메모리 대신 **Redis**나 DB를 사용하여 Token 관리 및 블랙리스트를 운영하며, 보안 강화를 위해 HTTPS, 쿠키 기반 세션, HttpOnly 쿠키, OAuth2 PKCE 등을 함께 고려할 수 있습니다.
+- Spring Boot 3.x에서 `jakarta` 패키지를 사용하는 점, `SecurityFilterChain` 기반의 시큐리티 설정 등이 2.x와 차별점입니다.
+
+---
+
+## 전체 소스 코드
+
+> 아래는 본 글에서 언급된 주요 파일들의 전체 코드입니다.
+
+### 1. `JwtRequestFilter.java`
 
 ```java
-@Bean
-public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource)
-        throws Exception {
-    http
+package movlit.be.common.filter;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import io.micrometer.common.lang.NonNullApi;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.auth.application.service.MyMemberDetailsService;
+import movlit.be.common.util.JwtTokenUtil;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class JwtRequestFilter extends OncePerRequestFilter {
+
+    private final JwtTokenUtil jwtTokenUtil;
+    private final MyMemberDetailsService myMemberDetailsService;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain)
+            throws ServletException, IOException {
+
+        Optional<String> jwtOptional = extractJwtFromHeader(request);
+
+        if (jwtOptional.isPresent()) {
+            String jwt = jwtOptional.get();
+            Optional<String> emailOptional = extractEmail(jwt, response);
+
+            if (emailOptional.isEmpty()) {
+                return;
+            }
+
+            String email = emailOptional.get();
+
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = myMemberDetailsService.loadUserByUsername(email);
+                if (!authenticateUser(userDetails, jwt, request, response)) {
+                    return;
+                }
+            }
+        }
+
+        chain.doFilter(request, response);
+    }
+
+    private Optional<String> extractJwtFromHeader(HttpServletRequest request) {
+        String authorizationHeader = request.getHeader("Authorization");
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            return Optional.of(authorizationHeader.substring(7));
+        }
+
+        return Optional.empty();
+    }
+
+    private Optional<String> extractEmail(String jwt, HttpServletResponse response) throws IOException {
+        try {
+            return Optional.ofNullable(jwtTokenUtil.extractEmail(jwt));
+        } catch (ExpiredJwtException e) {
+            setUnauthorizedResponse(response, "Token Expired");
+        } catch (Exception e) {
+            setUnauthorizedResponse(response, "Invalid Token");
+        }
+
+        return Optional.empty();
+    }
+
+    private boolean authenticateUser(UserDetails userDetails, String jwt,
+                                     HttpServletRequest request, HttpServletResponse response)
+                                     throws IOException {
+        try {
+            if (jwtTokenUtil.validateToken(jwt, userDetails.getUsername())) {
+                UsernamePasswordAuthenticationToken token =
+                    new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                    );
+                token.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(token);
+                return true;
+            } else {
+                setUnauthorizedResponse(response, "Invalid Token");
+                return false;
+            }
+        } catch (ExpiredJwtException e) {
+            setUnauthorizedResponse(response, "Token Expired");
+            return false;
+        }
+    }
+
+    private void setUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.getWriter().write(message);
+    }
+
+}
+```
+
+### 2. `AuthenticationService.java`
+
+```java
+package movlit.be.auth.application.service;
+
+import java.util.Map;
+import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import movlit.be.common.exception.MemberNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.stereotype.Service;
+import movlit.be.auth.domain.repository.AuthCodeStorage;
+import movlit.be.auth.domain.repository.RefreshTokenStorage;
+import movlit.be.common.filter.dto.AuthenticationRequest;
+import movlit.be.common.filter.dto.AuthenticationResponse;
+import movlit.be.common.util.JwtTokenUtil;
+
+@Service
+@RequiredArgsConstructor
+public class AuthenticationService {
+
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenUtil jwtTokenUtil;
+    private final AuthCodeStorage authCodeStorage;
+    private final RefreshTokenStorage refreshTokenStorage;
+
+    public AuthenticationResponse authenticate(AuthenticationRequest request) throws Exception {
+        String email = request.getEmail();
+        String password = request.getPassword();
+
+        try {
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, password)
+            );
+        } catch (BadCredentialsException e) {
+            throw new MemberNotFoundException();
+        }
+
+        String accessToken = jwtTokenUtil.generateAccessToken(email);
+        String refreshToken = jwtTokenUtil.generateRefreshToken(email);
+        return new AuthenticationResponse(accessToken, refreshToken);
+    }
+
+    public ResponseEntity<?> refreshToken(String refreshToken) {
+        String email = jwtTokenUtil.extractEmail(refreshToken);
+
+        if (!jwtTokenUtil.validateToken(refreshToken, email)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh Token");
+        }
+
+        String newAccessToken = jwtTokenUtil.generateAccessToken(email);
+        return ResponseEntity.ok(new AuthenticationResponse(newAccessToken, refreshToken));
+    }
+
+    public ResponseEntity<?> exchangeToken(String code) {
+        String email = authCodeStorage.fetchEmailForCode(code);
+
+        if (Objects.isNull(email)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "잘못된 code입니다. code = " + code));
+        }
+
+        String accessToken = jwtTokenUtil.generateAccessToken(email);
+        String refreshToken = jwtTokenUtil.generateRefreshToken(email);
+
+        refreshTokenStorage.saveRefreshToken(email, refreshToken);
+        authCodeStorage.removeCode(code);
+
+        return ResponseEntity.ok(new AuthenticationResponse(accessToken, refreshToken));
+    }
+
+}
+```
+
+### 3. `ConcurrentRefreshTokenStorage.java`
+
+```java
+package movlit.be.auth.infra.persistence;
+
+import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
+import movlit.be.auth.domain.repository.RefreshTokenStorage;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class ConcurrentRefreshTokenStorage implements RefreshTokenStorage {
+
+    private final ConcurrentHashMap<String, String> refreshTokens = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long> blacklist = new ConcurrentHashMap<>();
+
+    @Override
+    public void saveRefreshToken(String email, String refreshToken) {
+        refreshTokens.put(email, refreshToken);
+    }
+
+    @Override
+    public String findByToken(String email) {
+        return refreshTokens.get(email);
+    }
+
+    @Override
+    public void addBlacklist(String token, long exp) {
+        blacklist.put(token, exp);
+    }
+
+    @Override
+    public boolean isBlacklist(String token) {
+        return blacklist.containsKey(token);
+    }
+
+    @Override
+    public void deleteByToken(String email) {
+        refreshTokens.remove(email);
+    }
+
+}
+```
+
+### 4. `OAuth2AuthenticationSuccessHandler.java`
+
+```java
+package movlit.be.auth.application.service;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.auth.domain.repository.AuthCodeStorage;
+import movlit.be.common.util.IdGenerator;
+import movlit.be.common.util.JwtTokenUtil;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
+
+    private final AuthCodeStorage authCodeStorage;
+    private final JwtTokenUtil jwtTokenUtil;
+
+    @Value("${share.url}")
+    private String url;
+
+    @Override
+    public void onAuthenticationSuccess(HttpServletRequest request,
+                                        HttpServletResponse response,
+                                        Authentication authentication)
+            throws IOException {
+
+        MyMemberDetails oAuth2User = (MyMemberDetails) authentication.getPrincipal();
+        String email = oAuth2User.getMember().getEmail();
+
+        String code = IdGenerator.generate();
+        authCodeStorage.saveCode(code, email);
+
+        // 헤더에 Access Token
+        String accessToken = jwtTokenUtil.generateAccessToken(email);
+        response.setHeader("Authorization", "Bearer " + accessToken);
+
+        // 프론트엔드로 code를 전달하기 위해 Redirect
+        String targetUrl = UriComponentsBuilder.fromUriString(url + "/oauth/callback")
+                .queryParam("code", code)
+                .build().toUriString();
+
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+    }
+}
+```
+
+### 5. `SecurityConfig.java`
+
+```java
+package movlit.be.common.config;
+
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import movlit.be.auth.application.service.MyOAuth2MemberService;
+import movlit.be.auth.application.service.OAuth2AuthenticationSuccessHandler;
+import movlit.be.common.filter.JwtRequestFilter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    @Value("${share.url}")
+    private String url;
+
+    private final MyOAuth2MemberService myOAuth2MemberService;
+    private final JwtRequestFilter jwtRequestFilter;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   CorsConfigurationSource corsConfigurationSource)
+            throws Exception {
+
+        http
             .cors(Customizer.withDefaults())
             .csrf(AbstractHttpConfigurer::disable)
             .headers(x -> x.frameOptions(FrameOptionsConfig::disable))
             .authorizeHttpRequests(requests -> requests
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    // 기타 공개 엔드포인트 설정
+                    .requestMatchers("/testBook/**").permitAll()
+                    // ... 기타 URL 패턴 ...
                     .anyRequest().authenticated()
             )
+            .formLogin(AbstractHttpConfigurer::disable)
+            .logout(logout -> logout
+                .logoutUrl("/api/members/logout")
+                .permitAll()
+                .logoutSuccessHandler(((request, response, authentication) ->
+                        response.setStatus(HttpServletResponse.SC_NO_CONTENT)
+                ))
+                .deleteCookies("refreshToken")
+            )
             .oauth2Login(auth -> auth
-                    .userInfoEndpoint(userInfoEndpointConfig -> userInfoEndpointConfig.userService(myOAuth2MemberService))
-                    .successHandler(oAuth2AuthenticationSuccessHandler)
+                .userInfoEndpoint(userInfoEndpointConfig ->
+                    userInfoEndpointConfig.userService(myOAuth2MemberService)
+                )
+                .successHandler(oAuth2AuthenticationSuccessHandler)
             )
             .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
-    return http.build();
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of(url));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+            new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    // Authentication Manager 빈 등록
+    @Bean
+    public AuthenticationManager authenticationManager(
+        AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
 }
 ```
 
-이와 같이 체계적인 보안 설정을 통해 다양한 로그인 방식과 API 보호를 동시에 달성할 수 있습니다.
+그 외 `MyMemberDetailsService`, `MyOAuth2MemberService`, `MyMemberDetails`, `JwtTokenUtil`, DTO 클래스 등은 **생략**했지만, 위 구조만으로도 전반적인 JWT 인증 흐름과 OAuth2 소셜 로그인 연동이 어떻게 동작하는지 파악하실 수 있습니다.
+
+> **참고**: OAuth2 연동 로직을 위해 `spring-boot-starter-oauth2-client`가 추가되어 있어야 합니다.
 
 ---
 
-## 5. 결론
+**이상으로 Spring Boot 3.4 & Spring Security를 사용한 JWT 인증 + OAuth2 소셜 로그인 구현 예시였습니다.**
 
-- **JWT 필터**는 클라이언트 요청의 인증 정보를 검증하고 SecurityContext에 설정하여, API 보안을 강화합니다.  
-- **OAuth2 로그인** 통합은 다양한 소셜 로그인 제공자와의 연동을 손쉽게 처리하며, 사용자 정보의 일관성을 유지합니다.  
-- **토큰 관리**는 Access Token과 Refresh Token을 효과적으로 발급 및 관리하며, 블랙리스트를 통한 보안 강화도 이뤄집니다.  
-- **보안 구성**은 세밀한 엔드포인트 권한 설정과 CORS 구성을 통해 안정적인 애플리케이션 환경을 제공합니다.
-
-이와 같은 접근 방식은 확장 가능하고 유지보수하기 좋은 보안 구조를 구현하는 데 큰 도움이 됩니다.
+- 인증/인가 흐름, 필터 사용법, 커스텀 로직 등의 큰 그림을 잡을 수 있습니다.
+- 필요에 따라 세부적인 엔티티/클래스 설계, JWT 유효기간 및 보안 이슈, 소셜 프로필과 회원 매핑 방식 등을 확장해서 사용하시면 됩니다.
