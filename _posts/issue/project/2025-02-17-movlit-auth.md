@@ -32,7 +32,6 @@ last_modified_at: 2025-02-21
 
 `OncePerRequestFilter`를 상속받아 요청마다 JWT를 확인하고, 검증된 사용자 정보를 `SecurityContextHolder`에 등록합니다.
 
-````java
 ```java
 package movlit.be.common.filter;
 
@@ -144,7 +143,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     }
 
 }
-````
+```
 
 **주요 포인트**
 
@@ -158,7 +157,6 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
 일반적인 ID/Password 인증 시, `AuthenticationManager`를 사용하여 검증하고 JWT 토큰을 발급합니다.
 
-````java
 ```java
 package movlit.be.auth.application.service;
 
@@ -236,7 +234,7 @@ public class AuthenticationService {
     }
 
 }
-````
+```
 
 **주요 포인트**
 
@@ -250,7 +248,6 @@ public class AuthenticationService {
 
 Refresh Token을 **인메모리**에 저장하고, 사용자가 로그아웃 하거나 만료가 필요한 경우 Blacklist에 추가하는 로직을 예시로 보여줍니다.
 
-````java
 ```java
 package movlit.be.auth.infra.persistence;
 
@@ -292,7 +289,7 @@ public class ConcurrentRefreshTokenStorage implements RefreshTokenStorage {
     }
 
 }
-````
+```
 
 **주요 포인트**
 
@@ -306,7 +303,6 @@ public class ConcurrentRefreshTokenStorage implements RefreshTokenStorage {
 
 소셜 로그인의 과정에서 `OAuth2AuthenticationSuccessHandler`를 사용하여, 인증 성공 후 **`code`**를 발급하고, **프론트엔드로 리다이렉트**하는 예시입니다.
 
-````java
 ```java
 package movlit.be.auth.application.service;// OAuth2AuthenticationSuccessHandler.java
 
@@ -362,7 +358,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     }
 
 }
-````
+```
 
 **주요 포인트**
 
@@ -376,7 +372,6 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
 스프링 시큐리티 설정의 핵심은 `SecurityFilterChain` 구성입니다. `JwtRequestFilter`를 시큐리티 필터 체인에서 `UsernamePasswordAuthenticationFilter` 앞단에 등록합니다.
 
-````java
 ```java
 package movlit.be.common.config;
 
@@ -474,7 +469,7 @@ public class SecurityConfig {
     }
 
 }
-````
+```
 
 **주요 포인트**
 

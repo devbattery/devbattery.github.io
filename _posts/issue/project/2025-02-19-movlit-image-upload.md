@@ -58,7 +58,6 @@ last_modified_at: 2025-02-21
 
 **클라이언트**(웹/모바일)는 `MultipartFile`을 `POST /api/images/profile`로 전송합니다.
 
-````java
 ```java
 package movlit.be.image.presentation;
 
@@ -100,7 +99,7 @@ public class ImageController {
     }
 
 }
-````
+```
 
 ### 주요 포인트
 
@@ -114,7 +113,6 @@ public class ImageController {
 
 **이미지 업로드 로직**과 **DB 저장**을 담당합니다.
 
-````java
 ```java
 package movlit.be.image.application.service;
 
@@ -185,7 +183,7 @@ public class ImageService {
     }
 
 }
-````
+```
 
 ### 주요 포인트
 
@@ -201,7 +199,6 @@ public class ImageService {
 
 **AWS S3**로 이미지를 전송하고 **URL**을 생성해 반환합니다.
 
-````java
 ```java
 package movlit.be.image.application.service;
 
@@ -263,7 +260,7 @@ public class S3Service {
     }
 
 }
-````
+```
 
 ### 주요 포인트
 
@@ -280,7 +277,6 @@ public class S3Service {
 
 **ImageEntity**는 `@EmbeddedId`로 `ImageId`(커스텀 VO) 사용 중입니다.
 
-````java
 ```java
 package movlit.be.image.domain.entity;
 
@@ -320,7 +316,7 @@ public class ImageEntity {
     }
 
 }
-````
+```
 
 ### ImageRepository
 
@@ -328,7 +324,6 @@ JPA 기반으로 이미지 정보를 DB에 저장/삭제/조회하는 **Reposito
 
 #### 1) `ImageRepository` (Interface)
 
-````java
 ```java
 package movlit.be.image.domain.repository;
 
@@ -347,11 +342,10 @@ public interface ImageRepository {
     void deleteByMemberId(MemberId memberId);
 
 }
-````
+```
 
 #### 2) `ImageJpaRepository`
 
-````java
 ```java
 package movlit.be.image.infra.persistence.jpa;
 
@@ -375,11 +369,10 @@ public interface ImageJpaRepository extends JpaRepository<ImageEntity, ImageId> 
     void deleteByMemberId(MemberId memberId);
 
 }
-````
+```
 
 #### 3) `ImageRepositoryImpl`
 
-````java
 ```java
 package movlit.be.image.infra.persistence;
 
@@ -418,7 +411,7 @@ public class ImageRepositoryImpl implements ImageRepository {
     }
 
 }
-````
+```
 
 > **Note**: `ImageRepositoryImpl`를 통해 `JpaRepository`를 감싸서 **추가 로직**이나 **커스텀 쿼리**를 확장할 수 있게 합니다.
 

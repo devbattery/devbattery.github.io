@@ -43,7 +43,6 @@ last_modified_at: 2025-02-21
 수집 로직을 실행하는 **HTTP GET 요청**을 정의하는 컨트롤러 클래스입니다.  
 프론트엔드나 관리자 페이지에서 `GET /collect/movie/discover`처럼 호출하면 **TMDB 데이터가 DB에 저장**되는 구조입니다.
 
-````java
 ```java
 package movlit.be.data_collection.movie;
 
@@ -88,7 +87,7 @@ public class MovieCollectionController {
     }
 
 }
-````
+```
 
 ### 주요 포인트
 
@@ -101,7 +100,6 @@ public class MovieCollectionController {
 
 **RestTemplate**를 사용해 TMDB 엔드포인트에 HTTP 요청을 보내고, 응답을 `Map` 혹은 `List<Map<String, Object>>` 형태로 받아옵니다.
 
-````java
 ```java
 package movlit.be.movie_collect.application;
 
@@ -170,7 +168,7 @@ public class TmdbApiClient {
     }
 
 }
-````
+```
 
 ### 주요 포인트
 
@@ -197,7 +195,6 @@ public class TmdbApiClient {
 
 **비즈니스 로직**과 **DB 저장**(`JpaRepository.saveAll()`) 로직이 함께 들어있습니다.
 
-````java
 ```java
 package movlit.be.movie_collect.application.service;
 
@@ -530,7 +527,7 @@ public class MovieCollectionService {
     }
 
 }
-````
+```
 
 ### 1) 영화 목록 수집 `collectDiscoverMovies()`
 
