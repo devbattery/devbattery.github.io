@@ -14,24 +14,20 @@ sidebar:
   nav: "categories"
 
 date: 2025-02-26
-last_modified_at: 2025-02-26
+last_modified_at: 2025-02-27
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
 ## 🎥 핵심 기능
 
-<details>
-<summary><h3>✅ API 문서화 (Spring REST Docs & Rest Assured)</h3></summary>
+<h3>✅ API 문서화 (Spring REST Docs & Rest Assured)</h3>
 
 - Rest Assured를 이용한 API 테스트 코드 작성을 기반으로 Spring REST Docs와 연동하여 API 문서를 자동화했습니다.
 
   <img src="https://github.com/user-attachments/assets/8577372b-633b-4e48-bda3-54d269e5a6cb" style="width: 600px" alt="API Documentation Example">
 
-</details>
-
-<details>
-<summary><h3>👤 회원 관리 (가입, 일반 로그인, OAuth2 로그인)</h3></summary>
+<h3>👤 회원 관리 (가입, 일반 로그인, OAuth2 로그인)</h3>
 
 - **회원가입:** 이메일, 비밀번호, 닉네임 기반의 자체 회원가입 기능을 제공합니다.
 
@@ -49,10 +45,7 @@ last_modified_at: 2025-02-26
 
   <img src="https://github.com/user-attachments/assets/34d361fb-f748-4d2e-850f-7a76dc0a4153" style="width: 600px" alt="OAuth2 Login Example">
 
-</details>
-
-<details>
-<summary><h3>🏠 메인 화면 - 카테고리별 영화/도서 목록 제공</h3></summary>
+<h3>🏠 메인 화면 - 카테고리별 영화/도서 목록 제공</h3>
 
 - 사용자의 선호도와 최신 트렌드를 반영하여 영화 및 도서 콘텐츠 목록을 카테고리별로 제공합니다.
 - **메인 화면 (영화):**
@@ -65,10 +58,7 @@ last_modified_at: 2025-02-26
 
   <img src="https://github.com/user-attachments/assets/99e01ff5-b105-4c0b-98cd-224ee0070b02" style="width: 600px" alt="Main Screen - Books">
 
-</details>
-
-<details>
-<summary><h3>ℹ️ 상세 화면 - 평점, 코멘트, 찜, 유사 콘텐츠 추천</h3></summary>
+<h3>ℹ️ 상세 화면 - 평점, 코멘트, 찜, 유사 콘텐츠 추천</h3>
 
 - **콘텐츠 상세 정보:** 각 영화/도서의 상세 정보, 사용자 평점 및 코멘트, 관련 콘텐츠(다른 책/영화) 목록을 제공합니다.
 - **도서 상세 정보:**
@@ -93,29 +83,20 @@ last_modified_at: 2025-02-26
 
   <img src="https://github.com/user-attachments/assets/79539d4b-16ed-473a-aeae-4dc15e737690" style="width: 600px" alt="Rating and Comments Form (Movie)">
 
-</details>
-
-<details>
-<summary><h3>🔍 통합 검색 - 다양한 조건 검색 및 유사 콘텐츠 제공</h3></summary>
+<h3>🔍 통합 검색 - 다양한 조건 검색 및 유사 콘텐츠 제공</h3>
 
 - 콘텐츠의 제목, 장르, 카테고리, 배우/작가, 감독/출판사 등 다양한 기준으로 통합 검색 기능을 제공하며, 검색 결과와 함께 유사한 콘텐츠를 추천합니다.
 
   <img src="https://github.com/user-attachments/assets/2e66d8b0-9f04-4ecb-bdb7-ffe42a01bcfa" style="width:600px" alt="Integrated Search Results">
 
-</details>
-
-<details>
-<summary><h3>👤 프로필 페이지 - 팔로우, 정보 수정, 맞춤 콘텐츠</h3></summary>
+<h3>👤 프로필 페이지 - 팔로우, 정보 수정, 맞춤 콘텐츠</h3>
 
 - 사용자는 다른 사용자를 팔로우/언팔로우하고, 자신의 프로필 정보(닉네임, 프로필 사진 등)를 수정할 수 있습니다.
 - 사용자의 활동(찜 목록, 평점 등)을 기반으로 맞춤형 콘텐츠를 추천받을 수 있습니다.
 
   <img src="https://github.com/user-attachments/assets/8f440bfd-d64c-4e43-8329-5502c0b0b062" style="width:600px" alt="User Profile Page">
 
-</details>
-
-<details>
-<summary><h3>💬 1:1 채팅 (DM) - 사용자 간 실시간 다이렉트 메시지</h3></summary>
+<h3>💬 1:1 채팅 (DM) - 사용자 간 실시간 다이렉트 메시지</h3>
 
 - **채팅방 생성:** 다른 사용자의 프로필 페이지에서 DM 보내기 버튼을 통해 1:1 채팅방을 생성하고 메시지를 전송할 수 있습니다.
 
@@ -133,10 +114,7 @@ last_modified_at: 2025-02-26
 
   <img src="https://github.com/user-attachments/assets/505fea8c-7cbd-4eac-b7e1-a35a73763797" style="width:600px" alt="1:1 Chat Notification">
 
-</details>
-
-<details>
-<summary><h3>👥 그룹 채팅 - 콘텐츠 기반 그룹 채팅 및 실시간 교류</h3></summary>
+<h3>👥 그룹 채팅 - 콘텐츠 기반 그룹 채팅 및 실시간 교류</h3>
 
 - **채팅방 검색 및 생성/참여:** 특정 영화나 책에 대한 그룹 채팅방을 검색하여 참여하거나, 없는 경우 직접 생성할 수 있습니다.
 
@@ -160,14 +138,9 @@ last_modified_at: 2025-02-26
 
   <img src="https://github.com/user-attachments/assets/62f28b53-feb7-4f45-81fa-6bbc37848107" style="width:600px" alt="Leaving Group Chat">
 
-</details>
-
-<details>
-<summary><h3>🔔 사용자 알림 (SSE) - 주요 이벤트 실시간 알림</h3></summary>
+<h3>🔔 사용자 알림 (SSE) - 주요 이벤트 실시간 알림</h3>
 
 - SSE(Server-Sent Events)를 활용하여 팔로우, 찜한 콘텐츠의 그룹챗 생성, 새 메시지(1:1, 그룹) 수신 등 주요 이벤트 발생 시 사용자에게 실시간 알림을 제공합니다 (브라우저 알림 및 페이지
   내 알림 목록).
 
   <img src="https://github.com/user-attachments/assets/cb18199a-8ed0-49eb-8515-8cda7d2e0503" style="width:600px" alt="Real-time Notifications List">
-
-</details>
