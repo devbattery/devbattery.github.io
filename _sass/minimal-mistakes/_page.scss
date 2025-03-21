@@ -91,13 +91,6 @@ body {
   h2 {
     padding-bottom: 0.5em;
     border-bottom: 1px solid $border-color;
-    color: #0056b3; // 원하는 H2 색상 코드로 변경
-  }
-
-  // H3에 대한 규칙 추가 (기존에 없다면)
-  h3 {
-    color: #28a745; // 원하는 H3 색상 코드로 변경
-    // 필요하다면 다른 H3 스타일도 여기에 추가 가능 (예: font-weight, margin 등)
   }
 
 	h1, h2, h3, h4, h5, h6 {
