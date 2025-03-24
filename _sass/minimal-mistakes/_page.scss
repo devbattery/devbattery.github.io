@@ -88,11 +88,24 @@ body {
 }
 
 .page__content {
+  h1 {
+    color: #C6566A; // Obsidian Minimal Theme에서 추출
+  }
+
   h2 {
     padding-bottom: 0.5em;
     border-bottom: 1px solid $border-color;
+    color: #D88145; // Obsidian Minimal Theme에서 추출
   }
 
+  h3 {
+    color: #E4B874; // Obsidian Minimal Theme에서 추출
+  }
+  
+  h4 {
+    color: #AEC083; // Obsidian Minimal Theme에서 추출
+  }
+  
 	h1, h2, h3, h4, h5, h6 {
 		.header-link {
 			position: relative;
@@ -108,8 +121,6 @@ body {
 		&:hover .header-link {
 			opacity: 1;
 		}
-
-        color: aqua;
 	}
 
   p,
