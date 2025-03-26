@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2025-01-12
-last_modified_at: 2025-03-25
+last_modified_at: 2025-03-26
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
@@ -30,26 +30,15 @@ last_modified_at: 2025-03-25
 ```java
 package movlit.be.movie_comment_heart_count.domain.entity;
 
-import javax.persistence.*; // 기본 JPA 어노테이션 import 추가
-import lombok.AccessLevel; // Lombok 관련 import 추가
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import movlit.be.movie_comment.domain.vo.MovieCommentId; // Value Object import 추가
-import movlit.be.movie_comment_heart_count.domain.vo.MovieCommentLikeCountId; // Value Object import 추가
-
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Getter
-@Table(name = "movie_comment_like_count") // 명시적인 테이블 이름 지정 (선택 사항이지만 권장)
+@Table(name = "movie_comment_like_count")
 public class MovieCommentLikeCountEntity {
 
     @EmbeddedId
-    private MovieCommentLikeCountId movieCommentLikeCountId; // 복합 키 역할을 하는 ID
+    private MovieCommentLikeCountId movieCommentLikeCountId;
 
-    // movieCommentId는 사실상 movieCommentLikeCountId에 포함될 수 있지만,
-    // 검색 조건 등으로 자주 사용될 경우 별도 컬럼으로 관리하면 인덱싱 등에 유리할 수 있습니다.
-    // 여기서는 별도 컬럼으로 관리하는 것으로 보입니다.
     @AttributeOverride(name = "value", column = @Column(name = "movie_comment_id", nullable = false)) // null 불가능 제약 조건 추가
     private MovieCommentId movieCommentId;
 
@@ -84,22 +73,12 @@ public class MovieCommentLikeCountEntity {
 ```java
 package movlit.be.movie_comment_heart_count.infra.persistence.jpa;
 
-import movlit.be.movie_comment.domain.vo.MovieCommentId; // Value Object import
-import movlit.be.movie_comment_heart_count.domain.entity.MovieCommentLikeCountEntity; // Entity import
-import movlit.be.movie_comment_heart_count.domain.vo.MovieCommentLikeCountId; // Value Object import (ID 타입 일치 필요)
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param; // @Param import 추가
-
-// Repository의 ID 타입을 Entity의 @EmbeddedId 타입과 일치시켜야 합니다.
-public interface MovieCommentLikeCountJpaRepository extends JpaRepository<MovieCommentLikeCountEntity, MovieCommentLikeCountId> { // ID 타입 수정
+public interface MovieCommentLikeCountJpaRepository extends JpaRepository<MovieCommentLikeCountEntity, MovieCommentLikeCountId> {
 
     @Modifying(clearAutomatically = true) // 영속성 컨텍스트 자동 클리어 옵션 추가
     @Query("UPDATE MovieCommentLikeCountEntity mclc "
             + "SET mclc.count = mclc.count + 1 "
             + "WHERE mclc.movieCommentId = :movieCommentId")
-    // 파라미터에 @Param 어노테이션 추가 (명시성 및 가독성 향상)
     void incrementMovieHeartCount(@Param("movieCommentId") MovieCommentId movieCommentId);
 
     @Modifying(clearAutomatically = true) // 영속성 컨텍스트 자동 클리어 옵션 추가
@@ -108,7 +87,6 @@ public interface MovieCommentLikeCountJpaRepository extends JpaRepository<MovieC
             + "WHERE mclc.movieCommentId = :movieCommentId AND mclc.count > 0") // 음수 방지 조건 추가 (선택 사항)
     void decrementMovieHeartCount(@Param("movieCommentId") MovieCommentId movieCommentId);
 
-    // movieCommentId로 엔티티를 찾는 메서드 (테스트 코드에서 사용됨)
     Optional<MovieCommentLikeCountEntity> findByMovieCommentId(MovieCommentId movieCommentId);
 
     /* 생략 */
@@ -141,17 +119,14 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Configuration
 public class AppConfig {
 
-    // CPU 코어 수는 Runtime.getRuntime().availableProcessors() 로 동적으로 가져올 수 있습니다.
-    // 여기서는 예시로 8로 고정합니다. 실제 환경에서는 적절한 값을 설정해야 합니다.
+    // CPU 코어 수는 Runtime.getRuntime().availableProcessors() 로 동적으로도 가능
     public static final int CORE_POOL_SIZE = 8;
 
-    // ScheduledExecutorService 빈 설정 (필요시 사용)
     @Bean
     public ScheduledExecutorService scheduledExecutorService() {
         return Executors.newScheduledThreadPool(CORE_POOL_SIZE);
     }
 
-    // 테스트에 사용할 ThreadPoolExecutor 빈 설정
     @Bean
     public ThreadPoolExecutor threadPoolExecutor() {
         // 고정된 스레드 개수를 가진 스레드 풀 생성
@@ -166,29 +141,6 @@ public class AppConfig {
 ```java
 package movlit.be.movie_comment_heart_count.application.service;
 
-import movlit.be.movie_comment.domain.vo.MovieCommentId; // Value Object import
-import movlit.be.movie_comment_heart_count.domain.entity.MovieCommentLikeCountEntity; // Entity import
-import movlit.be.movie_comment_heart_count.domain.vo.MovieCommentLikeCountId; // Value Object import
-import movlit.be.movie_comment_heart_count.infra.persistence.jpa.MovieCommentLikeCountJpaRepository; // Repository import
-// import movlit.be.movie_comment_heart_count.infra.factory.IdFactory; // ID 생성 팩토리 (가정)
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.OptimisticLockingFailureException; // 예외 import (필요시)
-
-import java.util.Optional;
-import java.util.UUID; // 간단한 ID 생성을 위해 UUID 사용 (예시)
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ThreadPoolExecutor;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-
-// `@SpringBootTest`는 전체 Spring 컨텍스트를 로드하므로 통합 테스트에 적합합니다.
-// 서비스 레이어만 테스트한다면 `@ExtendWith(MockitoExtension.class)` 등을 사용할 수도 있습니다.
 @SpringBootTest
 class MovieCommentLikeCountWriteServiceTest {
 
