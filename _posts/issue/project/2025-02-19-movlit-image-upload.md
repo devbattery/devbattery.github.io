@@ -14,780 +14,710 @@ sidebar:
   nav: "categories"
 
 date: 2025-02-19
-last_modified_at: 2025-02-21
+last_modified_at: 2025-03-30
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
-## 개요
+# [Spring Boot & AWS S3] 프로필 이미지 업로드 기능 구현하기: 전체 흐름부터 코드까지
 
-- **AWS S3**: 클라우드 기반 객체 스토리지 서비스. 이미지, 동영상, 파일 등을 저장하는 데 특화.
-- **Spring Boot**: REST API 서버로, 요청을 받아서 S3에 파일 업로드 후 경로를 DB에 기록.
-- **Security & 인증**: 스프링 시큐리티를 통해 `@AuthenticationPrincipal`로 현재 사용자 식별.
+안녕하세요! 오늘은 웹 서비스의 필수 기능 중 하나인 **프로필 이미지 업로드** 기능을 Spring Boot와 AWS S3를 사용해 구현하는 방법을 알아보겠습니다. 사용자가 이미지를 올리면, 안전하고 효율적인 클라우드 스토리지 S3에 저장하고, 그 정보(URL 등)는 우리 서버의 DB에 관리하는 방식이죠.
+
+Spring Security를 통해 현재 로그인된 사용자를 식별하고, JPA를 이용해 데이터베이스 작업을 처리하는 전체 과정을 코드와 함께 자세히 살펴보겠습니다.
+
+## 개요: 사용할 기술 스택
+
+- **AWS S3 (Simple Storage Service)**: 뛰어난 확장성과 내구성, 가용성을 자랑하는 클라우드 기반 객체 스토리지 서비스입니다. 이미지, 동영상, 로그 파일 등 정적 파일을 저장하고 서빙하는 데 최적화되어 있습니다. 서버의 부담을 줄이고 파일을 안전하게 관리할 수 있죠.
+- **Spring Boot**: Java 기반의 웹 프레임워크로, REST API 서버를 빠르고 쉽게 구축할 수 있게 도와줍니다. 여기서는 클라이언트의 파일 업로드 요청을 받아 처리하고, S3 연동 및 DB 작업을 수행합니다.
+- **Spring Security & 인증**: 스프링 시큐리티 프레임워크를 사용하여 API 접근 제어 및 사용자 인증을 처리합니다. `@AuthenticationPrincipal` 어노테이션을 통해 현재 요청을 보낸 사용자의 정보를 쉽게 가져올 수 있습니다.
 
 **핵심 기능**:
 
-1. **이미지 업로드**
-2. **이미지 조회**
-3. **DB 저장**: 이미지 메타데이터(`url`, 등록 시각, 소유자 등)
-4. **중복 이미지 삭제**: 기존 프로필이 있으면 제거 후 새 이미지 등록
+1.  **프로필 이미지 업로드**: 사용자가 선택한 이미지를 S3에 업로드합니다.
+2.  **프로필 이미지 조회**: 사용자의 현재 프로필 이미지 URL을 반환합니다.
+3.  **DB 저장**: 업로드된 이미지의 메타데이터(고유 ID, S3 URL, 등록 시각, 이미지 소유자 ID 등)를 데이터베이스에 기록합니다.
+4.  **기존 이미지 교체**: 사용자가 새 프로필 이미지를 업로드하면, 기존에 등록된 프로필 이미지가 있다면 **S3에서 해당 객체를 삭제**하고 DB 정보도 업데이트합니다. (이전 파일 관리 로직 포함)
 
 ---
 
-## 전체 흐름 & 구조
+## 전체 흐름 & 구조: 이미지 업로드는 어떻게 동작할까?
 
-1. **사용자**가 `POST /api/images/profile`로 이미지를 업로드.
-2. **`ImageController`**: S3 업로드를 담당하는 `ImageService.uploadProfileImage()` 호출.
-3. **`S3Service`**: 실제 S3로 파일 전송 → **이미지 URL** 생성.
-4. **DB 저장** (`ImageRepository`): 이미지 정보(`url`, `memberId`)를 저장.
-5. **회원 테이블**(`MemberEntity`)의 `profileImgUrl`도 업데이트.
-6. 조회 시 `GET /api/images/profile`로 사용자 프로필 이미지 `URL`을 반환.
+사용자부터 S3, 그리고 DB까지 데이터가 어떻게 흘러가는지 그림으로 먼저 이해해볼까요?
+
+1.  **사용자 (Client)**: 웹 브라우저나 모바일 앱에서 이미지 파일을 선택하고 `POST /api/images/profile` 엔드포인트로 전송합니다. 요청 헤더에는 보통 인증 정보(예: JWT 토큰)가 포함됩니다.
+2.  **`ImageController` (Presentation Layer)**: Spring MVC 컨트롤러가 요청을 받습니다. Spring Security를 통해 인증된 사용자 정보를 `@AuthenticationPrincipal`로 받아옵니다. 실제 이미지 처리 로직은 `ImageService`에 위임합니다.
+3.  **`ImageService` (Application Layer)**: 핵심 비즈니스 로직을 처리합니다.
+    - 기존 프로필 이미지가 있는지 확인하고, 있다면 **S3 객체 삭제** 및 DB 레코드 삭제를 `S3Service`와 `ImageRepository`를 통해 수행합니다.
+    - `S3Service`를 호출하여 새 이미지 파일을 S3 버킷에 업로드하고, 고유한 **이미지 URL**을 받아옵니다.
+    - `ImageRepository`를 통해 이미지 메타데이터(URL, 사용자 ID 등)를 `Image` 테이블에 저장합니다.
+    - 사용자 정보( `MemberEntity` ) 테이블의 `profileImgUrl` 필드도 최신 이미지 URL로 업데이트합니다. (트랜잭션 관리 필요)
+    - (선택적) 프로필 이미지 변경 이벤트를 발행하여, 관련 기능(예: 실시간 채팅방 프로필 업데이트)이 후속 조치를 할 수 있도록 합니다.
+4.  **`S3Service` (Infrastructure Layer)**: AWS SDK를 사용하여 실제 S3 버킷과의 통신(파일 업로드, 삭제)을 담당합니다. 파일 이름 중복 방지를 위해 UUID 등을 활용하고, 업로드된 객체의 URL을 생성하여 반환합니다.
+5.  **`ImageRepository` (Persistence Layer)**: JPA를 사용하여 `ImageEntity` 객체를 데이터베이스에 저장, 조회, 삭제하는 역할을 합니다.
+6.  **AWS S3**: 업로드된 이미지 파일(객체)이 실제로 저장되는 곳입니다.
+7.  **Database (DB)**: 이미지 메타데이터(`image` 테이블)와 사용자 정보(`member` 테이블)가 저장됩니다.
 
 **간단 다이어그램**:
 
 ```
-[Client]
-  -> [ImageController] -> [ImageService] -> [S3Service] -> [AWS S3]
-                                    |
-                                    -> [ImageRepository] -> [ImageEntity in DB]
+[Client (User)]
+   | (1. POST /api/images/profile with Image File & Auth)
+   V
+[ImageController] ---(uses)---> [Spring Security (Authentication)]
+   | (2. Calls ImageService.uploadProfileImage(memberId, file))
+   V
+[ImageService] (@Transactional)
+   | (3a. Check & Delete Old Image -> calls ImageRepository.findByMemberId & S3Service.deleteImage)
+   | (3b. Upload New Image -> calls S3Service.uploadImage) --> [S3Service] --> [AWS S3 (Upload/Delete)]
+   | (3c. Save Image Metadata -> calls ImageRepository.save) --> [ImageRepository] --> [ImageEntity in DB]
+   | (3d. Update Member Profile URL -> calls MemberRead/WriteService) --> [MemberEntity in DB]
+   | (3e. Publish Event (Optional)) --> [ApplicationEventPublisher]
+   V
+[Response (Image URL)]
 ```
 
 ---
 
-## ImageController: API 엔드포인트
+## 설정: S3 연동을 위한 준비
 
-**클라이언트**(웹/모바일)는 `MultipartFile`을 `POST /api/images/profile`로 전송합니다.
+Spring Boot 애플리케이션에서 AWS S3를 사용하려면 몇 가지 설정이 필요합니다.
+
+**1. 의존성 추가 (build.gradle)**
+
+AWS SDK v2 for Java와 S3 관련 라이브러리를 추가해야 합니다.
+
+```gradle
+dependencies {
+    // ... other dependencies
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // AWS SDK v2 for S3
+    implementation platform('software.amazon.awssdk:bom:2.20.43') // BOM(Bill of Materials)으로 버전 관리 추천
+    implementation 'software.amazon.awssdk:s3'
+}
+```
+
+**2. AWS 자격 증명 설정**
+
+애플리케이션이 AWS 리소스(S3 버킷)에 접근할 권한이 필요합니다. 보안을 위해 **IAM 역할(Role)**을 사용하는 것이 가장 좋습니다 (특히 EC2, ECS, EKS 등 AWS 환경에서 실행 시). 로컬 개발 환경이나 다른 환경에서는 다음 방법들을 고려할 수 있습니다:
+
+- **환경 변수**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` 설정
+- **자격 증명 파일**: `~/.aws/credentials` 파일 사용
+- **IAM 사용자 Access Key**: (권장되지 않음 - 보안 위험) Access Key와 Secret Key를 직접 코드나 설정 파일에 넣지 마세요!
+
+**3. S3Client 빈(Bean) 등록**
+
+S3와 통신할 `S3Client` 객체를 스프링 빈으로 등록해야 합니다.
+
+```java
+package movlit.be.config; // 적절한 패키지 위치
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+
+@Configuration
+public class AwsS3Config {
+
+    @Value("${aws.region}") // application.yml 등에서 AWS 리전 설정
+    private String awsRegion;
+
+    @Bean
+    public S3Client s3Client() {
+        return S3Client.builder()
+                .region(Region.of(awsRegion))
+                // 자격증명은 DefaultCredentialsProvider가 환경변수, 자격증명 파일 등을 자동으로 찾아줌
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+}
+```
+
+**4. `application.yml` 설정**
+
+S3 버킷 이름, 폴더 경로, AWS 리전 등을 설정 파일에 정의합니다.
+
+```yaml
+aws:
+  region: ap-northeast-2 # 예: 서울 리전
+  s3:
+    bucket:
+      name: your-s3-bucket-name # 실제 버킷 이름으로 변경
+      folderName: profile-images # S3 버킷 내 폴더 경로 (선택 사항)
+```
+
+---
+
+## ImageController: API 엔드포인트 정의
+
+클라이언트(웹/모바일)는 이미지 파일을 `MultipartFile` 형태로 `POST /api/images/profile` API로 전송합니다.
 
 ```java
 package movlit.be.image.presentation;
 
-import lombok.RequiredArgsConstructor;
-import movlit.be.auth.application.service.MyMemberDetails;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.application.service.ImageService;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-
 @RestController
+@RequestMapping("/api/images") // 공통 경로 설정
 @RequiredArgsConstructor
 public class ImageController {
 
     private final ImageService imageService;
 
-    @PostMapping("/api/images/profile")
+    /**
+     * 현재 로그인된 사용자의 프로필 이미지를 업로드 (기존 이미지 있으면 교체)
+     * @param details 현재 인증된 사용자 정보 (Spring Security로부터 주입)
+     * @param file 업로드할 이미지 파일 (Multipart)
+     * @return 생성된 이미지 정보 (ID, URL)
+     */
+    @PostMapping("/profile")
     public ResponseEntity<ImageResponse> uploadProfileImage(
             @AuthenticationPrincipal MyMemberDetails details,
-            @RequestPart(value = "file", required = false) MultipartFile file
+            @RequestPart(value = "file") MultipartFile file // 'required = true' 가 기본값이므로 파일 없으면 예외 발생
     ) {
-        MemberId memberId = details.getMemberId();
-        var response = imageService.uploadProfileImage(memberId, file);
-        return ResponseEntity.ok(response);
+        // 파일 유효성 검사 (null 체크, 비어있는지 체크) - Service 레이어에서도 추가 검증 가능
+        if (file == null || file.isEmpty()) {
+            // 적절한 예외 처리 또는 에러 응답
+            return ResponseEntity.badRequest().build(); // 예시: 400 Bad Request
+        }
+
+        MemberId memberId = details.getMemberId(); // 인증 정보에서 사용자 ID 추출
+        ImageResponse response = imageService.uploadProfileImage(memberId, file);
+        // 성공 시 201 Created 또는 200 OK 반환 고려
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/api/images/profile")
+    /**
+     * 현재 로그인된 사용자의 프로필 이미지 정보(URL) 조회
+     * @param details 현재 인증된 사용자 정보
+     * @return 현재 프로필 이미지 정보 (ID, URL)
+     */
+    @GetMapping("/profile")
     public ResponseEntity<ImageResponse> fetchProfileImage(
             @AuthenticationPrincipal MyMemberDetails details
     ) {
-        var response = imageService.fetchProfileImage(details.getMemberId());
+        MemberId memberId = details.getMemberId();
+        ImageResponse response = imageService.fetchProfileImage(memberId);
+        // 이미지가 없는 경우 등을 고려하여 404 Not Found 반환 로직 추가 가능 (Service에서 처리)
+        if (response == null) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok(response);
     }
 
 }
 ```
 
-### 주요 포인트
+### 주요 포인트 & 개선점
 
-- `@AuthenticationPrincipal MyMemberDetails details`: 스프링 시큐리티를 통해 인증된 사용자 식별.
-- `@RequestPart("file") MultipartFile file`: MultipartFile 형태로 이미지를 받음.
-- `@PostMapping("/api/images/profile")` → 이미지 업로드, `@GetMapping("/api/images/profile")` → 이미지 조회.
+- `@AuthenticationPrincipal MyMemberDetails details`: Spring Security 컨텍스트에서 현재 인증된 사용자 정보를 주입받습니다. `MyMemberDetails`는 `UserDetails`를 구현한 커스텀 클래스일 것입니다.
+- `@RequestPart("file") MultipartFile file`: `multipart/form-data` 요청에서 `file`이라는 이름의 파트를 `MultipartFile` 객체로 받습니다. `@RequestParam` 대신 `@RequestPart`를 사용하는 것이 표준적입니다.
+- **파일 유효성 검사**: Controller 단계에서 기본적인 파일 존재 여부를 확인하는 것이 좋습니다. (Service에서 더 상세한 검증 가능: 파일 크기, 확장자 등)
+- **응답 상태 코드**: 이미지 생성 성공 시 `201 Created`를 반환하는 것이 RESTful 원칙에 더 부합할 수 있습니다. 조회는 `200 OK`, 실패 시 `400 Bad Request`, `404 Not Found` 등을 명확히 사용합니다.
+- **경로**: `/api/images/profile`처럼 리소스 중심으로 경로를 설정했습니다.
 
 ---
 
-## ImageService: 비즈니스 로직 & DB 처리
+## ImageService: 비즈니스 로직 & DB/S3 처리 조정
 
-**이미지 업로드 로직**과 **DB 저장**을 담당합니다.
+이미지 업로드/삭제 핵심 로직과 데이터베이스 연동을 담당합니다. **기존 S3 객체 삭제** 로직을 명확히 추가합니다.
 
 ```java
 package movlit.be.image.application.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import movlit.be.chat_room.application.service.dto.ProfileImageUpdatedEvent;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.application.convertor.ImageConverter;
-import movlit.be.image.domain.entity.ImageEntity;
-import movlit.be.image.domain.repository.ImageRepository;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-import movlit.be.member.application.service.MemberReadService;
-import movlit.be.member.application.service.MemberWriteService;
-import movlit.be.member.domain.entity.MemberEntity;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
+import java.util.Optional; // Optional 사용
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional // DB 작업(삭제, 저장, 업데이트)과 S3 작업을 하나의 트랜잭션으로 묶음 (DB 롤백 고려)
 @Slf4j
 public class ImageService {
 
     private final ImageRepository imageRepository;
-    private final S3Service s3Service;
+    private final S3Service s3Service; // S3 업로드/삭제 담당
     private final MemberReadService memberReadService;
     private final MemberWriteService memberWriteService;
-    private final ApplicationEventPublisher eventPublisher;
+    private final ApplicationEventPublisher eventPublisher; // 이벤트 발행기
 
     @Value("${aws.s3.bucket.folderName}")
     private String folderName;
 
     public ImageResponse uploadProfileImage(MemberId memberId, MultipartFile file) {
-        // 1. 기존 프로필 이미지가 존재한다면 삭제
+        // 0. 파일 유효성 검증 (예: 크기, 확장자) - 필요 시 추가
+        validateFile(file); // 예시 메소드
+
+        // 1. 기존 프로필 이미지가 존재한다면 S3에서 삭제 및 DB에서 삭제
         deleteExistingProfileImageIfPresent(memberId);
 
-        // 2. S3에 업로드 후 ImageEntity 생성
-        String imageUrl = s3Service.uploadImage(file, folderName);
-        ImageEntity imageEntity = ImageConverter.toImageEntity(imageUrl, memberId);
-        ImageEntity savedImageEntity = imageRepository.upload(imageEntity);
+        // 2. S3에 새 이미지 업로드 후 ImageEntity 생성
+        String imageUrl = s3Service.uploadImage(file, folderName); // S3 업로드
+        ImageEntity imageEntity = ImageConverter.toImageEntity(imageUrl, memberId); // Entity 변환
+        ImageEntity savedImageEntity = imageRepository.save(imageEntity); // DB에 이미지 메타데이터 저장
 
         // 3. Member 테이블의 profileImgUrl 필드 업데이트
         updateMemberProfileImageUrl(memberId, savedImageEntity.getUrl());
 
-        // 4. 이벤트 발행 (예: 채팅방 프로필 업데이트 등 추가 로직에 활용)
-        eventPublisher.publishEvent(new ProfileImageUpdatedEvent(memberId));
+        // 4. (선택적) 이벤트 발행: 프로필 변경 알림 등
+        eventPublisher.publishEvent(new ProfileImageUpdatedEvent(memberId, savedImageEntity.getUrl())); // 이벤트에 URL도 포함 가능
 
+        log.info("Profile image uploaded successfully for member: {}, URL: {}", memberId.getValue(), savedImageEntity.getUrl());
         return new ImageResponse(savedImageEntity.getImageId(), savedImageEntity.getUrl());
     }
 
     private void deleteExistingProfileImageIfPresent(MemberId memberId) {
-        if (imageRepository.existsByMemberId(memberId)) {
-            imageRepository.deleteByMemberId(memberId);
+        // DB에서 해당 멤버의 이미지 정보 조회
+        Optional<ImageEntity> existingImageOpt = imageRepository.findByMemberId(memberId);
+
+        if (existingImageOpt.isPresent()) {
+            ImageEntity existingImage = existingImageOpt.get();
+            log.info("Deleting existing profile image for member: {}, URL: {}", memberId.getValue(), existingImage.getUrl());
+
+            // S3에서 실제 이미지 파일 삭제
+            try {
+                s3Service.deleteImageFromS3(existingImage.getUrl());
+            } catch (Exception e) {
+                // S3 삭제 실패 시 로깅 및 예외 처리 전략 필요
+                // (예: DB 삭제는 그대로 진행할지, 전체 롤백할지 등)
+                log.error("Failed to delete image from S3: {}. Continuing with DB deletion.", existingImage.getUrl(), e);
+                // 또는 여기서 예외를 던져 트랜잭션 롤백 유도 가능
+            }
+
+            // DB에서 이미지 정보 삭제
+            imageRepository.delete(existingImage); // 혹은 deleteByMemberId 사용
         }
     }
 
     private void updateMemberProfileImageUrl(MemberId memberId, String imageUrl) {
-        MemberEntity member = memberReadService.fetchEntityByMemberId(memberId);
-        member.updateProfileImgUrl(imageUrl);
-        memberWriteService.save(member);
+        MemberEntity member = memberReadService.fetchEntityByMemberId(memberId); // Member 조회
+        member.updateProfileImgUrl(imageUrl); // Member 엔티티의 URL 업데이트 메소드 호출
+        // memberWriteService.save(member); // Member 엔티티가 영속성 컨텍스트에 있다면 @Transactional에 의해 자동 변경 감지(dirty checking)되어 save 호출 불필요할 수 있음. 확인 필요.
+        // 명시적으로 save 호출하는 것이 안전할 수 있습니다. MemberWriteService의 구현 확인.
+        log.info("Updated member profile URL for member: {}", memberId.getValue());
     }
 
+    @Transactional(readOnly = true) // 조회 메소드는 readOnly=true로 성능 최적화
     public ImageResponse fetchProfileImage(MemberId memberId) {
-        return imageRepository.fetchProfileImageByMemberId(memberId);
+        // findProfileImageByMemberId가 Optional<ImageResponse> 등을 반환하도록 수정하거나,
+        // 여기서 Optional<ImageEntity>를 받아 처리하는 것이 더 안전함.
+        // 현재 코드는 결과가 없을 때 예외 발생 가능성이 있음 (JpaRepository 기본 동작).
+        Optional<ImageEntity> imageOpt = imageRepository.findByMemberId(memberId);
+        return imageOpt
+                .map(img -> new ImageResponse(img.getImageId(), img.getUrl()))
+                .orElse(null); // 이미지가 없으면 null 반환 (Controller에서 404 처리)
+        // 또는 orElseThrow(() -> new EntityNotFoundException("Profile image not found for member: " + memberId));
+    }
+
+    private void validateFile(MultipartFile file) {
+        // 예시: 파일 크기 제한 (application.yml 에서 설정 가능 - spring.servlet.multipart.max-file-size)
+        // 예시: 파일 확장자 검증 (허용된 이미지 타입만 처리)
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png") && !contentType.equals("image/gif"))) {
+            // throw new InvalidFileFormatException("Only JPEG, PNG, GIF images are allowed.");
+            log.warn("Invalid file type uploaded: {}", contentType);
+            // 필요 시 커스텀 예외 발생
+        }
     }
 
 }
 ```
 
-### 주요 포인트
+### 주요 포인트 & 개선점
 
-1. **기존 프로필 이미지** 삭제 로직: `deleteExistingProfileImageIfPresent`
-   - 실제 S3 객체 삭제 로직이 필요하다면 추가 구현.
-2. **S3 업로드**: `s3Service.uploadImage(file, folderName)`
-3. **이미지 엔티티** 생성: `ImageConverter.toImageEntity(url, memberId)`
-4. **이벤트 발행**: `eventPublisher.publishEvent(...)`를 통해 다른 컴포넌트에서 업데이트 감지 가능.
+1.  **`@Transactional`**: DB 작업(이미지 정보 삭제/저장, 회원 정보 업데이트)들이 원자적으로 실행되도록 보장합니다. 만약 중간에 오류가 발생하면 DB 작업들이 롤백됩니다. (단, S3 작업은 롤백되지 않으므로 주의 필요)
+2.  **기존 프로필 이미지 삭제 로직 강화**:
+    - `ImageRepository`에 `findByMemberId(MemberId memberId)` 메소드 추가 (Optional 반환).
+    - 조회된 기존 이미지 정보(`ImageEntity`)에서 URL을 가져옵니다.
+    - `S3Service.deleteImageFromS3(imageUrl)`를 호출하여 S3 객체를 삭제합니다. **(S3Service에 해당 메소드 구현 필요)**
+    - DB에서 `imageRepository.delete(existingImage)`를 호출하여 레코드를 삭제합니다.
+3.  **S3 삭제 실패 처리**: S3 객체 삭제 시 네트워크 오류 등이 발생할 수 있습니다. 이에 대한 로깅 및 예외 처리 전략이 필요합니다. (DB만 삭제되고 S3에 고아 객체가 남을 수 있음)
+4.  **`Optional` 사용**: `findByMemberId`가 `Optional`을 반환하도록 하여 NullPointerException 가능성을 줄이고 명시적으로 부재 처리를 합니다.
+5.  **`updateMemberProfileImageUrl`**: `@Transactional` 덕분에 조회한 `MemberEntity`의 필드를 변경하면 트랜잭션 커밋 시점에 자동으로 UPDATE 쿼리가 나갈 수 있습니다(Dirty Checking). 하지만 명시적으로 `memberWriteService.save(member)`를 호출하는 것이 더 안전하고 가독성이 좋을 수 있습니다. (팀 컨벤션 확인)
+6.  **`fetchProfileImage`**: 조회 시 결과가 없을 경우를 대비해 `Optional`을 사용하거나 Repository 메소드가 null을 반환하도록 처리하고, Service에서도 null 또는 예외를 반환하여 Controller에서 적절한 HTTP 상태 코드(404 Not Found)를 응답하도록 개선했습니다.
+7.  **파일 유효성 검증**: `validateFile` 메소드 예시처럼 파일 크기, 타입 등을 검증하는 로직을 추가하는 것이 안전합니다.
 
 ---
 
-## S3Service: S3 업로드 로직
+## S3Service: S3 업로드 & 삭제 로직 구현
 
-**AWS S3**로 이미지를 전송하고 **URL**을 생성해 반환합니다.
+AWS S3로 이미지를 전송하고 URL을 생성하며, **이미지 삭제 기능**을 추가합니다.
 
 ```java
 package movlit.be.image.application.service;
-
-import java.io.IOException;
-import java.util.UUID;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import movlit.be.common.exception.ImageUploadException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class S3Service {
 
-    private final S3Client s3Client;
+    private final S3Client s3Client; // AWS SDK v2 S3 Client (Config에서 Bean 등록)
 
     @Value("${aws.s3.bucket.name}")
     private String bucketName;
 
+    /**
+     * 파일을 S3에 업로드하고, 생성된 파일의 URL을 반환합니다.
+     * @param file 업로드할 MultipartFile
+     * @param folderName S3 버킷 내 저장될 폴더 경로
+     * @return 업로드된 파일의 S3 URL
+     * @throws ImageUploadException S3 업로드 중 오류 발생 시
+     */
     public String uploadImage(MultipartFile file, String folderName) {
-        String fileName = generateFileName(file.getOriginalFilename(), folderName);
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File must not be null or empty");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String fileName = generateFileName(originalFilename, folderName); // 고유 파일명 생성
+
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
-                .key(fileName)
-                .contentType(file.getContentType())
+                .key(fileName) // 폴더명 포함된 전체 경로 + 파일명
+                .contentType(file.getContentType()) // 파일 MIME 타입 설정
+                // .acl(ObjectCannedACL.PUBLIC_READ) // 필요 시 ACL 설정 (권장: Bucket 정책 사용)
                 .build();
 
         try {
-            log.info("Uploading file to S3 with key: {}", fileName);
+            log.info("Uploading file to S3. Bucket: {}, Key: {}", bucketName, fileName);
             s3Client.putObject(putObjectRequest,
-                RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+                RequestBody.fromInputStream(file.getInputStream(), file.getSize())); // InputStream으로 S3에 전송
+
+            // 업로드 후 해당 파일의 접근 URL 생성
+            URL url = s3Client.utilities().getUrl(builder -> builder.bucket(bucketName).key(fileName));
+            log.info("File uploaded successfully. URL: {}", url);
+            return url.toExternalForm(); // URL 문자열 반환
+
         } catch (IOException e) {
+            log.error("Error getting InputStream from MultipartFile", e);
+            throw new ImageUploadException("Failed to read file for S3 upload.", e);
+        } catch (S3Exception e) {
             log.error("Error uploading file to S3", e);
-            throw new ImageUploadException();
+            throw new ImageUploadException("S3 upload failed.", e);
+        } catch (SdkException e) {
+            log.error("AWS SDK error during S3 upload", e);
+            throw new ImageUploadException("AWS SDK error during S3 upload.", e);
+        }
+    }
+
+    /**
+     * S3에서 이미지 객체를 삭제합니다.
+     * @param imageUrl 삭제할 이미지의 S3 URL
+     * @throws ImageDeleteException S3 삭제 중 오류 발생 시
+     */
+    public void deleteImageFromS3(String imageUrl) {
+        if (!StringUtils.hasText(imageUrl)) {
+            log.warn("Image URL is empty or null, skipping S3 deletion.");
+            return;
         }
 
-        // 업로드 후 해당 파일의 접근 URL 생성
-        return s3Client.utilities().getUrl(builder -> builder.bucket(bucketName).key(fileName))
-                .toExternalForm();
+        try {
+            String key = extractKeyFromUrl(imageUrl); // URL에서 S3 객체 키 추출
+            if (key == null) {
+                log.error("Could not extract key from URL: {}", imageUrl);
+                throw new ImageDeleteException("Invalid S3 URL format.");
+            }
+
+            log.info("Deleting object from S3. Bucket: {}, Key: {}", bucketName, key);
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            s3Client.deleteObject(deleteObjectRequest);
+            log.info("Successfully deleted object from S3. Key: {}", key);
+
+        } catch (S3Exception e) {
+            log.error("Error deleting object from S3. URL: {}", imageUrl, e);
+            throw new ImageDeleteException("S3 deletion failed for URL: " + imageUrl, e);
+        } catch (SdkException e) {
+            log.error("AWS SDK error during S3 deletion. URL: {}", imageUrl, e);
+            throw new ImageDeleteException("AWS SDK error during S3 deletion for URL: " + imageUrl, e);
+        } catch (Exception e) { // URL 파싱 등 다른 예외 처리
+            log.error("Unexpected error during S3 deletion process for URL: {}", imageUrl, e);
+            throw new ImageDeleteException("Unexpected error deleting image from S3.", e);
+        }
     }
 
+    /**
+     * 고유하고 안전한 파일 이름을 생성합니다. (폴더명/UUID-원본파일명)
+     * @param originalFilename 원본 파일명
+     * @param folderName S3 내 폴더 경로
+     * @return 생성된 파일명 (예: profile-images/a1b2c3d4-e5f6-7890-1234-abcdef123456-my_image.jpg)
+     */
     public String generateFileName(String originalFilename, String folderName) {
-        String sanitizedFilename = sanitizeFileName(originalFilename);
-        return folderName + "/" + UUID.randomUUID() + "-" + sanitizedFilename;
+        String sanitizedFilename = sanitizeFileName(originalFilename); // 파일명 정리
+        String extension = StringUtils.getFilenameExtension(sanitizedFilename); // 확장자 추출
+        String baseName = StringUtils.stripFilenameExtension(sanitizedFilename); // 파일 이름 부분 추출
+
+        // UUID와 타임스탬프 등을 조합하여 고유성 보장 강화 가능
+        String uniqueName = UUID.randomUUID().toString() + "-" + baseName;
+        if (extension != null && !extension.isEmpty()) {
+            uniqueName += "." + extension;
+        }
+
+        // 폴더명이 있으면 경로 추가
+        if (StringUtils.hasText(folderName)) {
+             // folderName 끝에 '/'가 있는지 확인하고 없으면 추가
+            String prefix = folderName.endsWith("/") ? folderName : folderName + "/";
+            return prefix + uniqueName;
+        } else {
+            return uniqueName;
+        }
     }
 
+    /**
+     * 파일명에서 잠재적으로 문제가 될 수 있는 문자들을 제거하거나 대체합니다.
+     * @param originalFilename 원본 파일명
+     * @return 정리된 파일명
+     */
     private String sanitizeFileName(String originalFilename) {
         if (originalFilename == null) {
-            return "unknown";
+            return "unknown_file"; // null일 경우 기본 이름 제공
         }
-        // 알파벳, 숫자, 점(.), 대시(-), 언더스코어(_)만 허용
-        return originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-_]", "");
+        // 예시: 공백을 언더스코어로 변경, 경로 구분자 제거, 특수 문자 제거 등
+        // 여기서는 간단히 알파벳, 숫자, 점(.), 대시(-), 언더스코어(_)만 허용
+        String sanitized = originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-_]", "_");
+        // 파일명이 너무 길 경우 자르기
+        int maxFilenameLength = 100; // 예시 길이 제한
+        if (sanitized.length() > maxFilenameLength) {
+            String extension = StringUtils.getFilenameExtension(sanitized);
+            String namePart = StringUtils.stripFilenameExtension(sanitized);
+            namePart = namePart.substring(0, maxFilenameLength - (extension != null ? extension.length() + 1 : 0));
+            sanitized = namePart + (extension != null ? "." + extension : "");
+        }
+        return sanitized;
     }
 
+    /**
+     * S3 객체 URL에서 객체 키(파일 경로 포함)를 추출합니다.
+     * S3 URL 형식(예: https://<bucket-name>.s3.<region>.amazonaws.com/<key>)을 가정합니다.
+     * CloudFront 등 CDN URL인 경우 파싱 로직이 달라져야 합니다.
+     * @param imageUrl S3 객체 URL
+     * @return 객체 키 (예: profile-images/uuid-image.jpg)
+     */
+    private String extractKeyFromUrl(String imageUrl) {
+        try {
+            URL url = new URL(imageUrl);
+            // URL 경로 부분(예: /profile-images/uuid-image.jpg)에서 첫 '/' 제거
+            String path = url.getPath();
+            if (path.startsWith("/")) {
+                path = path.substring(1);
+            }
+            // URL 인코딩된 문자(예: %20)가 있을 수 있으므로 디코딩
+            return URLDecoder.decode(path, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.error("Failed to parse S3 URL to extract key: {}", imageUrl, e);
+            return null; // 파싱 실패 시 null 반환
+        }
+    }
 }
 ```
 
-### 주요 포인트
+### 주요 포인트 & 개선점
 
-- **`S3Client`**(AWS SDK for Java v2) 사용.
-- `bucketName`, `folderName`: `application.yml`에 설정 (예: `aws.s3.bucket.name`, `aws.s3.bucket.folderName`).
-- 예외 발생 시 `ImageUploadException`을 던져 처리.
-- 파일명에 `UUID`를 추가하여 **중복 방지**.
+- **`S3Client`**: AWS SDK v2의 `S3Client`를 주입받아 사용합니다. (Bean 등록 필요)
+- **`uploadImage`**:
+  - `PutObjectRequest`를 사용하여 업로드 요청 정보를 구성합니다 (버킷명, 키, 콘텐츠 타입).
+  - `RequestBody.fromInputStream`을 사용하여 `MultipartFile`의 내용을 스트림으로 S3에 전송합니다. 효율적입니다.
+  - 업로드 성공 후 `s3Client.utilities().getUrl()`을 사용해 해당 객체의 URL을 생성합니다.
+  - `IOException`, `S3Exception`, `SdkException` 등 발생 가능한 예외를 구체적으로 처리하고 로깅합니다. 커스텀 예외(`ImageUploadException`)를 던져 Service 계층에서 처리하도록 합니다.
+- **`deleteImageFromS3` (신규 추가)**:
+  - 입력받은 S3 URL(`imageUrl`)에서 실제 S3 객체 키(`key`)를 추출하는 로직(`extractKeyFromUrl`)이 필요합니다. URL 형식에 따라 구현이 달라질 수 있으니 주의해야 합니다. (기본 S3 URL 형식 가정)
+  - `DeleteObjectRequest`를 사용하여 삭제 요청 정보를 구성합니다.
+  - `s3Client.deleteObject()`를 호출하여 객체를 삭제합니다.
+  - 삭제 중 발생 가능한 예외를 처리하고, 커스텀 예외(`ImageDeleteException`)를 던집니다.
+- **`generateFileName`**:
+  - `UUID.randomUUID()`를 사용하여 파일 이름의 충돌을 방지합니다.
+  - 원본 파일명을 `sanitizeFileName`으로 정리하고, 확장자를 유지합니다.
+  - 폴더 경로(`folderName`)를 파일명 앞에 추가하여 S3 내에서 구조적으로 관리합니다.
+- **`sanitizeFileName`**: 파일명에 포함될 수 없는 특수 문자나 경로 조작에 사용될 수 있는 문자들을 제거/대체하여 보안 및 시스템 호환성을 높입니다. 길이 제한도 추가하면 좋습니다.
+- **`extractKeyFromUrl`**: S3 URL로부터 객체 키를 안정적으로 추출하는 로직입니다. URL 인코딩을 고려하여 디코딩합니다. (CDN 사용 시 변경 필요)
+- **예외 처리**: 각 메소드에서 발생할 수 있는 AWS 관련 예외(`S3Exception`, `SdkException`) 및 I/O 예외 등을 처리하고, 서비스 계층에서 인지하기 쉬운 커스텀 예외(`ImageUploadException`, `ImageDeleteException`)로 변환하여 던지는 것이 좋습니다.
 
-> **주의**: S3 권한(Access Key, Secret Key, IAM Role) 설정을 미리 해주어야 합니다.
+> **주의**: S3 버킷 정책이나 IAM 권한 설정이 올바르게 되어 있어야 합니다. `PutObject` 및 `DeleteObject` 권한이 필요합니다. 객체 URL 접근 권한(Public Read 또는 Presigned URL 등)도 고려해야 합니다.
 
 ---
 
-## ImageEntity & Repository
+## ImageEntity & Repository: 데이터 모델링과 영속성
 
-**ImageEntity**는 `@EmbeddedId`로 `ImageId`(커스텀 VO) 사용 중입니다.
+**ImageEntity**는 이미지 메타데이터를 나타내는 JPA 엔티티입니다. `@EmbeddedId`를 사용하여 커스텀 Value Object인 `ImageId`를 기본 키로 사용하고 있습니다. (VO 사용은 타입 안정성과 도메인 표현력을 높여줍니다.)
 
 ```java
 package movlit.be.image.domain.entity;
 
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import movlit.be.common.util.ids.ImageId;
-import movlit.be.common.util.ids.MemberId;
-
 @Getter
 @Entity
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "image")
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 위한 기본 생성자 (protected)
+@Table(name = "image") // DB 테이블명 'image'
 public class ImageEntity {
 
-    @EmbeddedId
+    @EmbeddedId // 복합키나 Value Object를 ID로 사용할 때
     private ImageId imageId;
 
+    @Column(nullable = false, length = 2048) // URL은 null 불가, 길이 제한
     private String url;
 
-    @AttributeOverride(name = "value", column = @Column(name = "member_id"))
-    private MemberId memberId;
+    // MemberId VO를 member_id 컬럼에 매핑
+    @AttributeOverride(name = "value", column = @Column(name = "member_id", nullable = false, updatable = false))
+    @Embedded // MemberId가 @Embeddable 일 경우 명시 가능 (선택적)
+    private MemberId memberId; // 이미지 소유자 ID
 
+    @Column(nullable = false, updatable = false) // 등록 시각은 null 불가, 수정 불가
     private LocalDateTime regDt;
 
+    // 생성자를 통해 필수 값 초기화
     public ImageEntity(ImageId imageId, String url, MemberId memberId) {
         this.imageId = imageId;
         this.url = url;
         this.memberId = memberId;
-        this.regDt = LocalDateTime.now();
+        this.regDt = LocalDateTime.now(); // 생성 시 현재 시각 자동 설정
     }
 
+    // MemberId나 URL을 변경할 필요가 있다면 setter 대신 명확한 의도의 메소드 추가 고려
+    // 예: public void changeOwner(MemberId newMemberId) { ... }
 }
 ```
 
-### ImageRepository
+### ImageRepository 계층 구조
 
-JPA 기반으로 이미지 정보를 DB에 저장/삭제/조회하는 **Repository** 계층.
+데이터 접근 로직을 추상화하기 위해 Interface와 Impl 구조를 사용합니다. 이는 향후 구현 기술 변경(예: JPA -> QueryDSL, MyBatis)이나 테스트 용이성을 높이는 데 도움이 됩니다.
 
-#### 1) `ImageRepository` (Interface)
+#### 1) `ImageRepository` (Interface - Domain Layer)
+
+도메인 계층에 위치하며, 데이터 접근을 위한 명세(메소드 시그니처)를 정의합니다. 구현 기술에 독립적입니다.
 
 ```java
 package movlit.be.image.domain.repository;
 
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.domain.entity.ImageEntity;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-
 public interface ImageRepository {
 
-    ImageEntity upload(ImageEntity imageEntity);
+    ImageEntity save(ImageEntity imageEntity); // 저장 및 수정
 
-    boolean existsByMemberId(MemberId memberId);
+    Optional<ImageEntity> findByMemberId(MemberId memberId); // 멤버 ID로 이미지 조회 (단 건 가정)
 
-    ImageResponse fetchProfileImageByMemberId(MemberId memberId);
+    Optional<ImageEntity> findById(ImageId imageId); // ID로 이미지 조회
 
-    void deleteByMemberId(MemberId memberId);
+    boolean existsByMemberId(MemberId memberId); // 멤버 ID로 존재 여부 확인
 
+    // DTO 반환보다는 Entity 반환 후 Service에서 변환하는 것이 좋음
+    // Optional<ImageResponse> fetchProfileImageDtoByMemberId(MemberId memberId);
+    // 대신 findByMemberId 사용 권장
+
+    void deleteByMemberId(MemberId memberId); // 멤버 ID로 삭제
+
+    void delete(ImageEntity imageEntity); // 엔티티 객체로 삭제
 }
 ```
 
-#### 2) `ImageJpaRepository`
+#### 2) `ImageJpaRepository` (Interface - Infrastructure Layer)
+
+인프라 계층에 위치하며, Spring Data JPA의 `JpaRepository`를 상속받아 기본적인 CRUD 및 쿼리 메소드를 정의합니다.
 
 ```java
 package movlit.be.image.infra.persistence.jpa;
 
-import movlit.be.common.util.ids.ImageId;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.domain.entity.ImageEntity;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import java.util.Optional;
 
-public interface ImageJpaRepository extends JpaRepository<ImageEntity, ImageId> {
+public interface ImageJpaRepository extends JpaRepository<ImageEntity, ImageId> { // Entity와 ID 타입 지정
+
+    // MemberId (Embeddable 타입) 필드로 조회
+    Optional<ImageEntity> findByMemberId(MemberId memberId);
 
     boolean existsByMemberId(MemberId memberId);
 
-    @Query("SELECT NEW movlit.be.image.presentation.dto.response.ImageResponse(i.imageId, i.url) "
-            + "FROM ImageEntity i "
-            + "WHERE i.memberId = :memberId")
-    ImageResponse findProfileImageByMemberId(@Param("memberId") MemberId memberId);
+    // JPQL을 이용한 커스텀 조회 (DTO 직접 반환 예시 - 필요 시 사용)
+    // @Query("SELECT NEW movlit.be.image.presentation.dto.response.ImageResponse(i.imageId, i.url) "
+    //        + "FROM ImageEntity i "
+    //        + "WHERE i.memberId = :memberId")
+    // Optional<ImageResponse> findProfileImageDtoByMemberId(@Param("memberId") MemberId memberId);
 
-    void deleteByMemberId(MemberId memberId);
+    // MemberId로 삭제하는 JPQL 쿼리 (벌크 연산)
+    // 벌크 연산은 영속성 컨텍스트를 무시하므로 주의 필요 (실행 전 flush, 실행 후 clear 필요할 수 있음)
+    @Modifying // DELETE, UPDATE 쿼리 시 필요
+    @Query("DELETE FROM ImageEntity i WHERE i.memberId = :memberId")
+    void deleteByMemberId(@Param("memberId") MemberId memberId);
 
+    // findById(ImageId id)는 JpaRepository에 이미 존재함
 }
 ```
 
-#### 3) `ImageRepositoryImpl`
+#### 3) `ImageRepositoryImpl` (Class - Infrastructure Layer)
+
+`ImageRepository` 인터페이스를 구현하며, 내부적으로 `ImageJpaRepository`를 사용하여 실제 데이터베이스 작업을 수행합니다. 복잡한 쿼리(예: QueryDSL)나 추가 로직이 필요할 때 유용합니다.
 
 ```java
 package movlit.be.image.infra.persistence;
 
-import lombok.RequiredArgsConstructor;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.domain.entity.ImageEntity;
-import movlit.be.image.domain.repository.ImageRepository;
-import movlit.be.image.infra.persistence.jpa.ImageJpaRepository;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-import org.springframework.stereotype.Repository;
-
-@Repository
+@Repository // Spring 컴포넌트 스캔 대상
 @RequiredArgsConstructor
 public class ImageRepositoryImpl implements ImageRepository {
 
-    private final ImageJpaRepository imageJpaRepository;
+    private final ImageJpaRepository imageJpaRepository; // Spring Data JPA Repository 주입
 
     @Override
-    public ImageEntity upload(ImageEntity imageEntity) {
+    public ImageEntity save(ImageEntity imageEntity) {
         return imageJpaRepository.save(imageEntity);
     }
 
     @Override
+    @Transactional(readOnly = true) // 조회 작업 명시
+    public Optional<ImageEntity> findByMemberId(MemberId memberId) {
+        return imageJpaRepository.findByMemberId(memberId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ImageEntity> findById(ImageId imageId) {
+        return imageJpaRepository.findById(imageId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean existsByMemberId(MemberId memberId) {
         return imageJpaRepository.existsByMemberId(memberId);
     }
 
-    @Override
-    public ImageResponse fetchProfileImageByMemberId(MemberId memberId) {
-        return imageJpaRepository.findProfileImageByMemberId(memberId);
-    }
+    // DTO 직접 반환 제거
+    // @Override
+    // @Transactional(readOnly = true)
+    // public Optional<ImageResponse> fetchProfileImageDtoByMemberId(MemberId memberId) {
+    //     return imageJpaRepository.findProfileImageDtoByMemberId(memberId);
+    // }
 
     @Override
+    // @Modifying + @Query 사용 시 @Transactional 필요 (Service 레이어 @Transactional 전파)
     public void deleteByMemberId(MemberId memberId) {
+        // JPQL 벌크 삭제 사용
         imageJpaRepository.deleteByMemberId(memberId);
+        // 주의: 벌크 연산 후 영속성 컨텍스트와의 동기화 문제 발생 가능성 있음
+        // imageJpaRepository.flush(); // 필요 시 추가
+        // entityManager.clear(); // 필요 시 추가 (EntityManager 직접 주입 필요)
     }
 
+    @Override
+    public void delete(ImageEntity imageEntity) {
+        // 엔티티 객체를 이용한 삭제 (영속성 컨텍스트 관리 하에 동작)
+        imageJpaRepository.delete(imageEntity);
+    }
 }
 ```
 
-> **Note**: `ImageRepositoryImpl`를 통해 `JpaRepository`를 감싸서 **추가 로직**이나 **커스텀 쿼리**를 확장할 수 있게 합니다.
+> **Repository 설계**: `ImageRepository` 인터페이스는 도메인 규칙을 정의하고, `ImageRepositoryImpl` + `ImageJpaRepository`는 그 구현을 담당합니다. 이렇게 하면 도메인 로직이 인프라(JPA) 기술에 직접 의존하지 않게 되어 유연성이 높아집니다. DTO를 Repository에서 직접 반환하기보다는 Entity를 반환하고 Service 계층에서 DTO로 변환하는 것이 계층 분리 원칙에 더 부합합니다.
 
 ---
 
 ## 정리
 
-- **프로필 이미지**를 업로드할 때 **S3**를 사용하면 **대용량 파일**에 대한 확장성, 안전성 확보.
-- **DB**에는 오직 **메타데이터**(URL, 소유 사용자, 등록일 등)만 저장하고, 실제 파일은 S3로 관리.
-- 중복 파일이 없는지, 이미지를 교체할 때 이전 파일을 삭제할 것인지, 파일 크기 제한, 이미지 리사이즈/썸네일 처리가 필요한지 등을 종합적으로 고려해야 합니다.
-- 스프링 이벤트(`ApplicationEventPublisher`)로 **프로필 이미지 변경**을 다른 서비스나 모듈에서 **비동기로 감지**할 수 있습니다.
-
----
-
-## 전체 소스 코드
-
-### **ImageController.java**
-
-```java
-package movlit.be.image.presentation;
-
-import lombok.RequiredArgsConstructor;
-import movlit.be.auth.application.service.MyMemberDetails;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.application.service.ImageService;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-
-@RestController
-@RequiredArgsConstructor
-public class ImageController {
-
-    private final ImageService imageService;
-
-    @PostMapping("/api/images/profile")
-    public ResponseEntity<ImageResponse> uploadProfileImage(
-            @AuthenticationPrincipal MyMemberDetails details,
-            @RequestPart(value = "file", required = false) MultipartFile file
-    ) {
-        MemberId memberId = details.getMemberId();
-        var response = imageService.uploadProfileImage(memberId, file);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/api/images/profile")
-    public ResponseEntity<ImageResponse> fetchProfileImage(
-            @AuthenticationPrincipal MyMemberDetails details
-    ) {
-        var response = imageService.fetchProfileImage(details.getMemberId());
-        return ResponseEntity.ok(response);
-    }
-
-}
-```
-
-### **ImageService.java**
-
-```java
-package movlit.be.image.application.service;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import movlit.be.chat_room.application.service.dto.ProfileImageUpdatedEvent;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.application.convertor.ImageConverter;
-import movlit.be.image.domain.entity.ImageEntity;
-import movlit.be.image.domain.repository.ImageRepository;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-import movlit.be.member.application.service.MemberReadService;
-import movlit.be.member.application.service.MemberWriteService;
-import movlit.be.member.domain.entity.MemberEntity;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-@Service
-@RequiredArgsConstructor
-@Transactional
-@Slf4j
-public class ImageService {
-
-    private final ImageRepository imageRepository;
-    private final S3Service s3Service;
-    private final MemberReadService memberReadService;
-    private final MemberWriteService memberWriteService;
-    private final ApplicationEventPublisher eventPublisher;
-
-    @Value("${aws.s3.bucket.folderName}")
-    private String folderName;
-
-    public ImageResponse uploadProfileImage(MemberId memberId, MultipartFile file) {
-        deleteExistingProfileImageIfPresent(memberId);
-
-        String imageUrl = s3Service.uploadImage(file, folderName);
-        ImageEntity imageEntity = ImageConverter.toImageEntity(imageUrl, memberId);
-        ImageEntity savedImageEntity = imageRepository.upload(imageEntity);
-
-        updateMemberProfileImageUrl(memberId, savedImageEntity.getUrl());
-        eventPublisher.publishEvent(new ProfileImageUpdatedEvent(memberId));
-
-        return new ImageResponse(savedImageEntity.getImageId(), savedImageEntity.getUrl());
-    }
-
-    private void deleteExistingProfileImageIfPresent(MemberId memberId) {
-        if (imageRepository.existsByMemberId(memberId)) {
-            imageRepository.deleteByMemberId(memberId);
-        }
-    }
-
-    private void updateMemberProfileImageUrl(MemberId memberId, String imageUrl) {
-        MemberEntity member = memberReadService.fetchEntityByMemberId(memberId);
-        member.updateProfileImgUrl(imageUrl);
-        memberWriteService.save(member);
-    }
-
-    public ImageResponse fetchProfileImage(MemberId memberId) {
-        return imageRepository.fetchProfileImageByMemberId(memberId);
-    }
-
-}
-```
-
-### **ImageConverter.java**
-
-```java
-package movlit.be.image.application.convertor;
-
-import movlit.be.common.util.IdFactory;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.domain.entity.ImageEntity;
-
-public class ImageConverter {
-
-    public static ImageEntity toImageEntity(String url, MemberId memberId) {
-        return new ImageEntity(IdFactory.createImageId(), url, memberId);
-    }
-
-}
-```
-
-### **S3Service.java**
-
-```java
-package movlit.be.image.application.service;
-
-import java.io.IOException;
-import java.util.UUID;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import movlit.be.common.exception.ImageUploadException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class S3Service {
-
-    private final S3Client s3Client;
-
-    @Value("${aws.s3.bucket.name}")
-    private String bucketName;
-
-    public String uploadImage(MultipartFile file, String folderName) {
-        String fileName = generateFileName(file.getOriginalFilename(), folderName);
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(fileName)
-                .contentType(file.getContentType())
-                .build();
-
-        try {
-            log.info("Uploading file to S3 with key: {}", fileName);
-            s3Client.putObject(putObjectRequest,
-                RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-        } catch (IOException e) {
-            log.error("Error uploading file to S3", e);
-            throw new ImageUploadException();
-        }
-
-        return s3Client.utilities().getUrl(builder -> builder.bucket(bucketName).key(fileName))
-                .toExternalForm();
-    }
-
-    public String generateFileName(String originalFilename, String folderName) {
-        String sanitizedFilename = sanitizeFileName(originalFilename);
-        return folderName + "/" + UUID.randomUUID() + "-" + sanitizedFilename;
-    }
-
-    private String sanitizeFileName(String originalFilename) {
-        if (originalFilename == null) {
-            return "unknown";
-        }
-        return originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-_]", "");
-    }
-
-}
-```
-
-### **ImageEntity.java**
-
-```java
-package movlit.be.image.domain.entity;
-
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import movlit.be.common.util.ids.ImageId;
-import movlit.be.common.util.ids.MemberId;
-
-@Getter
-@Entity
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "image")
-public class ImageEntity {
-
-    @EmbeddedId
-    private ImageId imageId;
-
-    private String url;
-
-    @AttributeOverride(name = "value", column = @Column(name = "member_id"))
-    private MemberId memberId;
-
-    private LocalDateTime regDt;
-
-    public ImageEntity(ImageId imageId, String url, MemberId memberId) {
-        this.imageId = imageId;
-        this.url = url;
-        this.memberId = memberId;
-        this.regDt = LocalDateTime.now();
-    }
-
-}
-```
-
-### **ImageRepository.java**
-
-```java
-package movlit.be.image.domain.repository;
-
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.domain.entity.ImageEntity;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-
-public interface ImageRepository {
-
-    ImageEntity upload(ImageEntity imageEntity);
-
-    boolean existsByMemberId(MemberId memberId);
-
-    ImageResponse fetchProfileImageByMemberId(MemberId memberId);
-
-    void deleteByMemberId(MemberId memberId);
-
-}
-```
-
-### **ImageJpaRepository.java**
-
-```java
-package movlit.be.image.infra.persistence.jpa;
-
-import movlit.be.common.util.ids.ImageId;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.domain.entity.ImageEntity;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
-public interface ImageJpaRepository extends JpaRepository<ImageEntity, ImageId> {
-
-    boolean existsByMemberId(MemberId memberId);
-
-    @Query("SELECT NEW movlit.be.image.presentation.dto.response.ImageResponse(i.imageId, i.url) "
-            + "FROM ImageEntity i "
-            + "WHERE i.memberId = :memberId")
-    ImageResponse findProfileImageByMemberId(@Param("memberId") MemberId memberId);
-
-    void deleteByMemberId(MemberId memberId);
-
-}
-```
-
-### **ImageRepositoryImpl.java**
-
-```java
-package movlit.be.image.infra.persistence;
-
-import lombok.RequiredArgsConstructor;
-import movlit.be.common.util.ids.MemberId;
-import movlit.be.image.domain.entity.ImageEntity;
-import movlit.be.image.domain.repository.ImageRepository;
-import movlit.be.image.infra.persistence.jpa.ImageJpaRepository;
-import movlit.be.image.presentation.dto.response.ImageResponse;
-import org.springframework.stereotype.Repository;
-
-@Repository
-@RequiredArgsConstructor
-public class ImageRepositoryImpl implements ImageRepository {
-
-    private final ImageJpaRepository imageJpaRepository;
-
-    @Override
-    public ImageEntity upload(ImageEntity imageEntity) {
-        return imageJpaRepository.save(imageEntity);
-    }
-
-    @Override
-    public boolean existsByMemberId(MemberId memberId) {
-        return imageJpaRepository.existsByMemberId(memberId);
-    }
-
-    @Override
-    public ImageResponse fetchProfileImageByMemberId(MemberId memberId) {
-        return imageJpaRepository.findProfileImageByMemberId(memberId);
-    }
-
-    @Override
-    public void deleteByMemberId(MemberId memberId) {
-        imageJpaRepository.deleteByMemberId(memberId);
-    }
-
-}
-```
-
-### **ImageResponse.java**
-
-```java
-package movlit.be.image.presentation.dto.response;
-
-import movlit.be.common.util.ids.ImageId;
-
-public record ImageResponse(ImageId imageId, String url) {
-
-}
-```
-
-### **MemberProfileUpdateDto.java** (예시)
-
-```java
-package movlit.be.image.presentation.dto.response;
-
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
-public class MemberProfileUpdateDto {
-
-    private String profileImgUrl;
-
-}
-```
-
----
-
-## 결론
-
-- 추가로 파일 **용량** 제한, S3 객체 삭제 로직, 썸네일 생성, 이미지 **확장자 검증** 등을 개선해나갈 것입니다.
+지금까지 Spring Boot와 AWS S3를 연동하여 프로필 이미지를 업로드하고 관리하는 기능의 전반적인 흐름과 구현 방법을 살펴보았습니다.
+
+**핵심 요약**:
+
+- **S3 활용**: 대용량 정적 파일(이미지)은 S3에 저장하여 서버 부담을 줄이고 확장성, 안정성을 확보합니다.
+- **DB**: 파일 자체 대신 메타데이터(S3 URL, 소유자 정보 등)만 관리합니다.
+- **로직 분리**: Controller(API)-Service(비즈니스 로직)-Repository(데이터 접근)-S3Service(외부 서비스 연동)로 역할을 명확히 분리하여 유지보수성을 높입니다.
+- **기존 파일 관리**: 새 이미지 업로드 시, 기존 S3 객체 삭제 및 DB 정보 업데이트 로직을 구현하여 불필요한 파일이 남지 않도록 관리합니다.
+- **설정 및 보안**: AWS 자격 증명, S3 Client 빈 등록, 버킷/폴더 설정이 필수적이며, 파일 유효성 검사(크기, 타입) 및 S3 접근 권한 관리가 중요합니다.
