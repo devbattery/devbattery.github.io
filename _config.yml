@@ -14,7 +14,7 @@ description: "Keep Your Dev Battery Charged"
 url: "https://devbattery.com"
 baseurl: "" # the subpath of your site, e.g. "/blog"
 repository: "devbattery/devbattery.github.io"
-logo: "assets/images/nature.png"
+# logo: "assets/images/nature.png"
 words_per_minute: 200
 
 # Comments Settings
