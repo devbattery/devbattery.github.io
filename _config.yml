@@ -29,10 +29,9 @@ comments:
 # Search Settings
 search: true
 search_full_content: true
-search_provider: # Options: lunr, algolia, google
-  # For lunr, ensure search_within_pages is enabled if needed:
-  lunr:
-    search_within_pages: true
+search_provider: lunr
+  # lunr:
+  #   search_within_pages: true
 
 # SEO Related
 google_site_verification:
