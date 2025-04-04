@@ -32,10 +32,10 @@ GitHub: <https://github.com/devbattery>
 
 - 백엔드 4명이 개발하여, 팀장으로서 **프로젝트의 모든 부분 주도**
 - [**무중단 배포**](http://devbattery.com/project/foodymoody-release/) 도입
-- **Spring Boot**를 활용하여 API 구현 후 [**Rest Docs**로 문서화]()
+- **Spring Boot**를 활용하여 백엔드 API 구현 및 테스트 후 [**Rest Docs**로 문서화](https://devbattery.com/project/movlit-rest-docs/)
 - **Elastic Search**를 활용한 영화 추천과 **Redis Pub/Sub**을 활용한 채팅/알림 서비스 구현
 - **Spring Security**를 활용한 **JWT** 기반 로그인 구현
-- **Vite React**를 활용하여 페이지 구현
+- **Vite React**를 활용하여 페이지 구현  
 
 <img src="https://github.com/user-attachments/assets/96b372dd-52ee-4481-96d1-fba414443c4a" alt="MovLit System Architecture Diagram">
 
@@ -46,6 +46,7 @@ GitHub: <https://github.com/devbattery>
 > “맛집 공유 SNS 플랫폼”
 
 - 백엔드 3명과 프론트엔드 2명이 개발
+- DDD 기반으로 백엔드 API 구현
 
 <!-- ## 경험
 
