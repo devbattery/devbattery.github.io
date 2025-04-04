@@ -49,13 +49,13 @@ GitHub: <https://github.com/devbattery>
 - **DDD 기반**으로 백엔드 API 구현
 
 ## 경험
-
+<!-- 
 <style>
   .my-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
   .my-table td { vertical-align: top; padding: 8px; border-bottom: 1px solid #eee; }
   .my-table td:first-child { width: 30%; font-weight: bold; }
   .my-table ul { margin: 0; padding-left: 20px; }
-</style>
+</style> -->
 
 <table class="my-table">
   <tr>
