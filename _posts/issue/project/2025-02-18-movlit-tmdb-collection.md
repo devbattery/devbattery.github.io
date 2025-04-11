@@ -14,40 +14,16 @@ sidebar:
   nav: "categories"
 
 date: 2025-02-18
-last_modified_at: 2025-03-29
+last_modified_at: 2025-04-11
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
-## TMDB 영화 데이터, Spring Boot로 수집하고 저장하기! 🎬
-
-안녕하세요! 오늘은 영화나 TV 시리즈 팬이라면 익숙할 **TMDB(The Movie Database)**의 방대한 데이터를 활용하는 방법을 알아볼 거예요. TMDB는 고맙게도 다양한 영화 정보를 **무료 API**로 제공해주는데요, 이걸 **Spring Boot**와 **JPA**를 이용해서 우리만의 데이터베이스에 차곡차곡 쌓는 과정을 단계별로 살펴보겠습니다.
-
-- **TMDB**: 영화, TV 시리즈, 배우 등 엔터테인먼트 관련 데이터를 제공하는 거대한 커뮤니티 기반 데이터베이스입니다. 우리는 여기서 제공하는 API를 통해 원하는 정보를 가져올 거예요.
-- **Spring Boot**: Java 기반 웹 프레임워크인 Spring을 더 쉽고 빠르게 사용할 수 있게 해주는 도구입니다. 이걸로 외부 API를 호출하고 데이터를 처리하는 **REST API 서버**를 뚝딱 만들어 볼 겁니다.
-- **JpaRepository**: Java 진영의 표준 ORM(객체-관계 매핑) 기술인 JPA를 쉽게 사용하게 해주는 Spring Data JPA의 핵심 인터페이스입니다. 코드로 객체를 다루듯 데이터베이스 작업을 처리할 수 있게 해줘서, 수집한 데이터를 우리 **DB에 영구적으로 저장(영속화)**하는 데 사용됩니다.
-
-### 아키텍처 한눈에 보기 🏗️
-
-데이터가 어떻게 흘러가는지 간단한 그림으로 먼저 살펴볼까요?
-
-```
-[TMDB API] <---- HTTP 요청 ----> [TmdbApiClient] <---- 메서드 호출 ----> [MovieCollectionService] <---- 데이터 전달 ----> [JPA Repository] <---- SQL 실행 ----> [우리 DB]
-   (외부)                     (우리 서버 내부)                       (우리 서버 내부)                      (우리 서버 내부)                  (우리 서버 내부)
-```
-
-각 컴포넌트(구성 요소)의 역할을 좀 더 자세히 알아볼게요.
-
-- **`MovieCollectionController`**: 우리 서버의 '입구' 역할을 합니다. 외부(예: 웹 브라우저, 포스트맨)에서 특정 URL로 **HTTP 요청**이 들어오면, 해당 요청에 맞는 **Service 계층의 메서드를 호출**해주는 다리 역할을 해요.
-- **`TmdbApiClient`**: '외부'인 TMDB API와 직접 통신하는 친구입니다. 마치 해외 특파원처럼, 필요한 정보를 TMDB에 **HTTP 요청**으로 물어보고 응답을 받아오는 **클라이언트** 역할을 담당합니다.
-- **`MovieCollectionService`**: 여기가 바로 **핵심 비즈니스 로직**이 처리되는 '작업실'입니다. `TmdbApiClient`로부터 받은 데이터를 그냥 저장하는 게 아니라, 우리 서비스에 맞게 **가공**하고, 필요한 경우 여러 API 호출 결과를 **조합**하는 등 실제적인 **데이터 처리** 작업을 수행합니다.
-- **`JpaRepository`**: Service에서 처리된 데이터를 최종적으로 **데이터베이스(DB)에 저장**하거나 조회하는 '창고 관리자'입니다. JPA 기술을 이용해 복잡한 SQL 없이도 DB 작업을 할 수 있게 도와줍니다.
-
----
+**TMDB(The Movie Database)**는 다양한 영화 정보를 **무료 API**로 제공해주는 서비스입니다. 이걸 **Spring Boot**와 **JPA**를 이용해서 데이터베이스에 쌓아보겠습니다.
 
 ## MovieCollectionController: 데이터 수집 시작 버튼 🕹️
 
-이제 실제 코드를 보면서 이야기해볼게요. `MovieCollectionController`는 데이터 수집 로직을 실행시키는 **HTTP GET 요청**을 받는 엔드포인트(URL 경로)들을 정의하는 클래스입니다. 예를 들어, 웹 브라우저나 관리자 도구에서 `GET /collect/movie/discover` 같은 주소로 요청을 보내면, TMDB에서 영화 정보를 가져와 우리 DB에 저장하는 작업이 시작되는 거죠.
+`MovieCollectionController`는 데이터 수집 로직을 실행시키는 **HTTP GET 요청**을 받는 엔드포인트(URL 경로)들을 정의하는 클래스입니다. 예를 들어, 웹 브라우저나 관리자 도구에서 `GET /collect/movie/discover` 같은 주소로 요청을 보내면, TMDB에서 영화 정보를 가져와 우리 DB에 저장하는 작업이 시작되는 거죠.
 
 ```java
 package movlit.be.data_collection.movie;
@@ -101,19 +77,7 @@ public class MovieCollectionController {
 }
 ```
 
-### 주요 포인트 짚어보기 📌
-
-- **역할 분담**: 컨트롤러는 요청을 받고, 적절한 서비스 메서드를 호출한 뒤, 성공/실패 여부를 HTTP 응답으로 알려주는 역할만 합니다. 복잡한 로직은 가지지 않는 것이 좋은 설계입니다.
-- **`@RestController`**: 이 어노테이션 덕분에 각 메서드의 반환값(여기서는 `ResponseEntity`)이 자동으로 HTTP 응답 본문으로 변환됩니다. 일반 `@Controller`와 달리 뷰(HTML 페이지)를 찾지 않아요.
-- **`@GetMapping`**: HTTP GET 메서드 요청을 특정 경로와 연결해줍니다.
-- **`ResponseEntity<Void>`**: 데이터 수집 작업은 보통 결과를 즉시 반환하기보다는 백그라운드에서 진행되므로, 성공 여부(HTTP 200 OK)만 알려주기 위해 본문(`Body`)이 없는 `Void` 타입을 사용했습니다.
-- **`@RequiredArgsConstructor` (Lombok)**: `final`로 선언된 `movieCollectionService` 필드를 위한 생성자를 자동으로 만들어줍니다. 이를 통해 Spring이 의존성 주입(Dependency Injection)을 해줄 수 있어요. 생성자 주입 방식은 권장되는 DI 방법 중 하나입니다.
-
----
-
 ## TmdbApiClient: TMDB와 대화하는 창구 📞
-
-`TmdbApiClient` 클래스는 우리 서버가 TMDB API와 통신할 수 있도록 도와주는 '통신 전문가'입니다. Spring에서 제공하는 **`RestTemplate`** (또는 최신 프로젝트에서는 `WebClient`)을 사용해서 지정된 TMDB API 엔드포인트(URL)로 HTTP 요청을 보내고, 그 결과를 받아오는 역할을 합니다. 여기서는 TMDB가 주로 JSON 형식으로 응답하기 때문에, 결과를 Java에서 다루기 쉬운 `Map` 또는 `List<Map<String, Object>>` 형태로 변환해서 받습니다.
 
 ```java
 package movlit.be.movie_collect.application;
@@ -217,23 +181,9 @@ public class TmdbApiClient {
 }
 ```
 
-### 주요 포인트 짚어보기 📌
-
-- **`@Value("${...}")`**: `application.yml`이나 `application.properties` 파일, 또는 환경 변수에 정의된 설정 값을 Java 코드 내 변수로 가져올 때 사용합니다. API 키처럼 민감하거나 변경될 수 있는 정보는 코드에 직접 넣기보다 이렇게 외부 설정으로 관리하는 것이 좋습니다.
-- **`RestTemplate` vs `WebClient`**: `RestTemplate`은 Spring의 전통적인 동기(Synchronous) 방식 HTTP 클라이언트입니다. 사용하기 간편하지만, 요청을 보내고 응답이 올 때까지 스레드가 대기(Blocking)해야 합니다. 최신 Spring 프로젝트에서는 비동기(Asynchronous)/논블로킹(Non-blocking) 방식의 **`WebClient`** 사용이 권장됩니다. 특히 대량의 API 호출이 필요한 경우 성능상 이점이 있습니다.
-- **`Map<String, Object>` vs DTO**: API 응답을 `Map`으로 받는 것은 유연하지만, 어떤 키가 있는지, 각 키의 값 타입이 무엇인지 컴파일 시점에 알기 어렵고, 잘못된 키를 사용하거나 타입 캐스팅 오류가 발생하기 쉽습니다. API 응답 구조에 맞춰 **DTO(Data Transfer Object) 클래스**를 정의하고 `restTemplate.getForObject(url, MovieDetailsDto.class)`처럼 사용하면, 코드 가독성과 안정성이 크게 향상됩니다. (Jackson 라이브러리가 자동으로 JSON <-> DTO 변환을 해줍니다.)
-- **상수 활용**: API 요청 URL에 반복적으로 사용되는 파라미터(언어, 지역 등)는 상수로 정의하면 오타를 줄이고 유지보수가 용이해집니다.
-- **에러 처리의 중요성**: 현재 코드는 `restTemplate.getForObject()` 호출 시 네트워크 오류, 4xx/5xx 응답 코드 등 다양한 예외가 발생할 수 있습니다. 실제 서비스에서는 `try-catch` 블록으로 감싸거나, `RestTemplate`의 `setErrorHandler()`를 커스터마이징하여 **예외 상황을 더 견고하게 처리**해야 합니다. 예를 들어, 404 Not Found 응답을 받았을 때 어떻게 처리할지 등을 정의해야 안정적인 데이터 수집이 가능합니다.
-
-> **Tip 💡**: `UriComponentsBuilder`를 사용하면 URL 문자열을 직접 조립하는 것보다 더 안전하고 깔끔하게 URL과 파라미터를 관리할 수 있습니다. `builder.path("/discover/movie").queryParam("api_key", apiKey)...build().toUriString()` 와 같이 사용할 수 있어요.
-
----
-
 ## MovieCollectionService: 데이터 가공과 저장의 핵심 엔진 ⚙️
 
-`MovieCollectionService`는 이번 프로젝트의 '심장'과 같은 역할을 합니다. `TmdbApiClient`를 통해 가져온 원시(raw) 데이터를 우리 서비스에 필요한 형태로 **가공**하고, **비즈니스 규칙**을 적용하며, 최종적으로 `JpaRepository`를 통해 **데이터베이스에 저장**하는 모든 핵심 로직이 여기에 구현되어 있습니다.
-
-이 서비스는 크게 네 가지 데이터 수집 기능을 제공합니다:
+`MovieCollectionService`는 이번 프로젝트의 '심장'과 같은 역할을 합니다. `TmdbApiClient`를 통해 가져온 raw 데이터를 우리 서비스에 필요한 형태로 저장합니다.
 
 1.  **영화 목록 수집 (Discover)**: TMDB의 Discover API를 통해 특정 조건(예: 최신 인기작)의 영화 목록을 가져와 기본 정보를 저장합니다.
 2.  **영화 키워드 수집**: 이미 저장된 영화들에 대해 TMDB에서 관련 키워드를 가져와 저장합니다.
@@ -787,19 +737,9 @@ public class MovieCollectionService {
     - `createMovieRCrewEntity()`: 영화(`MovieEntity`)와 인물(`MovieCrewEntity`) 사이의 **N:M 관계**를 표현하는 `MovieRCrewEntity`(매핑 테이블용 엔티티)를 생성합니다.
     - `movieCrewJpaRepository.saveAll()` / `movieRCrewJpaRepository.saveAll()`: 수집된 인물 정보와 영화-인물 관계 정보를 각각 일괄 저장합니다. (인물 정보 저장 시 중복 제거 후 저장해야 함!)
 
-#### 기타 팁 및 주의사항 ⚠️
-
-- **트랜잭션 관리 (`@Transactional`)**: `saveAll`과 같은 여러 DB 작업을 하나의 논리적인 단위로 묶어줍니다. 중간에 오류가 발생하면 모든 작업이 롤백되어 데이터 일관성을 유지하는 데 중요합니다.
-- **ID 생성 (`IdFactory`)**: `MovieCrewId`와 같이 서비스 내부에서 사용할 고유 ID를 생성하는 로직이 필요합니다. UUID를 사용하거나, 별도의 시퀀스 전략을 사용할 수 있습니다.
-- **데이터 품질**: TMDB 데이터에도 누락되거나 잘못된 정보가 있을 수 있습니다. 수집 과정에서 기본적인 유효성 검사(null 체크, 형식 체크 등)를 추가하고, 필요하다면 데이터 정제(Data Cleansing) 로직을 고려해야 합니다.
-- **성능 및 확장성**: 현재 방식은 간단하지만, 수집할 영화 수가 많아지면 성능 문제가 발생할 가능성이 높습니다 (N+1 API 호출, `findAll()` 사용 등).
-  - **병렬 처리**: `@Async` 어노테이션을 사용한 비동기 메서드 호출, `CompletableFuture`, 또는 `Project Reactor` / `RxJava` 등을 이용해 API 호출 및 데이터 처리를 병렬화할 수 있습니다.
-  - **배치 처리**: 대규모 데이터 처리에 특화된 **Spring Batch** 프레임워크 도입을 적극 고려해볼 만합니다. 안정적인 대용량 데이터 읽기/처리/쓰기, 재시도, 로깅, 트랜잭션 관리 등을 체계적으로 지원합니다.
-  - **메시지 큐**: API 호출 요청을 메시지 큐(예: RabbitMQ, Kafka)에 넣고, 별도의 워커(Worker) 프로세스들이 큐에서 작업을 가져와 처리하는 방식으로 분산 처리 및 Rate Limit 제어를 더 유연하게 할 수 있습니다.
-
 ---
 
-## 전체 소스 코드 묶음 📦
+## 전체 소스 코드 📦
 
 > 위에서 설명한 주요 클래스들의 전체 코드를 다시 한번 정리했습니다.
 
@@ -1443,14 +1383,3 @@ public class MovieCollectionService {
     }
 }
 ```
-
----
-
-## 정리
-
-지금까지 Spring Boot와 JPA를 이용해 TMDB API에서 영화 데이터를 수집하고 우리 DB에 저장하는 기본적인 과정을 살펴봤습니다.
-
-- **`MovieCollectionController`**: 외부 요청을 받아 데이터 수집 작업을 트리거합니다.
-- **`TmdbApiClient`**: `RestTemplate` (또는 `WebClient`)을 사용해 TMDB API와 통신합니다. DTO 사용과 에러 처리 강화가 필요합니다.
-- **`MovieCollectionService`**: 핵심 로직을 담당하며, API 데이터를 가공하고 JPA Repository를 통해 DB에 저장합니다. N+1 문제, `findAll()` 성능 이슈, 중복 데이터 처리 등 개선할 점이 많습니다.
-- **`JpaRepository`**: `saveAll()` 등을 통해 효율적인 DB 작업을 지원합니다.
