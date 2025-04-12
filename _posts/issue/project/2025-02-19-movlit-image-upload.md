@@ -14,12 +14,10 @@ sidebar:
   nav: "categories"
 
 date: 2025-02-19
-last_modified_at: 2025-03-30
+last_modified_at: 2025-04-12
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
-
-# [Spring Boot & AWS S3] 프로필 이미지 업로드 기능 구현하기: 전체 흐름부터 코드까지
 
 안녕하세요! 오늘은 웹 서비스의 필수 기능 중 하나인 **프로필 이미지 업로드** 기능을 Spring Boot와 AWS S3를 사용해 구현하는 방법을 알아보겠습니다. 사용자가 이미지를 올리면, 안전하고 효율적인 클라우드 스토리지 S3에 저장하고, 그 정보(URL 등)는 우리 서버의 DB에 관리하는 방식이죠.
 
@@ -38,47 +36,7 @@ Spring Security를 통해 현재 로그인된 사용자를 식별하고, JPA를 
 3.  **DB 저장**: 업로드된 이미지의 메타데이터(고유 ID, S3 URL, 등록 시각, 이미지 소유자 ID 등)를 데이터베이스에 기록합니다.
 4.  **기존 이미지 교체**: 사용자가 새 프로필 이미지를 업로드하면, 기존에 등록된 프로필 이미지가 있다면 **S3에서 해당 객체를 삭제**하고 DB 정보도 업데이트합니다. (이전 파일 관리 로직 포함)
 
----
-
-## 전체 흐름 & 구조: 이미지 업로드는 어떻게 동작할까?
-
-사용자부터 S3, 그리고 DB까지 데이터가 어떻게 흘러가는지 그림으로 먼저 이해해볼까요?
-
-1.  **사용자 (Client)**: 웹 브라우저나 모바일 앱에서 이미지 파일을 선택하고 `POST /api/images/profile` 엔드포인트로 전송합니다. 요청 헤더에는 보통 인증 정보(예: JWT 토큰)가 포함됩니다.
-2.  **`ImageController` (Presentation Layer)**: Spring MVC 컨트롤러가 요청을 받습니다. Spring Security를 통해 인증된 사용자 정보를 `@AuthenticationPrincipal`로 받아옵니다. 실제 이미지 처리 로직은 `ImageService`에 위임합니다.
-3.  **`ImageService` (Application Layer)**: 핵심 비즈니스 로직을 처리합니다.
-    - 기존 프로필 이미지가 있는지 확인하고, 있다면 **S3 객체 삭제** 및 DB 레코드 삭제를 `S3Service`와 `ImageRepository`를 통해 수행합니다.
-    - `S3Service`를 호출하여 새 이미지 파일을 S3 버킷에 업로드하고, 고유한 **이미지 URL**을 받아옵니다.
-    - `ImageRepository`를 통해 이미지 메타데이터(URL, 사용자 ID 등)를 `Image` 테이블에 저장합니다.
-    - 사용자 정보( `MemberEntity` ) 테이블의 `profileImgUrl` 필드도 최신 이미지 URL로 업데이트합니다. (트랜잭션 관리 필요)
-    - (선택적) 프로필 이미지 변경 이벤트를 발행하여, 관련 기능(예: 실시간 채팅방 프로필 업데이트)이 후속 조치를 할 수 있도록 합니다.
-4.  **`S3Service` (Infrastructure Layer)**: AWS SDK를 사용하여 실제 S3 버킷과의 통신(파일 업로드, 삭제)을 담당합니다. 파일 이름 중복 방지를 위해 UUID 등을 활용하고, 업로드된 객체의 URL을 생성하여 반환합니다.
-5.  **`ImageRepository` (Persistence Layer)**: JPA를 사용하여 `ImageEntity` 객체를 데이터베이스에 저장, 조회, 삭제하는 역할을 합니다.
-6.  **AWS S3**: 업로드된 이미지 파일(객체)이 실제로 저장되는 곳입니다.
-7.  **Database (DB)**: 이미지 메타데이터(`image` 테이블)와 사용자 정보(`member` 테이블)가 저장됩니다.
-
-**간단 다이어그램**:
-
-```
-[Client (User)]
-   | (1. POST /api/images/profile with Image File & Auth)
-   V
-[ImageController] ---(uses)---> [Spring Security (Authentication)]
-   | (2. Calls ImageService.uploadProfileImage(memberId, file))
-   V
-[ImageService] (@Transactional)
-   | (3a. Check & Delete Old Image -> calls ImageRepository.findByMemberId & S3Service.deleteImage)
-   | (3b. Upload New Image -> calls S3Service.uploadImage) --> [S3Service] --> [AWS S3 (Upload/Delete)]
-   | (3c. Save Image Metadata -> calls ImageRepository.save) --> [ImageRepository] --> [ImageEntity in DB]
-   | (3d. Update Member Profile URL -> calls MemberRead/WriteService) --> [MemberEntity in DB]
-   | (3e. Publish Event (Optional)) --> [ApplicationEventPublisher]
-   V
-[Response (Image URL)]
-```
-
----
-
-## 설정: S3 연동을 위한 준비
+## S3 연동 설정
 
 Spring Boot 애플리케이션에서 AWS S3를 사용하려면 몇 가지 설정이 필요합니다.
 
@@ -88,13 +46,6 @@ AWS SDK v2 for Java와 S3 관련 라이브러리를 추가해야 합니다.
 
 ```gradle
 dependencies {
-    // ... other dependencies
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-
     // AWS SDK v2 for S3
     implementation platform('software.amazon.awssdk:bom:2.20.43') // BOM(Bill of Materials)으로 버전 관리 추천
     implementation 'software.amazon.awssdk:s3'
@@ -103,11 +54,7 @@ dependencies {
 
 **2. AWS 자격 증명 설정**
 
-애플리케이션이 AWS 리소스(S3 버킷)에 접근할 권한이 필요합니다. 보안을 위해 **IAM 역할(Role)**을 사용하는 것이 가장 좋습니다 (특히 EC2, ECS, EKS 등 AWS 환경에서 실행 시). 로컬 개발 환경이나 다른 환경에서는 다음 방법들을 고려할 수 있습니다:
-
-- **환경 변수**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` 설정
-- **자격 증명 파일**: `~/.aws/credentials` 파일 사용
-- **IAM 사용자 Access Key**: (권장되지 않음 - 보안 위험) Access Key와 Secret Key를 직접 코드나 설정 파일에 넣지 마세요!
+애플리케이션이 AWS 리소스(S3 버킷)에 접근할 권한이 필요합니다. 보안을 위해 **IAM 역할(Role)**을 사용하는 것이 가장 좋습니다.
 
 **3. S3Client 빈(Bean) 등록**
 
@@ -213,16 +160,6 @@ public class ImageController {
 }
 ```
 
-### 주요 포인트 & 개선점
-
-- `@AuthenticationPrincipal MyMemberDetails details`: Spring Security 컨텍스트에서 현재 인증된 사용자 정보를 주입받습니다. `MyMemberDetails`는 `UserDetails`를 구현한 커스텀 클래스일 것입니다.
-- `@RequestPart("file") MultipartFile file`: `multipart/form-data` 요청에서 `file`이라는 이름의 파트를 `MultipartFile` 객체로 받습니다. `@RequestParam` 대신 `@RequestPart`를 사용하는 것이 표준적입니다.
-- **파일 유효성 검사**: Controller 단계에서 기본적인 파일 존재 여부를 확인하는 것이 좋습니다. (Service에서 더 상세한 검증 가능: 파일 크기, 확장자 등)
-- **응답 상태 코드**: 이미지 생성 성공 시 `201 Created`를 반환하는 것이 RESTful 원칙에 더 부합할 수 있습니다. 조회는 `200 OK`, 실패 시 `400 Bad Request`, `404 Not Found` 등을 명확히 사용합니다.
-- **경로**: `/api/images/profile`처럼 리소스 중심으로 경로를 설정했습니다.
-
----
-
 ## ImageService: 비즈니스 로직 & DB/S3 처리 조정
 
 이미지 업로드/삭제 핵심 로직과 데이터베이스 연동을 담당합니다. **기존 S3 객체 삭제** 로직을 명확히 추가합니다.
@@ -325,22 +262,6 @@ public class ImageService {
 
 }
 ```
-
-### 주요 포인트 & 개선점
-
-1.  **`@Transactional`**: DB 작업(이미지 정보 삭제/저장, 회원 정보 업데이트)들이 원자적으로 실행되도록 보장합니다. 만약 중간에 오류가 발생하면 DB 작업들이 롤백됩니다. (단, S3 작업은 롤백되지 않으므로 주의 필요)
-2.  **기존 프로필 이미지 삭제 로직 강화**:
-    - `ImageRepository`에 `findByMemberId(MemberId memberId)` 메소드 추가 (Optional 반환).
-    - 조회된 기존 이미지 정보(`ImageEntity`)에서 URL을 가져옵니다.
-    - `S3Service.deleteImageFromS3(imageUrl)`를 호출하여 S3 객체를 삭제합니다. **(S3Service에 해당 메소드 구현 필요)**
-    - DB에서 `imageRepository.delete(existingImage)`를 호출하여 레코드를 삭제합니다.
-3.  **S3 삭제 실패 처리**: S3 객체 삭제 시 네트워크 오류 등이 발생할 수 있습니다. 이에 대한 로깅 및 예외 처리 전략이 필요합니다. (DB만 삭제되고 S3에 고아 객체가 남을 수 있음)
-4.  **`Optional` 사용**: `findByMemberId`가 `Optional`을 반환하도록 하여 NullPointerException 가능성을 줄이고 명시적으로 부재 처리를 합니다.
-5.  **`updateMemberProfileImageUrl`**: `@Transactional` 덕분에 조회한 `MemberEntity`의 필드를 변경하면 트랜잭션 커밋 시점에 자동으로 UPDATE 쿼리가 나갈 수 있습니다(Dirty Checking). 하지만 명시적으로 `memberWriteService.save(member)`를 호출하는 것이 더 안전하고 가독성이 좋을 수 있습니다. (팀 컨벤션 확인)
-6.  **`fetchProfileImage`**: 조회 시 결과가 없을 경우를 대비해 `Optional`을 사용하거나 Repository 메소드가 null을 반환하도록 처리하고, Service에서도 null 또는 예외를 반환하여 Controller에서 적절한 HTTP 상태 코드(404 Not Found)를 응답하도록 개선했습니다.
-7.  **파일 유효성 검증**: `validateFile` 메소드 예시처럼 파일 크기, 타입 등을 검증하는 로직을 추가하는 것이 안전합니다.
-
----
 
 ## S3Service: S3 업로드 & 삭제 로직 구현
 
@@ -517,30 +438,7 @@ public class S3Service {
 }
 ```
 
-### 주요 포인트 & 개선점
-
-- **`S3Client`**: AWS SDK v2의 `S3Client`를 주입받아 사용합니다. (Bean 등록 필요)
-- **`uploadImage`**:
-  - `PutObjectRequest`를 사용하여 업로드 요청 정보를 구성합니다 (버킷명, 키, 콘텐츠 타입).
-  - `RequestBody.fromInputStream`을 사용하여 `MultipartFile`의 내용을 스트림으로 S3에 전송합니다. 효율적입니다.
-  - 업로드 성공 후 `s3Client.utilities().getUrl()`을 사용해 해당 객체의 URL을 생성합니다.
-  - `IOException`, `S3Exception`, `SdkException` 등 발생 가능한 예외를 구체적으로 처리하고 로깅합니다. 커스텀 예외(`ImageUploadException`)를 던져 Service 계층에서 처리하도록 합니다.
-- **`deleteImageFromS3` (신규 추가)**:
-  - 입력받은 S3 URL(`imageUrl`)에서 실제 S3 객체 키(`key`)를 추출하는 로직(`extractKeyFromUrl`)이 필요합니다. URL 형식에 따라 구현이 달라질 수 있으니 주의해야 합니다. (기본 S3 URL 형식 가정)
-  - `DeleteObjectRequest`를 사용하여 삭제 요청 정보를 구성합니다.
-  - `s3Client.deleteObject()`를 호출하여 객체를 삭제합니다.
-  - 삭제 중 발생 가능한 예외를 처리하고, 커스텀 예외(`ImageDeleteException`)를 던집니다.
-- **`generateFileName`**:
-  - `UUID.randomUUID()`를 사용하여 파일 이름의 충돌을 방지합니다.
-  - 원본 파일명을 `sanitizeFileName`으로 정리하고, 확장자를 유지합니다.
-  - 폴더 경로(`folderName`)를 파일명 앞에 추가하여 S3 내에서 구조적으로 관리합니다.
-- **`sanitizeFileName`**: 파일명에 포함될 수 없는 특수 문자나 경로 조작에 사용될 수 있는 문자들을 제거/대체하여 보안 및 시스템 호환성을 높입니다. 길이 제한도 추가하면 좋습니다.
-- **`extractKeyFromUrl`**: S3 URL로부터 객체 키를 안정적으로 추출하는 로직입니다. URL 인코딩을 고려하여 디코딩합니다. (CDN 사용 시 변경 필요)
-- **예외 처리**: 각 메소드에서 발생할 수 있는 AWS 관련 예외(`S3Exception`, `SdkException`) 및 I/O 예외 등을 처리하고, 서비스 계층에서 인지하기 쉬운 커스텀 예외(`ImageUploadException`, `ImageDeleteException`)로 변환하여 던지는 것이 좋습니다.
-
 > **주의**: S3 버킷 정책이나 IAM 권한 설정이 올바르게 되어 있어야 합니다. `PutObject` 및 `DeleteObject` 권한이 필요합니다. 객체 URL 접근 권한(Public Read 또는 Presigned URL 등)도 고려해야 합니다.
-
----
 
 ## ImageEntity & Repository: 데이터 모델링과 영속성
 
@@ -705,19 +603,3 @@ public class ImageRepositoryImpl implements ImageRepository {
     }
 }
 ```
-
-> **Repository 설계**: `ImageRepository` 인터페이스는 도메인 규칙을 정의하고, `ImageRepositoryImpl` + `ImageJpaRepository`는 그 구현을 담당합니다. 이렇게 하면 도메인 로직이 인프라(JPA) 기술에 직접 의존하지 않게 되어 유연성이 높아집니다. DTO를 Repository에서 직접 반환하기보다는 Entity를 반환하고 Service 계층에서 DTO로 변환하는 것이 계층 분리 원칙에 더 부합합니다.
-
----
-
-## 정리
-
-지금까지 Spring Boot와 AWS S3를 연동하여 프로필 이미지를 업로드하고 관리하는 기능의 전반적인 흐름과 구현 방법을 살펴보았습니다.
-
-**핵심 요약**:
-
-- **S3 활용**: 대용량 정적 파일(이미지)은 S3에 저장하여 서버 부담을 줄이고 확장성, 안정성을 확보합니다.
-- **DB**: 파일 자체 대신 메타데이터(S3 URL, 소유자 정보 등)만 관리합니다.
-- **로직 분리**: Controller(API)-Service(비즈니스 로직)-Repository(데이터 접근)-S3Service(외부 서비스 연동)로 역할을 명확히 분리하여 유지보수성을 높입니다.
-- **기존 파일 관리**: 새 이미지 업로드 시, 기존 S3 객체 삭제 및 DB 정보 업데이트 로직을 구현하여 불필요한 파일이 남지 않도록 관리합니다.
-- **설정 및 보안**: AWS 자격 증명, S3 Client 빈 등록, 버킷/폴더 설정이 필수적이며, 파일 유효성 검사(크기, 타입) 및 S3 접근 권한 관리가 중요합니다.
