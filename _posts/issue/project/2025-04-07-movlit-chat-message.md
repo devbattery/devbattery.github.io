@@ -14,39 +14,37 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-07
-last_modified_at: 2025-04-08
+last_modified_at: 2025-04-15
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
-제가 참여했던 프로젝트에서 실시간 채팅 기능을 구현하며 겪었던 고민과 그 해결 과정을 공유하려고 합니다. 바로 **Redis Pub/Sub**과 **WebSocket**을 이용한 방법인데요, 어떻게 확장성까지 고려한 실시간 메시징 시스템을 만들었는지 함께 살펴보시죠!
+채팅 기능을 만들 때 가장 먼저 떠오르는 건 역시 '실시간'입니다. 하지만 여기서 한 걸음 더 나아가면 이런 고민이 생깁니다.
 
-## 🤔 "실시간인데... 서버 늘리면 어떡하지?"
+1.  **실시간성:** 메시지가 보내지는 즉시, 정말 "실시간"처럼 다른 사용자들에게 지연을 최소화하여 날아가야 합니다.
+2.  **확장성:** 서비스가 흥해서 사용자가 늘어나면 서버도 여러 대로 늘려야 하잖아요? 그런데 WebSocket 연결은 특정 서버 인스턴스에 묶여있는데, A 서버에 접속한 사용자와 B 서버에 접속한 사용자 간에 어떻게 메시지를 주고받게 할 수 있을까요? A 서버에서 받은 메시지가 B 서버 사용자에게도 가야 하니, 이게 핵심 고민이었습니다.
+3.  **유연한 구조 (디커플링):** 메시지를 보내는 녀석(Publisher)과 받아서 처리하는 녀석(Subscriber)이 서로 너무 끈끈하게 엮여있으면 나중에 기능을 추가하거나 변경하기 어려워지니, 좀 더 느슨하게 연결하고 싶었습니다.
 
-채팅 기능을 만들 때 가장 먼저 떠오르는 건 역시 '실시간'이죠. 내가 보낸 메시지가 친구에게 바로바로 보여야 하니까요! 하지만 여기서 한 걸음 더 나아가면 이런 고민이 생깁니다.
+## ✨ 해결책: WebSocket + Redis Pub/Sub
 
-1.  **🚀 실시간성:** 메시지가 보내지는 즉시, 정말 "실시간"처럼 다른 사용자들에게 슝~ 날아가야 해요. 지연은 최소화해야겠죠?
-2.  **📈 확장성:** 서비스가 흥해서 사용자가 늘어나면 서버도 여러 대로 늘려야 하잖아요? 그런데 WebSocket 연결은 특정 서버 인스턴스에 묶여있는데... A 서버에 접속한 사용자와 B 서버에 접속한 사용자 간에 어떻게 메시지를 주고받게 할 수 있을까요? A 서버에서 받은 메시지가 B 서버 사용자에게도 가야 하는데 말이죠! 이게 핵심 고민이었어요.
-3.  **🔗 유연한 구조 (디커플링):** 메시지를 보내는 녀석(Publisher)과 받아서 처리하는 녀석(Subscriber)이 서로 너무 끈끈하게 엮여있으면 나중에 기능을 추가하거나 변경하기 어려워져요. 좀 더 느슨하게 연결하고 싶었습니다.
+이 고민들을 해결하기 위해 저희가 선택한 조합은 바로 **WebSocket**과 **Redis Pub/Sub**입니다.
 
-## ✨ 반짝이는 해결책: WebSocket + Redis Pub/Sub 아키텍처!
+1.  **WebSocket (with STOMP)**
 
-이 고민들을 해결하기 위해 저희가 선택한 조합은 바로 **WebSocket**과 **Redis Pub/Sub**입니다. 각자 어떤 역할을 하는지 살펴볼까요?
+    - 클라이언트(웹/앱)와 서버 간의 **실시간 양방향 통신** 길을 열어줍니다. 한 번 연결되면 계속 유지되면서 데이터를 주고받을 수 있습니다.
+    - **STOMP** 프로토콜을 함께 사용하면, 특정 "주소"(/topic/...)를 구독(Subscribe)하고, 그 주소로 메시지를 발행(Publish)하는 모델을 WebSocket 위에서 쉽게 구현할 수 있습니다.
 
-1.  **WebSocket (with STOMP):**
-    *   클라이언트(웹/앱)와 서버 간의 **실시간 양방향 통신** 길을 열어줍니다. 한 번 연결되면 계속 유지되면서 데이터를 주고받을 수 있죠.
-    *   **STOMP** 프로토콜을 함께 사용하면, 마치 우체통 구독하듯이 특정 "주소"(/topic/...)를 구독(Subscribe)하고, 그 주소로 메시지를 발행(Publish)하는 모델을 WebSocket 위에서 쉽게 구현할 수 있어요. 클라이언트 코드도 깔끔해지고요! (`WebSocketConfig`)
+2.  **Redis Pub/Sub**
 
-2.  **Redis Pub/Sub:**
-    *   Redis는 빠른 In-memory 데이터 저장소로 유명하지만, 강력한 **메시징 브로커** 기능(Pub/Sub)도 가지고 있답니다!
-    *   Pub/Sub 모델은 마치 **라디오 방송국** 같아요. 특정 채널(Topic, 예를 들어 'chat-room-123' 채널)에 메시지를 발행(Publish)하면, 그 채널을 구독(Subscribe)하고 있는 모든 청취자(여기서는 우리 애플리케이션 서버 인스턴스들!)에게 메시지가 **동시에 쫙 뿌려집니다(Broadcast)**.
-    *   이게 바로 **확장성 문제의 해결사**! A 서버든 B 서버든 'chat-room-123' 채널만 구독하고 있으면, 누가 메시지를 발행하든 모든 서버가 받아서 각자 연결된 클라이언트에게 전달해줄 수 있게 되는 거죠!
+    - Redis는 빠른 In-memory 데이터 저장소로 유명하지만, **메시징 브로커** 기능(Pub/Sub)도 가지고 있습니다.
+    - Pub/Sub 모델은 마치 **라디오 방송국** 같습니다. 특정 채널(Topic)에 메시지를 발행(Publish)하면, 그 채널을 구독(Subscribe)하고 있는 모든 청취자(애플리케이션 서버 인스턴스)에게 메시지가 **동시에 쫙 뿌려집니다(Broadcast)**.
+      - 즉, A 서버든 B 서버든 이 채널만 구독하고 있으면, 누가 메시지를 발행하든 모든 서버가 받아서 각자 연결된 클라이언트에게 전달해줄 수 있게 됩니다.
 
-3.  **우리의 애플리케이션 서버:**
-    *   **수신:** 클라이언트로부터 WebSocket(STOMP) 메시지를 받아요 (`ChatMessageWriteController`).
-    *   **발행:** 받은 메시지를 Redis의 특정 Pub/Sub 채널로 발행(Publish)합니다 (`ChatMessageService` -> `RedisMessagePublisher`). "모두 들어라!" 하고 외치는 역할이죠.
-    *   **구독:** Redis의 Pub/Sub 채널을 구독(Subscribe)하고 있다가 메시지가 도착하면 받아옵니다 (`RedisListenerConfig` -> `RedisMessageSubscriber`). "나한테 온 메시지군!" 하고 듣는 역할이에요.
-    *   **전달:** Redis로부터 받은 메시지를, 해당 채팅방을 구독 중인 WebSocket 클라이언트들에게 최종적으로 전달합니다 (`RedisMessageSubscriber` -> `SimpMessageSendingOperations`).
+3.  **애플리케이션 서버**
+    - **수신:** 클라이언트로부터 WebSocket(STOMP) 메시지를 받습니다 (`ChatMessageWriteController`).
+    - **발행:** 받은 메시지를 Redis의 특정 Pub/Sub 채널로 발행(Publish)합니다 (`ChatMessageService` -> `RedisMessagePublisher`). "모두 들어라!" 하고 외치는 역할이죠.
+    - **구독:** Redis의 Pub/Sub 채널을 구독(Subscribe)하고 있다가 메시지가 도착하면 받아옵니다 (`RedisListenerConfig` -> `RedisMessageSubscriber`). "나한테 온 메시지군!" 하고 듣는 역할이에요.
+    - **전달:** Redis로부터 받은 메시지를, 해당 채팅방을 구독 중인 WebSocket 클라이언트들에게 최종적으로 전달합니다 (`RedisMessageSubscriber` -> `SimpMessageSendingOperations`).
 
 ## 🛠️ Pub/Sub 채팅 관련 코드
 
@@ -190,8 +188,8 @@ public class RedisMessagePublisher {
 }
 ```
 
-**잠깐! 직렬화 설정 중요해요!**
-Redis에 객체(`ChatMessageDto`)를 그대로 저장하거나 Pub/Sub으로 보내려면 **직렬화**가 필요해요. Java 기본 직렬화는 비효율적이고 다른 언어와 호환도 안 되니, 보통 **Jackson(JSON)**을 많이 씁니다. `RedisConfig` 같은 설정 파일에서 `RedisTemplate`의 Serializer를 `Jackson2JsonRedisSerializer`로 설정해주어야 `ChatMessageDto`가 JSON 형태로 Redis에 저장/전송되고, 나중에 꺼내 쓸 때도(`RedisMessageSubscriber`에서) JSON을 다시 객체로 변환할 수 있습니다. 특히 `LocalDateTime` 같은 Java 8 날짜/시간 타입은 별도 모듈(`JavaTimeModule`) 등록이 필요하니 잊지 마세요!
+
+> Redis에 객체(`ChatMessageDto`)를 그대로 저장하거나 Pub/Sub으로 보내려면 **직렬화**가 필요합니다. Java 기본 직렬화는 비효율적이고 다른 언어와 호환도 안 되니, 보통 **Jackson(JSON)**을 많이 씁니다. `RedisConfig` 같은 설정 파일에서 `RedisTemplate`의 Serializer를 `Jackson2JsonRedisSerializer`로 설정해주어야 `ChatMessageDto`가 JSON 형태로 Redis에 저장/전송되고, 나중에 꺼내 쓸 때도(`RedisMessageSubscriber`에서) JSON을 다시 객체로 변환할 수 있습니다.
 
 ### 4. Redis 귀 기울이기: 리스너 설정 (`RedisListenerConfig`)
 
@@ -250,7 +248,7 @@ public class RedisListenerConfig {
 
 드디어 Redis Pub/Sub 채널로부터 메시지를 받는 부분입니다! `RedisListenerConfig` 설정에 따라 "sendMessage" 채널에 메시지가 오면, 이 `RedisMessageSubscriber`의 `sendMessage` 메서드가 호출됩니다.
 
-여기서는 Redis로부터 받은 메시지(직렬화된 상태, 보통 JSON 문자열)를 다시 `ChatMessageDto` 객체로 **역직렬화**하고, `SimpMessageSendingOperations`라는 스프링 친구를 이용해서 해당 채팅방(`/topic/chat/message/...`)을 구독하고 있는 **WebSocket 클라이언트들에게 최종적으로 메시지를 슝~ 쏴줍니다.**
+여기서는 Redis로부터 받은 메시지(직렬화된 상태, 보통 JSON 문자열)를 다시 `ChatMessageDto` 객체로 **역직렬화**하고, `SimpMessageSendingOperations`라는 스프링 친구를 이용해서 해당 채팅방(`/topic/chat/message/...`)을 구독하고 있는 **WebSocket 클라이언트들에게 최종적으로 메시지를 쏴줍니다.**
 
 ```java
 @Service
@@ -303,18 +301,17 @@ public class RedisMessageSubscriber {
 }
 ```
 
-### 6. 근데 메시지 영구 저장은? Redis Stream 등장! (`ChatMessageStreamListener`, `ChatMessageConsumer`)
+### 6. 근데 메시지 영구 저장은? Redis Stream (`ChatMessageStreamListener`, `ChatMessageConsumer`)
 
-잠깐! Redis Pub/Sub은 메시지를 발행하면 구독자에게 **전달하고 끝**이에요. 메시지를 따로 보관하지 않죠. 만약 구독하는 서버(Subscriber)가 잠깐 다운되었거나 네트워크가 불안정해서 메시지를 놓치면? 영영 못 받게 될 수도 있어요! 😱 그리고 채팅 내역을 보려면 메시지를 어딘가에 **영구적으로 저장**해야 하잖아요?
+Redis Pub/Sub은 메시지를 발행하면 구독자에게 **전달하고 끝**이에요. 메시지를 따로 보관하지 않죠. 만약 구독하는 서버(Subscriber)가 잠깐 다운되었거나 네트워크가 불안정해서 메시지를 놓치면? 영영 못 받게 될 수도 있습니다. 그리고 채팅 내역을 보려면 메시지를 어딘가에 **영구적으로 저장**해야 하잖아요?
 
-이 문제를 해결하기 위해 저희는 **Redis Stream**을 함께 사용했습니다. Pub/Sub의 단점을 보완해줍니다.
+이 문제를 해결하기 위해 저희는 **Redis Stream**을 함께 사용했습니다. 이것은 Pub/Sub의 단점을 보완해줍니다.
 
 1.  **저장 (Produce):** `ChatMessageService`에서 Pub/Sub으로 메시지를 발행하는 것과 **동시에**, 같은 메시지를 Redis **Stream**(`chat_message_queue`)에도 **추가(XADD)**합니다 (`produceChatMessage` 메서드). Redis Stream은 Pub/Sub과 달리 메시지를 **로그처럼 차곡차곡 쌓아두고 보관**합니다.
 2.  **처리 (Consume):** 별도의 **Stream 리스너**(`ChatMessageStreamListener`, `ChatMessageConsumer`)가 이 Stream을 계속 지켜보고 있다가 새 메시지가 들어오면 가져갑니다. 마치 컨베이어 벨트 위의 물건을 집어가는 것과 비슷해요.
 3.  **영속화 & 확인 (Acknowledge):** 리스너는 가져온 메시지를 **MongoDB 같은 DB에 안전하게 저장**하고 (`saveMessageToMongoDB`), 처리가 성공적으로 끝나면 Redis에게 "나 이 메시지 잘 처리했어!" 라고 **확인(XACK)** 신호를 보냅니다 (`acknowledgeMessage`). 이 확인 신호가 있어야 Redis는 '아, 이 메시지는 처리 완료됐구나' 하고 관리할 수 있습니다. 만약 처리 중 문제가 생겨 확인 신호를 못 보내면, 나중에 다른 Consumer가 해당 메시지를 다시 가져가서 처리할 기회를 가질 수 있죠 (메시지 유실 방지!).
 
-이렇게 하면 **실시간 메시지 전달은 빠른 Pub/Sub**에게 맡기고, **메시지 영속화와 안정적인 처리는 Stream**이 책임지는, 각자의 장점을 살린 구조가 완성됩니다! 👍
-
+이렇게 하면 **실시간 메시지 전달은 빠른 Pub/Sub**에게 맡기고, **메시지 영속화와 안정적인 처리는 Stream**이 책임지는, 각자의 장점을 살린 구조가 완성됩니다.
 ```java
 // ChatMessageStreamListener.java (StreamListener 인터페이스 구현)
 // Spring Data Redis는 StreamListener 인터페이스와 관련 설정을 통해
@@ -383,21 +380,9 @@ public class ChatMessageStreamListener implements StreamListener<String, MapReco
 }
 ```
 
-*참고: 실제 Stream Consumer 설정은 `StreamMessageListenerContainer` Bean을 직접 설정하거나, `@StreamListener` 어노테이션(Spring Data Redis 2.2+)을 사용하는 등 좀 더 자세한 설정이 필요할 수 있습니다.*
-
 ## 👍 이 도입으로 얻은 것들
 
-1.  **⚡️ 빛처럼 빠른 실시간 통신:** WebSocket과 Redis Pub/Sub 조합 덕분에 사용자는 메시지를 거의 지연 없이 주고받을 수 있게 되었어요.
-2.  **↔️ 자유로운 수평 확장:** 사용자가 늘어나 서버를 몇 대로 늘리든 문제없습니다! Redis Pub/Sub이 중간에서 모든 서버 인스턴스에게 메시지를 공평하게 전달해주니까요. 더 이상 특정 서버에만 메시지가 가는 일은 없어요.
-3.  **🧩 유연하고 깔끔한 구조:** 메시지를 발행하는 로직과 구독/처리하는 로직이 Redis를 통해 완전히 분리(느슨한 결합)되어서, 각 부분을 독립적으로 개발하고 유지보수하기 훨씬 수월해졌습니다.
-4.  **💾 메시지 (영속성 & 안정성):** Redis Stream을 함께 사용해서 실시간성은 유지하면서도, 모든 채팅 메시지를 안전하게 DB(MongoDB)에 저장하고 혹시 모를 메시지 유실 가능성도 크게 줄였습니다.
-
-## 🤔 추가 고려사항
-
-물론 완벽한 기술은 없겠죠? 이 구조를 사용하면서 고려해야 할 점들도 있습니다.
-
-*   **Redis 의존성:** 이제 Redis 서버가 매우 중요해졌습니다. Redis가 멈추면 실시간 메시지 전달과 Stream 처리 모두 영향을 받아요. 따라서 실제 운영 환경에서는 **Redis 고가용성(HA)** 구성(예: Redis Sentinel 또는 Cluster)이 필수적입니다.
-*   **메시지 순서:** Redis Pub/Sub 자체는 메시지 발행 순서를 엄격하게 보장하지는 않습니다. 대부분의 채팅에서는 큰 문제가 되지 않지만, 만약 메시지 순서가 정말 정말 중요하다면 Kafka 같은 메시지 큐나 Redis Stream의 Consumer Group 기능을 더 깊게 활용하는 방안을 고려해볼 수 있습니다. (Stream은 순서를 보장하지만, Consumer 처리 속도에 따라 최종 DB 저장 순서는 달라질 수 있음)
-*   **직렬화 문제:** 객체를 Redis에 넣고 뺄 때 사용하는 직렬화 방식(여기서는 Jackson JSON)을 일관되게 관리해야 합니다. 만약 `ChatMessageDto` 클래스 구조가 변경되었는데, 발행하는 쪽과 구독하는 쪽의 코드가 다르면 역직렬화 오류가 발생할 수 있습니다. 클래스 버전을 관리하거나, 스키마 정의(예: Avro)를 사용하는 것도 방법입니다. `RedisConfig`에서 `ObjectMapper` 설정을 통해 Java 8 날짜/시간 타입 등을 올바르게 처리하도록 설정하는 것이 중요합니다.
-*   **모니터링 & 알림:** Redis Pub/Sub 채널, Stream 처리 지연, MongoDB 저장 상태 등을 꾸준히 모니터링하고 문제가 생겼을 때 알림을 받을 수 있는 시스템을 구축하는 것이 중요합니다.
-*   **부하 테스트:** 실제 트래픽을 시뮬레이션하는 부하 테스트를 통해 시스템의 한계점을 파악하고 병목 구간을 개선해야 합니다.
+1.  **실시간 통신:** WebSocket과 Redis Pub/Sub 조합 덕분에 사용자는 메시지를 거의 지연 없이 주고받을 수 있게 되었습니다.
+2.  **자유로운 수평 확장:** 사용자가 늘어나 서버를 몇 대로 늘리든 문제 없습니다. Redis Pub/Sub이 중간에서 모든 서버 인스턴스에게 메시지를 공평하게 전달해주니까요. 더 이상 특정 서버에만 메시지가 가는 일은 없습니다.
+3.  **유연하고 깔끔한 구조:** 메시지를 발행하는 로직과 구독/처리하는 로직이 Redis를 통해 완전히 분리(느슨한 결합)되어서, 각 부분을 독립적으로 개발하고 유지보수하기 훨씬 수월해졌습니다.
+4.  **메시지 (영속성 & 안정성):** Redis Stream을 함께 사용해서 실시간성은 유지하면서도, 모든 채팅 메시지를 안전하게 DB(MongoDB)에 저장하고 혹시 모를 메시지 유실 가능성도 크게 줄였습니다.
