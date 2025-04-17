@@ -14,170 +14,528 @@ sidebar:
   nav: "categories"
 
 date: 2025-02-08
-last_modified_at: 2025-03-27
+last_modified_at: 2025-04-17
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
 ## 서론
 
-Movlit 서비스에서는 **한 컨텐츠(예: 영화, 책)당 하나의 그룹 채팅방**만 생성되도록 구현하는 것을 목표로 합니다.
+Movlit 서비스에서는 **한 컨텐츠(예: 영화, 책)당 하나의 그룹 채팅방**만 생성되도록 구현하는 것을 목표로 합니다. 하지만 범죄도시와 같은 인기 컨텐츠가 공개되는 순간, 수많은 사용자가 동시에 “채팅방 만들기” 버튼을 누르는 시나리오를 생각해 봅시다. 이런 동시 다발적인 요청이 서버에 한꺼번에 도달하면, **Race Condition**이 발생하여 서버가 요청을 제대로 처리하지 못하고 **의도치 않게 여러 개의 채팅방이 생성**될 수 있습니다.
 
-하지만 인기 컨텐츠가 공개되는 순간, 수많은 사용자가 동시에 “채팅방 만들기” 버튼을 누르는 시나리오를 생각해 봅시다. 이런 동시 다발적인 요청이 서버에 한꺼번에 도달하면, **경쟁 상태(Race Condition)**가 발생하여 서버가 요청을 제대로 처리하지 못하고 **의도치 않게 여러 개의 채팅방이 생성**될 수 있습니다. 이는 분산 환경에서 자주 발생하는 문제입니다.
+이러한 문제를 해결하고 **원자성(Atomicity)**을 보장하기 위해 **`GroupChatroomCreationWorker` 클래스**를 도입하고, 이를 사용하는 **`GroupChatroomUseCase`**를 설계했습니다. Worker 클래스는 **Redis의 List 자료구조를 Queue처럼 활용**하고, **Java의 Thread Pool**을 결합하여 채팅방 생성 요청을 **순차적이고 비동기적으로 처리**합니다. 이를 통해 동시에 들어오는 여러 요청 중 **단 하나의 요청만이 실제 채팅방 생성 로직을 수행**하도록 보장합니다.
 
-이러한 문제를 해결하고 **요청 처리의 원자성(Atomicity)**을 보장하기 위해 **`GroupChatroomCreationWorker` 클래스**를 도입하였습니다.
+## `GroupChatroomUseCase`: 요청의 시작과 끝을 총괄하는 서비스
 
-Worker 클래스는 **Redis의 List 자료구조를 Queue처럼 활용**하고, **Java의 Thread Pool**을 결합하여 채팅방 생성 요청을 **순차적이고 비동기적으로 처리**합니다. 이를 통해 동시에 들어오는 여러 요청 중 **단 하나의 요청만이 실제 채팅방 생성 로직을 수행**하도록 보장합니다.
+`GroupChatroomUseCase`는 채팅방 생성 요청의 전체 흐름을 관리하는 역할을 합니다. 사용자 요청을 받아 기본적인 유효성 검사를 수행하고, 실제 생성 권한을 얻는 작업은 `GroupChatroomCreationWorker`에게 위임한 뒤, 그 결과를 받아 최종적으로 채팅방을 생성하거나 실패 처리를 합니다.
+
+### 주요 역할
+
+1.  사용자 요청 접수 및 `contentId` 생성
+2.  (최적화) DB에 이미 채팅방이 있는지 사전 확인
+3.  Redis Queue에 생성 요청 등록
+4.  `GroupChatroomCreationWorker`에게 실제 생성 권한 획득 작업 위임
+5.  Worker의 결과에 따라 실제 채팅방 생성 로직 호출 또는 예외 처리
+
+### 세부 코드
+
+1.  **요청 접수 및 `contentId` 생성, 사전 DB 체크하여 최적화**
+    사용자의 요청(`GroupChatroomRequest`, `memberId`)을 받아, `contentId` (예: `MV_12345`)를 생성합니다. 그리고 가장 먼저 DB에 해당 `contentId`로 생성된 채팅방이 이미 있는지 확인합니다. 있다면, 더 이상 진행하지 않고 바로 예외를 발생시켜 불필요한 리소스 낭비를 막습니다.
+
+    ```java
+    // GroupChatroomUseCase.java
+    @Transactional
+    public GroupChatroomResponse requestCreateGroupChatroom(GroupChatroomRequest request, MemberId memberId) {
+        // 1. 고유 Content ID 생성
+        String contentId = ChatroomConvertor.generateContentId(request.getContentType(), request.getContentId());
+
+        // 2. (Optimization) 이미 해당 컨텐츠의 채팅방이 DB에 존재하는지 확인
+        validateExistByContentId(contentId); // 존재하면 GroupChatroomAlreadyExistsException 발생
+        // ... 이하 로직 진행 ...
+    }
+    ```
+
+2.  **Redis Queue에 요청 등록 (`LPUSH`):**
+    DB에 채팅방이 없음을 확인했다면, 이제 생성 경쟁에 참여할 준비를 합니다. `contentId`를 기반으로 한 Redis List Key(MV_12345)에 현재 요청자의 `memberId`를 `LPUSH`하여 "나도 이 컨텐츠 채팅방 만들고 싶어요!"라고 요청 대기열에 등록합니다.
+
+    ```java
+    // GroupChatroomUseCase.java
+    // ... 이전 코드 ...
+    // 3. Redis Queue에 요청자(memberId)를 저장 (LPUSH)
+    String queueKey = GROUP_CHATROOM_QUEUE_KEY_PREFIX + contentId;
+    redisTemplate.opsForList().leftPush(queueKey, memberId.getValue());
+    // ... 이하 로직 진행 ...
+    ```
+
+3.  **`GroupChatroomCreationWorker`에게 작업 떠넘기기**
+    이제 실제 "생성 권한 획득"이라는 핵심 작업을 `GroupChatroomCreationWorker`에게 위임합니다. `contentId`를 전달하며 `requestChatroomCreation` 메서드를 호출하고, 그 결과를 `Optional<Map<String, String>>` 형태로 받기 위해 기다립니다. 이 작업은 Worker 내부에서 비동기적으로 처리됩니다.
+
+    ```java
+    // GroupChatroomUseCase.java
+    // ... 이전 코드 ...
+    // 4. Worker 스레드에게 비동기 작업 요청 및 결과 대기
+    Optional<Map<String, String>> responseOpt = worker.requestChatroomCreation(contentId);
+    // ... 이하 결과 처리 ...
+    ```
+
+4.  **Worker 결과 처리 및 최종 생성:**
+
+    - **성공:** `Optional`이 값을 가지고 있다면, Worker가 반환한 `contentId`와 생성자 `memberId`를 이용해 실제 DB에 채팅방을 생성하는 `createGroupChatroom` 메서드를 호출합니다.
+    - **실패:** `Optional`이 비어 있다면(경쟁 패배 또는 Timeout), `getPureResponse` 메서드 등에서 예외(`GroupChatroomAlreadyExistsException`)를 발생시켜 중복 생성을 막습니다.
+
+    ```java
+    // GroupChatroomUseCase.java
+    // ... 이전 코드 ...
+    Map<String, String> response = getPureResponse(responseOpt); // 결과 없으면(Optional.empty()) 예외 발생
+
+    // 5. Worker로부터 받은 정보로 실제 채팅방 생성 로직 호출 (단 한 번만 실행됨)
+    String workerContentId = response.keySet().iterator().next();
+    MemberId workerMemberId = IdFactory.createMemberId(response.get(workerContentId));
+    GroupChatroomResponse createdChatroom = createGroupChatroom(
+            RequestDataForCreationWorker.from(request.getRoomName(), workerContentId, workerMemberId));
+
+    log.info("::GroupChatroomService_requestCreateGroupChatroom:: Chatroom created by Member {}", workerMemberId.getValue());
+
+    // 6. (Optional) 생성 완료 후 알림 등 후처리
+    publishNewGroupChatroomNoti(contentId, request.getRoomName(), createdChatroom);
+
+    return createdChatroom; // 최종 생성 결과 반환
+    }
+    ```
+
+## `GroupChatroomCreationWorker`: 원자성을 보장하는 Worker 클래스
+
+`GroupChatroomCreationWorker`는 `GroupChatroomUseCase`로부터 위임받은 핵심 작업을 수행합니다. 바로 **특정 `contentId`에 대한 여러 생성 요청 중 단 하나의 요청만이 성공하도록 보장**하는 것입니다. 마치 좁은 문을 지키는 문지기처럼, 오직 하나의 요청만 통과시키는 역할을 합니다. 이를 위해 Redis `RPOP`의 원자성과 스레드 풀을 활용합니다.
+
+**주요 역할:**
+
+1.  특정 `contentId`의 Redis Queue에서 `memberId`를 원자적으로 꺼내기 시도 (`RPOP`)
+2.  성공 시, 해당 `memberId`와 `contentId` 정보를 `Optional`에 담아 반환 (경쟁 승리)
+3.  실패 시 (Timeout 또는 이미 다른 요청이 처리), 빈 `Optional` 반환 (경쟁 패배)
+4.  이 모든 과정을 비동기적으로 처리 (`ThreadPoolExecutor`)
+
+**코드 흐름 살펴보기:**
+
+1.  **비동기 작업 정의 (`Callable`):**
+    `requestChatroomCreation` 메서드는 `Callable`을 사용하여 Redis 접근 로직을 정의합니다. 이 `Callable` 객체는 스레드 풀의 별도 스레드에서 실행됩니다.
+
+    ```java
+    // GroupChatroomCreationWorker.java
+    public Optional<Map<String, String>> requestChatroomCreation(String contentId) {
+        // 1. 비동기 작업을 정의 (Callable)
+        Callable<Optional<Map<String, String>>> task = () -> {
+            String queueKey = GROUP_CHATROOM_QUEUE_KEY_PREFIX + contentId;
+            // ... RPOP 로직 ...
+        };
+        // ... 스레드 풀 실행 로직 ...
+    }
+    ```
+
+2.  **Redis Queue에서 원자적으로 데이터 꺼내기 (`RPOP` with Timeout)**
+    이 부분이 Worker의 심장입니다. `redisTemplate.opsForList().rightPop(queueKey, 10, TimeUnit.SECONDS)`를 호출하여 `contentId`에 해당하는 Redis List의 **오른쪽 끝**에서 요소를 꺼내려고 시도합니다.
+
+    - **원자성:** Redis의 `RPOP` 명령어는 원자적으로 실행됩니다. 즉, 여러 스레드가 동시에 이 코드를 실행하더라도 **오직 하나의 스레드**만이 성공적으로 `memberId`를 가져갈 수 있습니다. 이것이 바로 Race Condition을 막는 핵심입니다.
+    - **Blocking & Timeout:** 만약 List가 비어있다면, 스레드는 최대 10초 동안 새로운 `memberId`가 `LPUSH`되기를 기다립니다(`Blocking`). 10초가 지나도 꺼낼 요소가 없으면 `null`을 반환합니다.
+
+    ```java
+    // GroupChatroomCreationWorker.java (Callable 내부)
+            // 2. Redis Queue에서 데이터 꺼내기 시도 (RPOP, Timeout 설정)
+            Object memberIdObject = redisTemplate.opsForList()
+                    .rightPop(queueKey, 10, TimeUnit.SECONDS); // <- 원자적 연산 + Blocking
+    ```
+
+3.  **결과 처리 (경쟁 승패 결정):**
+    `RPOP`의 결과를 바탕으로 경쟁의 승패를 결정합니다.
+
+    - **승리:** `memberIdObject`가 유효한 `String`이라면, 이 스레드가 경쟁에서 이긴 것입니다. `contentId`와 `memberId`를 담은 `Optional<Map>`을 반환 준비합니다.
+    - **패배:** `memberIdObject`가 `null`이거나 다른 타입이라면, 경쟁에서 진 것입니다. 빈 `Optional`을 반환 준비합니다.
+
+    ```java
+    // GroupChatroomCreationWorker.java (Callable 내부)
+            // 3. 성공적으로 memberId를 가져온 경우 (경쟁에서 승리)
+            if (memberIdObject instanceof String memberId) {
+                log.info("Worker thread successfully popped memberId {} for contentId {}", memberId, contentId);
+                return makeResultMap(contentId, memberId); // Optional<Map> 반환
+            }
+
+            // 4. memberId를 가져오지 못한 경우 (Timeout 또는 다른 스레드가 이미 가져감)
+            log.warn("Worker thread failed to pop memberId for contentId {} (Timeout or already processed)", contentId);
+            return Optional.empty(); // 빈 Optional 반환
+    ```
+
+4.  **스레드 풀 실행 및 결과 대기:**
+    정의된 `Callable` 작업을 `ThreadPoolExecutor`에 제출하고, `Future.get()`을 사용하여 비동기 작업의 결과를 기다립니다 (최대 30초). 이 결과를 `GroupChatroomUseCase`로 반환합니다.
+
+    ```java
+    // GroupChatroomCreationWorker.java
+    // ... Callable 정의 이후 ...
+    try {
+        // 5. 스레드 풀에 작업 제출 및 Future 객체 받기
+        Future<Optional<Map<String, String>>> future = threadPoolExecutor.submit(task);
+
+        // 6. 작업 완료 대기 (최대 30초) 및 결과 반환
+        return future.get(30, TimeUnit.SECONDS); // UseCase로 결과 전달
+
+    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        // ... 예외 처리 ...
+        throw new GroupChatroomCreationWhenWorkingException();
+    }
+    ```
 
 ## 전체 코드
 
+### GroupChatroomUseCase
+
 ```java
 package movlit.be.chat_room.application.service;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class GroupChatroomUseCase {
+
+    private final GroupChatRepository groupChatRepository;
+    private final MemberReadService memberReadService;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
+    private final GroupChatroomCreationWorker worker;
+    private final ApplicationEventPublisher eventPublisher;
+    private final MovieReadService movieReadService;
+    private final MovieHeartService movieHeartService;
+    private final BookDetailReadService bookDetailReadService;
+    private final BookHeartReadService bookHeartReadService;
+
+    private final RedisNotificationPublisher redisNotificationPublisher;
+    private final NotificationService notificationService;
+
+    // TODO: Const 분리
+    private static final String CHATROOM_MEMBERS_KEY_PREFIX = "chatroom:";
+    private static final String CHATROOM_MEMBERS_KEY_SUFFIX = ":members";
+    private static final String GROUP_CHATROOM_QUEUE_KEY_PREFIX = "groupChatroomQueue:";
+    private static final long CHATROOM_MEMBERS_CACHE_TTL = 60 * 60; // 1시간
+
+    @Value("${share.url}")
+    private String basicUrl;
+
+    /**
+     * 비동기적으로 최초 그룹 채팅 생성 로직을 요청한다.
+     */
+    @Transactional
+    public GroupChatroomResponse requestCreateGroupChatroom(GroupChatroomRequest request, MemberId memberId) {
+        String contentId = ChatroomConvertor.generateContentId(request.getContentType(),
+                request.getContentId()); // MV_LongContentId 형태
+        validateExistByContentId(contentId);
+
+        // Redis Queue에 memberId를 value로 저장 (LPUSH)
+        String queueKey = GROUP_CHATROOM_QUEUE_KEY_PREFIX + contentId;
+        redisTemplate.opsForList().leftPush(queueKey, memberId.getValue());
+
+        // Worker 스레드에게 작업 요청 및 결과 수신
+        // 만약, 늦게 요청한 멤버들이라면 response는 null 데이터를 담고 있게 되는 거임
+        Optional<Map<String, String>> responseOpt = worker.requestChatroomCreation(contentId);
+        Map<String, String> response = getPureResponse(responseOpt);
+
+        // Worker 스레드로부터 받은 contentId와 memberId로 채팅방 생성
+        String workerContentId = response.keySet().iterator().next();
+        MemberId workerMemberId = IdFactory.createMemberId(response.get(workerContentId));
+
+        // 그룹 채팅방 생성
+        GroupChatroomResponse createdChatroom = createGroupChatroom(
+                RequestDataForCreationWorker.from(request.getRoomName(), workerContentId, workerMemberId));
+
+        log.info("::GroupChatroomService_requestCreateGroupChatroom::");
+
+//        // 트랜잭션 완료 후 알림 발송
+//        TransactionSynchronizationManager.registerSynchronization(new CustomTransactionSynchronization() {
+//            @Override
+//            public void afterCommit() {
+//                publishNewGroupChatroomNoti(contentId, request.getRoomName(), createdChatroom);
+//            }
+//        });
+
+        publishNewGroupChatroomNoti(contentId, request.getRoomName(), createdChatroom);
+
+        return createdChatroom;
+    }
+
+    /**
+     * 찜한 콘텐츠에 대해 새로운 채팅방 생성됨을 알림
+     */
+    private void publishNewGroupChatroomNoti(String contentId, String roomName,
+                                             GroupChatroomResponse createdChatroom) {
+        log.info("::GroupChatroomService_publishNewGroupChatroomNoti::");
+
+        // ContentId : MV_pureContentId 또는 BK_pureContentId -> 책과 영화 구분 필요
+        String contentType = contentId.substring(0, 2);
+        String pureContentId = contentId.substring(3);
+
+        // 찜한 멤버 리스트
+        List<MemberId> heartingMemberIds = new ArrayList<>();
+        // 콘텐츠명 (영화 이름, 책 이름)
+        String contentName = "";
+        // 해당 콘텐츠의 상세페이지 url (채팅방 가입 유도)
+        String url = basicUrl;
+
+        if (contentType.equals("MV")) {
+            Long movieId = Long.parseLong(pureContentId);
+            contentName = movieReadService.fetchByMovieId(movieId).getTitle();
+            heartingMemberIds = movieHeartService.fetchHeartingMemberIdsByMovieId(movieId);
+            url += "/movie/" + pureContentId;
+        } else if (contentType.equals("BK")) {
+            BookId bookId = new BookId(pureContentId);
+            String bookName = bookDetailReadService.fetchByBookId(bookId).getTitle();
+            int index = bookName.indexOf(" -");
+            if (index != -1) {
+                contentName = bookName.substring(0, index); // "-"가 있으면 앞부분만 사용
+            } else {
+                contentName = bookName; // "-"가 없으면 전체 문자열 사용
+            }
+            heartingMemberIds =
+                    bookHeartReadService.fetchHeartingMemberIdsByBookId(bookId);
+            url += "/book/" + pureContentId;
+        }
+
+        // 멤버들에게 알림 발송
+        if (!heartingMemberIds.isEmpty()) {
+            for (MemberId heartigMemberId : heartingMemberIds) {
+                log.info(">> 알림발송할 멤버 " + heartigMemberId.getValue());
+                NotificationDto notification = new NotificationDto(
+                        heartigMemberId.getValue(),
+                        NotificationMessage.generateNewGroupChatroomNotiMessage(contentType, contentName, roomName),
+                        NotificationType.CONTENT_HEART_CHATROOM,
+                        url);
+                // Notification Redis Publish (SSE 알림)
+                redisNotificationPublisher.publishNotification(notification);
+                // Notification MongoDB에 저장
+                notificationService.saveNotification(notification);
+            }
+        }
+    }
+
+    private Map<String, String> getPureResponse(Optional<Map<String, String>> responseOpt) {
+        if (responseOpt.isEmpty()) {
+            throw new GroupChatroomAlreadyExistsException();
+        }
+
+        return responseOpt.get();
+    }
+
+    private void validateExistByContentId(String contentId) {
+        if (groupChatRepository.existsByContentId(contentId)) {
+            throw new GroupChatroomAlreadyExistsException();
+        }
+    }
+
+    /**
+     * 최초 그룹 채팅 생성 후 참여한다
+     */
+    @Transactional
+    public GroupChatroomResponse createGroupChatroom(RequestDataForCreationWorker data) {
+        GroupChatroom groupChatroom = ChatroomConvertor.makeNonReGroupChatroom(data);
+        MemberRChatroom memberRChatroom = ChatroomConvertor.makeNonReMemberRChatroom();
+
+        MemberEntity member = memberReadService.fetchEntityByMemberId(data.getWorkerMemberId());
+
+        memberRChatroom.updateGroupChatRoom(groupChatroom);
+        memberRChatroom.updateMember(member);
+        groupChatroom.updateMemberRChatroom(memberRChatroom); // 그룹 채팅방에 멤버를 참여시킨다
+
+        return groupChatRepository.create(groupChatroom);
+    }
+
+    // 존재하는 그룹채팅방 가입
+    @Transactional
+    public GroupChatroomResponse joinGroupChatroom(GroupChatroomId groupChatroomId, MemberId memberId)
+            throws ChatroomAccessDenied {
+        GroupChatroom existingGroupChatroom = groupChatRepository.findByChatroomId(groupChatroomId);
+        validateAlreadyJoined(memberId, existingGroupChatroom);
+        MemberEntity member = memberReadService.fetchEntityByMemberId(memberId);
+
+        log.info("::GroupChatroomService_joinGroupChatroom::");
+        log.info(">> member : " + member.toString());
+        log.info(">> groupChat to join : " + existingGroupChatroom.toString());
+
+        if (existingGroupChatroom != null && member != null) {
+            // 관계테이블 row 생성 (row id 및 regDt생성)
+            MemberRChatroom newMemberRChatroom = ChatroomConvertor.makeNonReMemberRChatroom();
+
+            // 만든 관계 row에 member 정보 update
+            newMemberRChatroom.updateMember(member);
+            // 만든 관계 row에 chatroom 정보 update
+            newMemberRChatroom.updateGroupChatRoom(existingGroupChatroom);
+            log.info(">> newMemberRChatroom : " + newMemberRChatroom.toString());
+
+            // 기존 채팅방에 새롭게 생성된 관계정보(memberRChatroom : 멤버-채팅방 관계) update
+            existingGroupChatroom.updateMemberRChatroom(newMemberRChatroom);
+            log.info(">> updated groupChat : " + existingGroupChatroom.toString());
+
+        } else if (existingGroupChatroom == null && member != null) {
+            throw new ChatroomNotFoundException();
+
+        } else {
+            throw new ChatroomAccessDenied();
+        }
+
+        // 바뀐 정보 업데이트
+        GroupChatroomResponse response = groupChatRepository.create(existingGroupChatroom);
+
+        // 그룹채팅방 가입 이벤트 발행
+        log.info("GroupChatroomService :: GroupChatroomJoinedEvent 발행...");
+        eventPublisher.publishEvent(new GroupChatroomJoinedEvent(groupChatroomId, memberId));
+
+        return response;
+    }
+
+    private void validateAlreadyJoined(MemberId memberId, GroupChatroom existingGroupChatroom) {
+        if (existingGroupChatroom.getMemberRChatroom().stream()
+                .anyMatch(rChatroom -> rChatroom.getMember().getMemberId().equals(memberId))) {
+            throw new GroupChatroomAlreadyJoinedException();
+        }
+    }
+
+    // 특정 그룹채팅 안 멤버 정보 update (멤버 정보 redis 1차 캐시)
+    @ExecutionTime
+    public List<GroupChatroomMemberResponse> fetchMembersInGroupChatroom(GroupChatroomId groupChatroomId,
+                                                                         boolean useCache) {
+        // 파라미터 추가 (캐싱 on/off)
+        String cacheKey = CHATROOM_MEMBERS_KEY_PREFIX + groupChatroomId + CHATROOM_MEMBERS_KEY_SUFFIX;
+
+        try {
+            if (useCache) { // 캐시 사용
+                // Redis에서 캐시된 데이터 조회 (JSON 문자열)
+                String cachedJson = (String) redisTemplate.opsForValue().get(cacheKey);
+                List<GroupChatroomMemberResponse> response;
+
+                if (cachedJson != null) {
+                    log.info("Cache hit for chatroom: {}", groupChatroomId);
+
+                    // JSON 문자열을 List<GroupChatroomMemberResponse>로 역직렬화
+                    response = objectMapper.readValue(cachedJson, new TypeReference<>() {
+                    });
+                    return response;
+                }
+            }
+
+            log.info("Cache miss for chatroom: {}", groupChatroomId);
+
+            // 캐시에 데이터가 없으면 DB에서 조회
+            // 채팅방 존재 여부 확인
+            groupChatRepository.findByChatroomId(groupChatroomId);
+
+            // 멤버 정보 조회
+            List<GroupChatroomMemberResponse> response = groupChatRepository.findMembersByChatroomId(groupChatroomId);
+
+            // 조회 결과를 JSON 문자열로 변환하여 Redis에 캐싱
+            updateCachedMembers(groupChatroomId, response);
+
+            return response;
+        } catch (Exception e) {
+            log.error("Error while fetching members from chatroom: {}", groupChatroomId, e);
+            // 예외 처리 로직 추가 (예: 빈 리스트 반환 또는 예외 다시 던지기)
+            return new ArrayList<>();
+        }
+    }
+
+    // 캐시 업데이트 메서드 추가
+    public void updateCachedMembers(GroupChatroomId groupChatroomId, List<GroupChatroomMemberResponse> members) {
+        String cacheKey = CHATROOM_MEMBERS_KEY_PREFIX + groupChatroomId + CHATROOM_MEMBERS_KEY_SUFFIX;
+
+        try {
+            String json = objectMapper.writeValueAsString(members);
+            redisTemplate.opsForValue().set(cacheKey, json, CHATROOM_MEMBERS_CACHE_TTL, TimeUnit.SECONDS);
+            log.info("Cache updated for chatroom: {}", groupChatroomId);
+        } catch (JsonProcessingException e) {
+            log.error("Error while updating cache for chatroom: {}", groupChatroomId, e);
+        }
+    }
+
+    // 그룹채팅방 나가기
+    @Transactional
+    public void leaveGroupChatroom(GroupChatroomId groupchatroomId, MemberId memberId) {
+        GroupChatroom groupChatroom = groupChatRepository.findByChatroomId(groupchatroomId);
+        //  MemberEntity member = memberReadService.findEntityById(memberId);
+
+        // 그룹채팅방에 참여중인 멤버목록에서 해당 멤버를 찾아 제거하기
+        // memberRChatroom에서 memberId와 groupChatroomId가 모두 일치하는 row를 찾아 제거
+        groupChatroom.getMemberRChatroom().removeIf(memberRChatroom ->
+                memberRChatroom.getMember().getMemberId().equals(memberId) &&
+                        memberRChatroom.getGroupChatroom().getGroupChatroomId().equals(groupchatroomId)
+        );
+
+        // 변경사항을 저장할 것
+        groupChatRepository.create(groupChatroom); // 변경 사항 저장
+
+        // 그룹채팅방 나가기 이벤트 발행
+        log.info("GrouopChatroomService >>> GroupChatroomLeftEvent 발행 ...");
+        eventPublisher.publishEvent(new GroupChatroomLeftEvent(groupchatroomId, memberId));
+
+    }
+
+}
+```
+
+### GroupChatroomCreationWorker
+
+```java
+package movlit.be.chat_room.application.service;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import movlit.be.common.exception.GroupChatroomCreationWhenWorkingException;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class GroupChatroomCreationWorker {
 
-    // Redis와 상호작용하기 위한 Template
     private final RedisTemplate<String, Object> redisTemplate;
-    // 비동기 작업을 처리할 스레드 풀
     private final ThreadPoolExecutor threadPoolExecutor;
 
-    // Redis에서 사용할 Queue Key의 Prefix
     private static final String GROUP_CHATROOM_QUEUE_KEY_PREFIX = "groupChatroomQueue:";
 
-    /**
-     * 특정 contentId에 대한 채팅방 생성을 요청하고,
-     * 성공적으로 처리될 "대표" 요청자(memberId) 정보를 반환합니다.
-     * 이 메서드는 Redis Queue에서 처리 대상을 꺼내오는 역할을 수행합니다.
-     *
-     * @param contentId 채팅방을 생성할 컨텐츠의 ID
-     * @return 채팅방 생성을 담당할 memberId를 포함한 Optional<Map<String, String>>, 처리할 요청이 없거나 실패 시 Optional.empty()
-     */
     public Optional<Map<String, String>> requestChatroomCreation(String contentId) {
-        // 비동기 작업을 정의하는 Callable 객체 생성
         Callable<Optional<Map<String, String>>> task = () -> {
-            // contentId별로 고유한 Redis Queue Key 생성
             String queueKey = GROUP_CHATROOM_QUEUE_KEY_PREFIX + contentId;
 
-            // Redis List에서 데이터를 꺼내는 작업 (BRPOP과 유사한 블로킹 동작)
-            // 지정된 시간(10초) 동안 Queue에 데이터가 들어올 때까지 대기합니다.
-            // rightPop은 원자적(atomic) 연산이므로, 여러 스레드가 동시에 접근해도 단 하나의 스레드만 데이터를 가져갈 수 있습니다.
             Object memberIdObject = redisTemplate.opsForList()
-                    .rightPop(queueKey, 10, TimeUnit.SECONDS); // timeout: 10 seconds
+                    .rightPop(queueKey, 10, TimeUnit.SECONDS);
 
-            // Redis에서 가져온 데이터가 유효한 String(memberId)인지 확인
             if (memberIdObject instanceof String memberId) {
-                // 성공 시, contentId와 "선택된" memberId를 Map으로 감싸 반환
-                // 이 memberId가 채팅방 생성 로직을 수행할 자격을 얻습니다.
-                log.info("Successfully retrieved memberId [{}] for contentId [{}] from queue.", memberId, contentId);
                 return makeResultMap(contentId, memberId);
             }
 
-            // 10초 타임아웃 동안 Queue에 데이터가 없거나, 데이터 형식이 잘못된 경우
-            log.warn("No memberId retrieved from queue for contentId [{}] within timeout or invalid data type.", contentId);
             return Optional.empty();
         };
 
         try {
-            // 정의된 Callable 작업을 스레드 풀에 제출하여 비동기 실행
-            // submit()은 작업의 결과를 추적할 수 있는 Future 객체를 반환합니다.
             Future<Optional<Map<String, String>>> future = threadPoolExecutor.submit(task);
-
-            // 비동기 작업의 결과를 최대 30초 동안 기다립니다.
-            // 이 시간은 Redis 대기 시간(10초)을 포함한 전체 작업 완료 시간입니다.
-            // future.get()은 결과가 준비될 때까지 현재 스레드를 블로킹(blocking)합니다.
-            return future.get(30, TimeUnit.SECONDS); // timeout: 30 seconds
+            return future.get(30, TimeUnit.SECONDS);
 
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            // 예외 발생 시 로그 기록 및 사용자 정의 예외 발생
-            log.error("Error occurred while processing chatroom creation request for contentId [{}]: {}", contentId, e.getMessage(), e);
-
             if (e instanceof InterruptedException) {
-                // InterruptedException 발생 시, 현재 스레드의 인터럽트 상태를 다시 설정하여
-                // 상위 호출자나 스레드 풀이 인터럽트 사실을 인지하도록 합니다.
                 Thread.currentThread().interrupt();
-            } else if (e instanceof TimeoutException) {
-                // 30초 타임아웃 발생 시: 작업이 너무 오래 걸림 (Redis 연결 문제, 과도한 부하 등)
-                log.error("Chatroom creation task timed out for contentId [{}].", contentId);
-            } else if (e instanceof ExecutionException) {
-                // Callable 내부에서 예외 발생 시 (e.g., Redis 작업 중 네트워크 오류)
-                log.error("Exception occurred during task execution for contentId [{}]: {}", contentId, e.getCause() != null ? e.getCause().getMessage() : e.getMessage(), e.getCause());
             }
 
-            // 통합된 예외를 던져서 호출 측에서 일관되게 처리하도록 함
-            throw new GroupChatroomCreationWhenWorkingException("Failed to process chatroom creation request for contentId: " + contentId, e);
+            throw new GroupChatroomCreationWhenWorkingException();
         }
     }
 
-    // 결과를 Optional<Map> 형태로 포장하는 헬퍼 메서드
     private Optional<Map<String, String>> makeResultMap(String contentId, String memberId) {
         Map<String, String> resultMap = new HashMap<>();
-        resultMap.put("contentId", contentId); // Key를 contentId 문자열로 변경 (가독성 향상)
-        resultMap.put("memberId", memberId);   // Key를 memberId 문자열로 변경 (가독성 향상)
+        resultMap.put(contentId, memberId);
         return Optional.of(resultMap);
     }
 
-    // 사용자 정의 예외 클래스 (내부 클래스 또는 별도 파일로 정의 가능)
-    public static class GroupChatroomCreationWhenWorkingException extends RuntimeException {
-        public GroupChatroomCreationWhenWorkingException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
 }
-```
-
-## 아키텍처 및 동작 원리
-
-이 Worker의 핵심 아이디어는 **Redis List를 분산 큐(Distributed Queue)로 사용하여 동시성 문제를 해결**하는 것입니다. 전체적인 흐름은 다음과 같습니다.
-
-1.  **요청 접수 (Worker 외부)**: 사용자가 특정 `contentId`에 대해 "채팅방 만들기"를 요청합니다.
-2.  **Queue에 요청 추가 (Worker 외부)**: 실제 채팅방 생성 로직을 바로 실행하는 대신, 해당 사용자의 `memberId`를 `contentId`에 해당하는 Redis List (Queue)에 `LPUSH` 또는 `RPUSH` 명령어로 추가합니다. (이 코드는 Worker 외부에 구현되어 있다고 가정합니다.)
-    *   `LPUSH` 사용 시: 가장 나중에 들어온 요청이 먼저 처리될 수 있습니다 (LIFO - Stack).
-    *   `RPUSH` 사용 시: 가장 먼저 들어온 요청이 먼저 처리됩니다 (FIFO - Queue). 코드에서는 `rightPop`을 사용하므로, `LPUSH`로 넣어야 FIFO 동작이 됩니다. (먼저 넣은게 오른쪽 끝으로 감)
-3.  **Worker의 처리 (코드)**: `GroupChatroomCreationWorker`의 `requestChatroomCreation` 메서드가 호출됩니다. 이 메서드는 특정 `contentId`의 Queue를 주시합니다.
-4.  **Queue에서 요청 꺼내기 (코드 - `rightPop`)**: Worker는 **Redis의 `BRPOP` (Blocking Right Pop)과 유사하게 동작**하는 `redisTemplate.opsForList().rightPop(key, timeout)`을 사용합니다.
-    *   이 연산은 **원자적(Atomic)**입니다. 즉, 여러 스레드나 여러 서버 인스턴스가 동시에 같은 Queue에 접근하더라도, **오직 하나의 스레드/프로세스만이 성공적으로 데이터를 꺼내갈 수 있습니다.** 이것이 바로 여러 채팅방 생성을 방지하는 핵심 메커니즘입니다.
-    *   Queue가 비어있으면, 지정된 시간(여기서는 10초) 동안 데이터가 들어올 때까지 **현재 스레드를 블로킹(Blocking)**합니다.
-5.  **"선택된" 요청자 반환 (코드)**: `rightPop`으로 성공적으로 `memberId`를 꺼내온 Worker 스레드는, 이 `memberId`가 해당 `contentId`의 채팅방 생성을 책임질 "대표" 요청자임을 나타내는 결과를 반환합니다.
-6.  **실제 생성 로직 수행 (Worker 외부)**: `requestChatroomCreation`을 호출한 쪽에서는 반환된 `memberId`를 사용하여 **실제 채팅방 생성 로직**(예: 데이터베이스에 채팅방 정보 저장)을 수행합니다. 이 시점에는 이미 경쟁 상태가 해소되었으므로 안전하게 생성 로직을 진행할 수 있습니다. (이 로직 또한 Worker 외부에 구현되어 있다고 가정합니다.)
-
-## 주요 처리 과정 상세 설명
-
--   **`Callable<Optional<Map<String, String>>>` 인터페이스 활용**
-    *   `Callable`은 결과를 반환할 수 있는 비동기 작업을 정의하는 데 사용됩니다. 여기서는 Redis Queue에서 데이터를 가져오는 작업을 비동기적으로 처리하고, 그 결과를 `Optional<Map<String, String>>` 형태로 반환하기 위해 사용합니다. `Runnable`과 달리 결과를 반환하고 체크 예외(Checked Exception)를 던질 수 있다는 장점이 있습니다.
-
--   **Redis Queue Key 생성 (`GROUP_CHATROOM_QUEUE_KEY_PREFIX + contentId`)**
-    *   `GROUP_CHATROOM_QUEUE_KEY_PREFIX`("groupChatroomQueue:")라는 고정된 접두사와 동적인 `contentId`를 조합하여 각 컨텐츠별로 독립적인 Redis Queue를 식별하는 Key를 생성합니다. 이를 통해 특정 컨텐츠에 대한 요청들이 다른 컨텐츠의 요청 처리와 격리되어 관리됩니다.
-
--   **데이터 조회 (`rightPop(queueKey, 10, TimeUnit.SECONDS)`)**
-    *   Redis List의 `rightPop` 메서드를 **블로킹 모드(timeout 지정)**로 사용합니다. 이는 Redis의 `BRPOP` 명령어와 유사하게 동작합니다.
-    *   **동작 방식**:
-        1.  `queueKey`에 해당하는 List의 오른쪽 끝(꼬리)에서 요소를 꺼내려고 시도합니다.
-        2.  만약 List가 비어있다면, **최대 10초 동안** 요소가 추가되기를 기다립니다 (블로킹).
-        3.  10초 안에 요소가 추가되면 해당 요소를 꺼내 반환하고, 10초가 지나도 요소가 없으면 `null`을 반환합니다.
-    *   **원자성 보장**: Redis의 List 연산은 원자적(Atomic)이므로, 여러 스레드나 서버 인스턴스에서 동시에 `rightPop`을 호출해도 **단 하나의 호출만이 성공적으로 요소를 가져갈 수 있습니다.** 이것이 중복 생성을 방지하는 핵심 원리입니다.
-    *   **반환값 처리**:
-        *   성공적으로 `String` 타입의 `memberId`를 가져오면, `makeResultMap`을 통해 `contentId`와 `memberId`를 담은 Map을 `Optional`로 감싸 반환합니다. 이 `memberId`가 채팅방 생성 권한을 획득한 것입니다.
-        *   10초 타임아웃이 발생하거나, 가져온 데이터가 예상한 `String` 타입이 아닐 경우 (`null` 포함), `Optional.empty()`를 반환하여 처리할 요청이 없거나 실패했음을 알립니다.
-
--   **`Future`를 통한 비동기 결과 처리**
-    *   `threadPoolExecutor.submit(task)`: 정의된 `Callable` 작업을 스레드 풀에 제출하여 **별도의 스레드에서 비동기적으로 실행**합니다. `submit()` 메서드는 작업의 상태와 결과를 추적할 수 있는 `Future` 객체를 즉시 반환합니다.
-    *   `future.get(30, TimeUnit.SECONDS)`: 비동기 작업(`Callable` 실행)이 완료될 때까지 **최대 30초 동안 기다립니다(블로킹)**.
-        *   이 30초는 `Callable` 내부의 모든 로직(Redis `rightPop` 대기 시간 10초 포함)을 포괄하는 전체 작업 시간 제한입니다.
-        *   작업이 30초 내에 성공적으로 완료되면, `Callable`이 반환한 `Optional<Map<String, String>>` 결과를 얻습니다.
-        *   30초를 초과하면 `TimeoutException`이 발생합니다.
-
--   **예외 처리 상세**:
-    *   **`InterruptedException`**: `future.get()` 대기 중에 현재 스레드가 다른 스레드에 의해 인터럽트(interrupt)될 경우 발생합니다. 이 경우, `Thread.currentThread().interrupt()`를 호출하여 **인터럽트 상태를 다시 설정**하는 것이 중요합니다. 이는 상위 호출 스택이나 스레드 풀이 스레드가 인터럽트되었다는 사실을 인지하고 적절히 처리(예: 스레드 풀 종료)할 수 있도록 합니다.
-    *   **`ExecutionException`**: `Callable` 작업 실행 중에 내부에서 예외가 발생했을 경우 (예: Redis 연결 실패, 데이터 처리 오류 등) 발생합니다. `e.getCause()`를 통해 `Callable` 내부에서 발생한 실제 예외를 확인할 수 있습니다.
-    *   **`TimeoutException`**: `future.get()`에서 설정한 대기 시간(30초) 내에 작업이 완료되지 않으면 발생합니다. 이는 Redis 응답 지연, 스레드 풀의 과부하, `Callable` 내부 로직의 지연 등 다양한 원인으로 발생할 수 있습니다.
-    *   **`GroupChatroomCreationWhenWorkingException`**: 위 세 가지 주요 예외 중 하나라도 발생하면, 이를 포착하여 로그를 남기고, 원인 예외(cause)를 포함한 사용자 정의 `RuntimeException`인 `GroupChatroomCreationWhenWorkingException`을 발생시킵니다. 이는 호출자(이 메서드를 사용하는 서비스 로직)에게 작업 처리 중 예외가 발생했음을 일관된 방식으로 알리고, 호출자가 트랜잭션 롤백 등의 후속 조치를 취할 수 있도록 합니다.
-
-## 결론
-
-`GroupChatroomCreationWorker`는 Redis Queue의 **원자적 연산(Atomic Operation)**과 Thread Pool을 활용하여 동시 다발적인 채팅방 생성 요청을 **안전하고 효율적으로 처리**하는 방법을 보여줍니다. Redis Queue는 분산 환경에서 **락(Lock) 또는 세마포어(Semaphore)와 유사한 역할**을 수행하여, 오직 하나의 요청만이 임계 영역(Critical Section, 여기서는 채팅방 생성 로직)에 진입하도록 보장합니다. 이를 통해 **데이터 정합성(Consistency)**을 유지하고 중복 채팅방 생성을 효과적으로 방지할 수 있습니다.
-
-다만, 이 코드는 Queue에서 "대표" 요청자를 **선정하는 역할**까지만 수행합니다. 선정된 요청자 정보를 받은 **호출 측**에서는 실제 데이터베이스에 채팅방을 생성하기 전에 **다시 한번 채팅방이 이미 존재하는지 확인**하는 로직(Check-Then-Act)을 추가하는 것이 더욱 안전한 설계가 될 수 있습니다 (Idempotency, 멱등성 고려). 또한, Redis 장애나 네트워크 문제 발생 시의 처리 전략도 고려해야 합니다.
 ```
