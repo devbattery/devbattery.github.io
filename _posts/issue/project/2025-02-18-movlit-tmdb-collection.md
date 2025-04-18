@@ -1,11 +1,11 @@
 ---
-title: "[Project] Spring Boot로 TMDB의 영화 데이터 수집 시스템 구축"
-excerpt: "movlit, tmdb"
+title: "[Project] Spring Boot와 TMDB API로 영화 데이터 수집"
+excerpt: "movlit, tmdb, springboot, jpa, api, batch"
 
 categories:
   - Project
 tags:
-  - [movlit, tmdb]
+  - [movlit, tmdb, springboot, jpa, api, batch]
 
 toc: true
 toc_sticky: true
@@ -14,1372 +14,308 @@ sidebar:
   nav: "categories"
 
 date: 2025-02-18
-last_modified_at: 2025-04-11
+last_modified_at: 2025-04-19
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
-**TMDB(The Movie Database)**는 다양한 영화 정보를 **무료 API**로 제공해주는 서비스입니다. 이걸 **Spring Boot**와 **JPA**를 이용해서 데이터베이스에 쌓아보겠습니다.
+[TMDB](https://developer.themoviedb.org/reference/intro/getting-started)는 방대한 영화 정보를 무료 API로 제공합니다. 저희는 **Spring Boot**로 이 데이터를 수집하고 데이터베이스에 저장하는 시스템을 구축했습니다.
 
-## MovieCollectionController: 데이터 수집 시작 버튼 🕹️
+## 외부 API 호출
 
-`MovieCollectionController`는 데이터 수집 로직을 실행시키는 **HTTP GET 요청**을 받는 엔드포인트(URL 경로)들을 정의하는 클래스입니다. 예를 들어, 웹 브라우저나 관리자 도구에서 `GET /collect/movie/discover` 같은 주소로 요청을 보내면, TMDB에서 영화 정보를 가져와 우리 DB에 저장하는 작업이 시작되는 거죠.
-
-```java
-package movlit.be.data_collection.movie;
-
-@RestController // 1. 이 클래스는 REST API 요청을 처리하는 컨트롤러입니다.
-@RequestMapping("/collect/movie") // 2. 이 컨트롤러 내의 모든 메서드는 '/collect/movie' 경로 하위에 매핑됩니다.
-@RequiredArgsConstructor // 3. final 필드에 대한 생성자를 자동으로 만들어줘서 의존성 주입(DI)을 쉽게 합니다. (여기서는 MovieCollectionService)
-@Slf4j // 4. 로그 객체(log)를 자동으로 생성해줍니다. (Lombok 덕분!)
-public class MovieCollectionController {
-
-    private final MovieCollectionService movieCollectionService; // 실제 데이터 수집 로직을 수행할 서비스 객체
-
-    // '/collect/movie/discover' 경로로 GET 요청이 오면 이 메서드가 실행됩니다.
-    @GetMapping("/discover")
-    public ResponseEntity<Void> collectDiscoverMovies() {
-        log.info("GET /collect/movie/discover 요청 수신 - 영화 목록(Discover) 수집 시작");
-        movieCollectionService.collectDiscoverMovies(); // 서비스의 메서드를 호출해서 실제 작업을 위임
-        log.info("영화 목록(Discover) 수집 작업 완료");
-        // 작업이 성공적으로 끝나면 HTTP 상태 코드 200 OK 와 함께 빈 응답 본문을 반환합니다.
-        return ResponseEntity.ok().build();
-    }
-
-    // '/collect/movie/keywords' 경로로 GET 요청이 오면 이 메서드가 실행됩니다.
-    @GetMapping("/keywords")
-    public ResponseEntity<Void> collectMovieKeywords() {
-        log.info("GET /collect/movie/keywords 요청 수신 - 영화 키워드 수집 시작");
-        movieCollectionService.collectMovieKeywords();
-        log.info("영화 키워드 수집 작업 완료");
-        return ResponseEntity.ok().build();
-    }
-
-    // '/collect/movie/genres' 경로로 GET 요청이 오면 이 메서드가 실행됩니다.
-    @GetMapping("/genres")
-    public ResponseEntity<Void> collectMovieGenres() {
-        log.info("GET /collect/movie/genres 요청 수신 - 영화 장르 수집 시작");
-        movieCollectionService.collectMovieGenres();
-        log.info("영화 장르 수집 작업 완료");
-        return ResponseEntity.ok().build();
-    }
-
-    // '/collect/movie/discover/crew' 경로로 GET 요청이 오면 이 메서드가 실행됩니다.
-    // (경로 이름이 '/crew' 또는 '/credits' 가 더 명확해 보일 수도 있겠네요!)
-    @GetMapping("/discover/crew") // TODO: URL 경로명 변경 고려 ('/crew' or '/credits')
-    public ResponseEntity<Void> collectMovieCrew() {
-        log.info("GET /collect/movie/discover/crew 요청 수신 - 영화 크루(감독/배우) 수집 시작");
-        movieCollectionService.collectMovieCrew();
-        log.info("영화 크루(감독/배우) 수집 작업 완료");
-        return ResponseEntity.ok().build();
-    }
-
-}
-```
-
-## TmdbApiClient: TMDB와 대화하는 창구 📞
+TMDB API와 통신하기 위해 Spring의 `RestTemplate`을 사용했습니다. API Key, 언어 설정 등 반복되는 파라미터를 효율적으로 관리하고, 안전하게 URL을 생성하는 것이 중요했습니다.
 
 ```java
-package movlit.be.movie_collect.application;
-
-@Component // Spring이 이 클래스의 인스턴스를 관리하도록 Bean으로 등록합니다.
-public class TmdbApiClient {
-
-    private final RestTemplate restTemplate; // 실제 HTTP 요청을 보내는 객체
-    private final String apiKey; // TMDB API 인증을 위한 API 키
-    // TMDB API v3는 주로 API Key를 URL 파라미터로 사용하지만, v4 등에서는 Access Token을 헤더에 사용하기도 합니다.
-    // 여기서는 Access Token도 주입받고 헤더에 설정하는 코드가 있네요. (TMDB API 정책 확인 필요)
-
-    // API 호출 URL을 만들 때 재사용할 상수들을 정의해두면 편리합니다.
-    private static final String LANGUAGE_KO = "&language=ko-KR"; // 결과를 한국어로 받기 위한 파라미터 (ko-KR 권장)
-    private static final String REGION_KR = "&region=KR";       // 한국 지역 필터링 파라미터
-    private static final String INCLUDE_ADULT_FALSE = "&include_adult=false"; // 성인 영화 제외 파라미터
-    private static final String RELEASE_DATE_GTE = "&release_date.gte=2023-01-01"; // 특정 날짜 이후 개봉작 필터 (예시)
-    private static final String RELEASE_DATE_LTE = "&release_date.lte=2024-12-31"; // 특정 날짜 이전 개봉작 필터 (예시)
-    private static final String SORT_BY = "&sort_by=popularity.desc"; // 정렬 기준 (예: 인기순 내림차순) - vote_average는 표본 적을 시 왜곡 가능성 있음
-
-    // 생성자를 통해 필요한 의존성(RestTemplateBuilder, 설정값)을 주입받습니다.
-    public TmdbApiClient(RestTemplateBuilder builder,
-                         @Value("${tmdb.key}") String apiKey, // application.yml(또는 properties) 파일의 tmdb.key 값을 주입
-                         @Value("${tmdb.accessToken}") String accessToken) { // tmdb.accessToken 값을 주입
-        this.apiKey = apiKey;
-
-        // 요청 헤더 설정 (API v4 Access Token 사용 시)
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Type", "application/json"); // 요청 본문 타입을 JSON으로 명시 (GET 요청에서는 크게 의미 없을 수 있음)
-        headers.add("Authorization", "Bearer " + accessToken); // Bearer 토큰 인증 방식 사용
-
-        // RestTemplate 설정 및 생성
-        this.restTemplate = builder
-                // .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken) // 모든 요청에 헤더 추가하는 다른 방법
-                .build(); // RestTemplateBuilder를 이용해 RestTemplate 인스턴스 생성
-
-        // TMDB API 응답이 UTF-8 인코딩인데, 기본 설정 문제로 한글이 깨질 경우를 대비해 UTF-8 메시지 컨버터를 추가합니다.
-        // (최신 Spring Boot 버전에서는 기본적으로 UTF-8 처리가 잘 될 수도 있습니다.)
-        this.restTemplate.getMessageConverters()
-                .add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
-    }
-
-    /**
-     * TMDB의 Discover API를 호출하여 특정 페이지의 영화 목록을 가져옵니다.
-     * @param page 가져올 페이지 번호 (1부터 시작)
-     * @return 영화 목록 (List<Map<String, Object>>) 또는 빈 리스트
-     */
-    public List<Map<String, Object>> fetchDiscoverMovies(String page) {
-        // 요청 URL 조립: 기본 URL + API 키 + 페이지 번호 + 각종 필터링/정렬 옵션
-        // (URL 빌더 사용을 고려하면 더 깔끔하고 안전하게 URL을 만들 수 있습니다: UriComponentsBuilder)
-        String url = "https://api.themoviedb.org/3/discover/movie?api_key=" + apiKey +
-                "&page=" + page + LANGUAGE_KO + REGION_KR + INCLUDE_ADULT_FALSE +
-                RELEASE_DATE_GTE + RELEASE_DATE_LTE + SORT_BY;
-
-        // restTemplate.getForObject: GET 요청을 보내고, 응답 본문을 지정된 클래스 타입(여기서는 Map)으로 변환 시도
-        // 만약 API 응답 구조가 복잡하다면, Map<String, Object> 대신 전용 DTO 클래스를 만들어 사용하는 것이 더 안전하고 유지보수하기 좋습니다.
-        Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-
-        // API 응답이 없거나, 응답 구조에 'results' 키가 없는 경우 빈 리스트 반환 (NullPointerException 방지)
-        if (response == null || response.get("results") == null) {
-            log.warn("TMDB Discover API 호출 결과가 비어있거나 'results' 필드가 없습니다. URL: {}", url);
-            return List.of(); // Java 9+ Immutable List
-        }
-        // 'results' 키의 값 (영화 목록)을 List 형태로 캐스팅하여 반환
-        // (주의: 캐스팅 실패 시 ClassCastException 발생 가능. DTO 사용 시 이런 위험 감소)
-        return (List<Map<String, Object>>) response.get("results");
-    }
-
-    /**
-     * 특정 영화의 상세 정보를 TMDB API를 통해 가져옵니다.
-     * @param apiId TMDB 영화 ID
-     * @return 영화 상세 정보 (Map<String, Object>) 또는 null (오류 발생 시)
-     */
-    public Map<String, Object> fetchMovieDetails(String apiId) {
-        // 상세 정보 API는 보통 language 파라미터만 필요합니다.
-        String url = "https://api.themoviedb.org/3/movie/" + apiId + "?api_key=" + apiKey + LANGUAGE_KO;
-        // 여기서도 getForObject 사용. 오류 발생 시 RestClientException 발생 가능.
-        return restTemplate.getForObject(url, Map.class);
-    }
-
-    /**
-     * 특정 영화의 키워드 정보를 TMDB API를 통해 가져옵니다.
-     * @param movieId TMDB 영화 ID
-     * @return 영화 키워드 정보 (Map<String, Object>) 또는 null
-     */
-    public Map<String, Object> fetchMovieKeywords(Long movieId) {
-        String url = "https://api.themoviedb.org/3/movie/" + movieId + "/keywords?api_key=" + apiKey;
-        return restTemplate.getForObject(url, Map.class);
-    }
-
-    /**
-     * 특정 영화의 출연진(Cast) 및 제작진(Crew) 정보를 TMDB API를 통해 가져옵니다.
-     * @param movieId TMDB 영화 ID
-     * @return 영화 크레딧 정보 (Map<String, Object>) 또는 null
-     */
-    public Map<String, Object> fetchMovieCredits(Long movieId) {
-        String url = "https://api.themoviedb.org/3/movie/" + movieId + "/credits?api_key=" + apiKey + LANGUAGE_KO;
-        return restTemplate.getForObject(url, Map.class);
-    }
-
-}
-```
-
-## MovieCollectionService: 데이터 가공과 저장의 핵심 엔진 ⚙️
-
-`MovieCollectionService`는 이번 프로젝트의 '심장'과 같은 역할을 합니다. `TmdbApiClient`를 통해 가져온 raw 데이터를 우리 서비스에 필요한 형태로 저장합니다.
-
-1.  **영화 목록 수집 (Discover)**: TMDB의 Discover API를 통해 특정 조건(예: 최신 인기작)의 영화 목록을 가져와 기본 정보를 저장합니다.
-2.  **영화 키워드 수집**: 이미 저장된 영화들에 대해 TMDB에서 관련 키워드를 가져와 저장합니다.
-3.  **영화 장르 수집**: 영화 상세 정보에서 장르 데이터를 추출하고, 우리 시스템의 장르 분류 체계에 맞게 매핑하여 저장합니다.
-4.  **크루(감독, 배우) 수집**: 영화의 출연진(Cast)과 제작진(Crew), 특히 감독 정보를 가져와 저장하고 영화와 연결합니다.
-
-```java
-package movlit.be.movie_collect.application.service;
-
-@Slf4j
-@Service // 1. 이 클래스는 비즈니스 로직을 처리하는 서비스 계층의 Bean입니다.
-@Transactional // 2. 클래스 레벨에 붙이면 이 클래스의 public 메서드는 기본적으로 하나의 트랜잭션 안에서 실행됩니다.
-               // 메서드 실행 중 예외가 발생하면 진행된 DB 작업이 롤백됩니다. (데이터 일관성 유지)
-@RequiredArgsConstructor // 3. Lombok: final 필드에 대한 생성자 자동 생성 (DI 용도)
-public class MovieCollectionService {
-
-    // 의존성 주입: 필요한 클라이언트, 리포지토리, 다른 서비스들을 주입받습니다.
-    private final TmdbApiClient tmdbApiClient;
-    private final MovieCollectRepository movieCollectRepository; // 영화 정보
-    private final MovieTagRepository movieTagRepository;         // 영화 키워드(태그)
-    private final MovieGenreCollectRepository movieGenreCollectRepository; // 영화 장르 관계
-    private final MovieCrewJpaRepository movieCrewJpaRepository;     // 영화인(배우/감독) 정보
-    private final MovieRCrewJpaRepository movieRCrewJpaRepository;   // 영화-영화인 매핑 정보
-    private final MovieHeartCountService movieHeartCountService;   // 영화 좋아요 수 (별도 관리)
-
-    // API 호출 제어를 위한 상수 정의
-    private static final int MAX_DISCOVER_PAGE = 5;      // Discover API로 가져올 최대 페이지 수
-    private static final int DISCOVER_SLEEP_MOD = 2;     // Discover 페이지 처리 시 몇 페이지마다 잠시 쉴지 결정 (2페이지마다)
-    private static final int KEYWORD_GENRE_SLEEP_MOD = 40; // 키워드/장르 수집 시 몇 건마다 잠시 쉴지 결정 (40건마다)
-    private static final int SLEEP_INTERVAL_MILLIS = 1000; // 잠시 쉬는 시간 (1000ms = 1초)
-
-    // --- 1) 영화 목록 수집 (Discover API 활용) ---
-    public void collectDiscoverMovies() {
-        log.info("=== 영화 목록(Discover) 수집 시작 ===");
-        // 1페이지부터 최대 MAX_DISCOVER_PAGE 페이지까지 순회
-        for (int i = 1; i <= MAX_DISCOVER_PAGE; i++) {
-            log.info("Discover API 호출 - 페이지: {}", i);
-            // a. TMDB Discover API 호출하여 한 페이지 분량의 영화 목록(기본 정보) 가져오기
-            List<Map<String, Object>> discoverResults = tmdbApiClient.fetchDiscoverMovies(String.valueOf(i));
-
-            // 결과가 비어있으면 더 이상 페이지가 없는 것이므로 중단
-            if (discoverResults.isEmpty()) {
-                log.info("Discover API 결과 없음. 수집 중단. (페이지: {})", i);
-                break;
-            }
-
-            List<MovieEntity> movieEntities = new ArrayList<>();
-            // b. 목록의 각 영화에 대해 상세 정보 추가 호출 (런타임, 제작 국가 등)
-            for (Map<String, Object> result : discoverResults) {
-                String apiId = String.valueOf(result.get("id")); // TMDB 영화 ID 추출
-                // (주의!) N+1 API 호출 문제: 목록 조회 1번에 N개의 상세 조회 API 호출 발생.
-                // 대량 데이터 처리 시 성능 저하 및 Rate Limit 초과 위험. 개선 필요! (예: 상세 정보는 별도 배치 작업으로 분리)
-                log.debug("Movie Detail API 호출 - 영화 ID: {}", apiId);
-                Map<String, Object> detailResult = tmdbApiClient.fetchMovieDetails(apiId);
-
-                // c. API 응답(Map)을 우리 시스템의 MovieEntity 객체로 변환
-                MovieEntity movie = convertToMovieEntity(result, detailResult);
-
-                // d. 변환된 MovieEntity가 유효하면 (null이 아니면) 리스트에 추가
-                if (movie != null) {
-                    movieEntities.add(movie);
-                    log.debug("영화 처리 완료 (DB 저장 대기): ID={}, 제목={}", movie.getMovieId(), movie.getTitle());
-                }
-            }
-
-            // e. 해당 페이지에서 처리된 영화 엔티티들을 DB에 한 번에 저장 (Batch Insert 효과)
-            if (!movieEntities.isEmpty()) {
-                log.info("DB 저장 시도 - {} 건의 영화 정보 (페이지: {})", movieEntities.size(), i);
-                movieCollectRepository.saveAll(movieEntities); // JPA saveAll 사용
-            }
-
-            // f. API Rate Limit 준수를 위해 일정 페이지마다 잠시 대기 (간단한 방식)
-            if (i % DISCOVER_SLEEP_MOD == 0) {
-                log.info("Discover API 호출 조절을 위해 잠시 대기 ({}ms)...", SLEEP_INTERVAL_MILLIS);
-                sleep(SLEEP_INTERVAL_MILLIS);
-            }
-        }
-        log.info("=== 영화 목록(Discover) 수집 종료 ===");
-    }
-
-    // API 응답(Map)을 MovieEntity 객체로 변환하는 헬퍼 메서드
-    private MovieEntity convertToMovieEntity(Map<String, Object> result, Map<String, Object> detailResult) {
-        // 필수 값 Null 체크 및 타입 변환 (실제로는 더 견고한 예외 처리 필요)
-        try {
-            LocalDate today = LocalDate.now();
-            Integer id = (Integer) result.get("id"); // TMDB ID
-            String title = (String) result.get("title");
-            String originalTitle = (String) result.get("original_title");
-            String overview = (String) result.get("overview");
-            // TMDB API는 JSON Number를 Double 또는 Integer로 줄 수 있으므로 유연하게 처리 필요
-            Double popularity = ((Number) result.getOrDefault("popularity", 0.0)).doubleValue();
-
-            // 포스터/배경 이미지 경로는 없을 수 있으므로 Optional 처리 후 전체 URL 생성
-            String posterPath = Optional.ofNullable((String) result.get("poster_path"))
-                    .map(path -> "http://image.tmdb.org/t/p/original" + path) // w500 등 다른 사이즈 사용 가능
-                    .orElse(""); // 없으면 빈 문자열
-
-            String backdropPath = Optional.ofNullable((String) result.get("backdrop_path"))
-                    .map(path -> "http://image.tmdb.org/t/p/original" + path)
-                    .orElse("");
-
-            // 개봉일 파싱 (문자열 -> LocalDate)
-            String releaseDateStr = (String) result.get("release_date");
-            LocalDate releaseDate = null;
-            if (releaseDateStr != null && !releaseDateStr.isEmpty()) {
-                try {
-                    releaseDate = LocalDate.parse(releaseDateStr, DateTimeFormatter.ISO_LOCAL_DATE);
-                } catch (Exception e) {
-                    log.warn("개봉일 파싱 실패: movieId={}, dateStr={}", id, releaseDateStr, e);
-                    // 파싱 실패 시 처리 로직 (예: null 유지 또는 기본값 설정)
-                }
-            }
-
-            // 오늘 이후 개봉 영화는 수집 대상에서 제외 (서비스 정책)
-            if (releaseDate != null && releaseDate.isAfter(today)) {
-                log.debug("미래 개봉 영화 스킵: movieId={}, releaseDate={}", id, releaseDate);
-                return null;
-            }
-
-            String originalLanguage = (String) result.get("original_language");
-            Long voteCount = ((Number) result.getOrDefault("vote_count", 0)).longValue();
-            Double voteAverage = ((Number) result.getOrDefault("vote_average", 0.0)).doubleValue();
-
-            // 상세 정보 API 결과에서 추가 정보 추출
-            String productionCountry = "미확인"; // 기본값
-            if (detailResult != null) {
-                List<Map<String, Object>> productionCountries = (List<Map<String, Object>>) detailResult.get("production_countries");
-                if (productionCountries != null && !productionCountries.isEmpty()) {
-                    // 첫 번째 국가의 ISO 코드 사용 (ProductionCountry 유틸리티 클래스 필요)
-                    productionCountry = ProductionCountry.getNameFromCode(
-                            (String) productionCountries.get(0).get("iso_3166_1")
-                    );
-                }
-            } else {
-                log.warn("영화 상세 정보(detailResult)가 null입니다. movieId={}", id);
-            }
-
-            // Integer나 Long 타입 필드는 null 가능성을 염두에 두어야 함
-            Integer runtime = (detailResult != null) ? (Integer) detailResult.get("runtime") : null;
-            String status = (detailResult != null) ? (String) detailResult.get("status") : null;
-            String tagline = (detailResult != null) ? (String) detailResult.get("tagline") : null;
-
-            // MovieEntity 객체 생성 (Builder 패턴 사용)
-            MovieEntity movie = MovieEntity.builder()
-                    .movieId(Long.valueOf(id)) // TMDB ID를 우리 시스템 ID로 사용
-                    .title(title)
-                    .originalTitle(originalTitle)
-                    .overview(overview)
-                    .popularity(popularity)
-                    .posterPath(posterPath)
-                    .backdropPath(backdropPath)
-                    .releaseDate(releaseDate) // 파싱 실패 시 null 저장될 수 있음
-                    .originalLanguage(originalLanguage)
-                    .voteCount(voteCount)
-                    .voteAverage(voteAverage)
-                    .productionCountry(productionCountry)
-                    .runtime(runtime)
-                    .status(status)
-                    .tagline(tagline)
-                    // 엔티티 공통 필드 설정 (생성/수정 시각, 삭제 여부)
-                    .regDt(LocalDateTime.now())
-                    .updDt(LocalDateTime.now())
-                    .delYn(false)
-                    .build();
-
-            // (부가 기능) 영화가 생성될 때, 연관된 좋아요 카운트 레코드도 생성/초기화
-            // MovieHeartCountService는 이 서비스의 주 관심사가 아니므로 분리하는 것이 좋음 (SRP 원칙)
-            movieHeartCountService.save(MovieConvertor.toMovieHeartCountEntity(movie.getMovieId()));
-
-            return movie;
-
-        } catch (Exception e) {
-            // 데이터 변환 중 예외 발생 시 로그 남기고 null 반환 (해당 영화 데이터는 저장되지 않음)
-            log.error("MovieEntity 변환 중 오류 발생: result={}, detailResult={}", result, detailResult, e);
-            return null;
-        }
-    }
-
-    // --- 2) 영화 키워드 수집 ---
-    public void collectMovieKeywords() {
-        log.info("=== 영화 키워드 수집 시작 ===");
-        // a. DB에 저장된 모든 영화 정보 조회 (주의: 영화가 매우 많으면 메모리 부족 발생 가능! Paging 처리나 Stream 방식 고려)
-        List<MovieEntity> movies = movieCollectRepository.findAll();
-        log.info("키워드 수집 대상 영화 {} 건", movies.size());
-        int count = 0;
-
-        // b. 각 영화에 대해 TMDB 키워드 API 호출
-        for (MovieEntity movie : movies) {
-            try {
-                log.debug("키워드 API 호출 - 영화 ID: {}", movie.getMovieId());
-                fetchAndSaveMovieKeywords(movie); // 키워드 조회 및 저장 로직 호출
-                count++;
-
-                // c. Rate Limit 준수를 위한 sleep
-                if (count % KEYWORD_GENRE_SLEEP_MOD == 0) {
-                    log.info("키워드 API 호출 조절을 위해 잠시 대기 ({}ms)... (처리 건수: {})", SLEEP_INTERVAL_MILLIS, count);
-                    sleep(SLEEP_INTERVAL_MILLIS);
-                }
-            } catch (Exception e) {
-                log.error("영화 ID {} 키워드 수집 중 오류 발생", movie.getMovieId(), e);
-                // 특정 영화에서 오류 발생 시, 전체 작업이 중단되지 않도록 try-catch 처리
-            }
-        }
-        log.info("=== 영화 키워드 수집 종료 (처리 건수: {}) ===", count);
-    }
-
-    // 특정 영화의 키워드를 TMDB에서 가져와 DB에 저장하는 메서드
-    private List<MovieTagEntity> fetchAndSaveMovieKeywords(MovieEntity movie) {
-        Map<String, Object> keywordResponse = tmdbApiClient.fetchMovieKeywords(movie.getMovieId());
-
-        // API 응답 유효성 검사
-        if (keywordResponse == null || keywordResponse.get("keywords") == null) {
-            log.warn("키워드 API 응답 없음 또는 'keywords' 필드 없음. 영화 ID: {}", movie.getMovieId());
-            return List.of();
-        }
-
-        List<Map<String, Object>> keywords = (List<Map<String, Object>>) keywordResponse.get("keywords");
-        if (keywords.isEmpty()) {
-            return List.of(); // 키워드가 없는 경우
-        }
-
-        List<MovieTagEntity> tagEntities = new ArrayList<>();
-        for (Map<String, Object> keyword : keywords) {
-            Long tagApiId = ((Number) keyword.get("id")).longValue(); // TMDB 키워드 ID
-            String name = (String) keyword.get("name");
-
-            // 복합 키 (영화 ID, 태그 API ID)를 사용하는 엔티티 ID 생성
-            MovieTagIdForEntity tagId = new MovieTagIdForEntity(tagApiId, movie.getMovieId());
-
-            // MovieTagEntity 생성
-            MovieTagEntity tag = MovieTagEntity.builder()
-                    .movieTagIdForEntity(tagId) // 복합 키 설정
-                    .name(name)
-                    .movieEntity(movie) // 연관된 영화 엔티티 설정 (JPA 관계 매핑)
-                    .regDt(LocalDateTime.now())
-                    .updDt(LocalDateTime.now())
-                    .delYn(false)
-                    .build();
-            tagEntities.add(tag);
-        }
-
-        // 해당 영화의 키워드들을 한 번에 저장
-        log.debug("DB 저장 시도 - 영화 ID {}의 키워드 {} 건", movie.getMovieId(), tagEntities.size());
-        movieTagRepository.saveAll(tagEntities);
-        return tagEntities;
-    }
-
-    // --- 3) 영화 장르 수집 ---
-    public void collectMovieGenres() {
-        log.info("=== 영화 장르 수집 시작 ===");
-        List<MovieEntity> movies = movieCollectRepository.findAll(); // 키워드와 동일하게 대량 데이터 처리 시 주의
-        log.info("장르 수집 대상 영화 {} 건", movies.size());
-        int count = 0;
-
-        for (MovieEntity movie : movies) {
-            try {
-                log.debug("장르 정보 처리를 위해 상세 API 호출 - 영화 ID: {}", movie.getMovieId());
-                // (개선점) Discover 수집 시 이미 상세 정보를 받아왔다면, 그 정보를 재사용하거나
-                // DB에 저장된 영화 정보에서 장르 ID 목록을 가져오는 것이 효율적. 현재는 중복 호출.
-                fetchAndSaveMovieGenres(movie);
-                count++;
-
-                if (count % KEYWORD_GENRE_SLEEP_MOD == 0) {
-                    log.info("장르 API 호출 조절을 위해 잠시 대기 ({}ms)... (처리 건수: {})", SLEEP_INTERVAL_MILLIS, count);
-                    sleep(SLEEP_INTERVAL_MILLIS);
-                }
-            } catch (Exception e) {
-                log.error("영화 ID {} 장르 수집 중 오류 발생", movie.getMovieId(), e);
-            }
-        }
-        log.info("=== 영화 장르 수집 종료 (처리 건수: {}) ===", count);
-    }
-
-    // 특정 영화의 장르 정보를 TMDB에서 가져와 DB에 저장하는 메서드
-    private List<MovieGenreEntity> fetchAndSaveMovieGenres(MovieEntity movie) {
-        // 영화 상세 정보 API를 다시 호출 (비효율적 - 개선 필요)
-        Map<String, Object> detailResponse = tmdbApiClient.fetchMovieDetails(movie.getMovieId().toString());
-
-        if (detailResponse == null || detailResponse.get("genres") == null) {
-            log.warn("상세 API 응답 없음 또는 'genres' 필드 없음. 영화 ID: {}", movie.getMovieId());
-            return List.of();
-        }
-
-        List<Map<String, Object>> genres = (List<Map<String, Object>>) detailResponse.get("genres");
-        if (genres.isEmpty()) {
-            return List.of();
-        }
-
-        // 중복 처리를 위해 Set 사용 (영화-장르 관계 복합 키 기준)
-        Set<MovieGenreIdForEntity> genreIdSet = new LinkedHashSet<>();
-        for (Map<String, Object> genre : genres) {
-            Integer apiGenreId = (Integer) genre.get("id"); // TMDB 장르 ID
-
-            // a. TMDB 장르 ID를 우리 서비스의 내부 장르 ID로 매핑
-            Long serviceGenreId = mapApiGenreIdToServiceGenreId(apiGenreId);
-
-            // b. 유효한 장르 ID만 처리 (99999L은 매핑 실패 또는 기타 장르)
-            if (serviceGenreId != 99999L) {
-                // 복합 키 생성 (영화 ID, 서비스 장르 ID)
-                genreIdSet.add(new MovieGenreIdForEntity(movie.getMovieId(), serviceGenreId));
-            } else {
-                log.warn("매핑되지 않은 TMDB 장르 ID 발견: apiGenreId={}, 영화 ID: {}", apiGenreId, movie.getMovieId());
-            }
-        }
-
-        List<MovieGenreEntity> genreEntities = new ArrayList<>();
-        for (MovieGenreIdForEntity id : genreIdSet) {
-            // MovieGenreEntity 는 복합 키와 영화 엔티티 참조를 가짐
-            MovieGenreEntity genreEntity = new MovieGenreEntity(id, movie);
-            // (참고: MovieGenreEntity 에 생성/수정 시각 필드가 있다면 여기서 설정 필요)
-            genreEntities.add(genreEntity);
-        }
-
-        // 해당 영화의 장르 관계 정보들을 한 번에 저장
-        if (!genreEntities.isEmpty()) {
-            log.debug("DB 저장 시도 - 영화 ID {}의 장르 관계 {} 건", movie.getMovieId(), genreEntities.size());
-            movieGenreCollectRepository.saveAll(genreEntities);
-        }
-        return genreEntities;
-    }
-
-    // TMDB 장르 ID를 우리 서비스의 장르 ID로 변환하는 메서드
-    private Long mapApiGenreIdToServiceGenreId(int apiGenreId) {
-        // switch 표현식 (Java 14+) 사용
-        return switch (apiGenreId) {
-            case 28, 12 -> 1L;   // 액션(28), 모험(12) -> 우리 서비스 장르 1L
-            case 16 -> 2L;       // 애니메이션(16) -> 2L
-            case 35 -> 3L;       // 코미디(35) -> 3L
-            case 80 -> 4L;       // 범죄(80) -> 4L
-            case 99 -> 5L;       // 다큐멘터리(99) -> 5L
-            case 18, 10751 -> 6L;// 드라마(18), 가족(10751) -> 6L
-            case 14 -> 7L;       // 판타지(14) -> 7L
-            case 36 -> 8L;       // 역사(36) -> 8L
-            case 10402 -> 9L;    // 음악(10402) -> 9L
-            case 9648 -> 10L;    // 미스터리(9648) -> 10L
-            case 10749 -> 11L;   // 로맨스(10749) -> 11L
-            case 878 -> 12L;     // SF(878) -> 12L
-            case 10770 -> 13L;   // TV 영화(10770) -> 13L (별도 처리 필요할 수도)
-            case 27, 53 -> 14L;  // 공포(27), 스릴러(53) -> 14L
-            case 10752 -> 15L;   // 전쟁(10752) -> 15L
-            case 37 -> 16L;      // 서부(37) -> 16L
-            default -> 99999L;   // 매핑되지 않은 장르는 특수 ID 반환 (또는 예외 발생 등 정책 결정 필요)
-        };
-        // (참고: 이 매핑 정보는 DB나 설정 파일 등으로 관리하는 것이 더 유연할 수 있습니다.)
-    }
-
-    // --- 4) 크루(감독, 배우) 정보 수집 ---
-    public void collectMovieCrew() {
-        log.info("=== 영화 크루(감독/배우) 수집 시작 ===");
-        List<MovieEntity> movies = movieCollectRepository.findAll(); // 역시 대량 데이터 처리 시 주의
-        log.info("크루 수집 대상 영화 {} 건", movies.size());
-
-        // 크루(인물) 정보와 영화-크루 관계 정보를 분리해서 저장 준비
-        List<MovieCrewEntity> crewEntitiesToSave = new ArrayList<>();
-        List<MovieRCrewEntity> movieRCrewEntitiesToSave = new ArrayList<>();
-        // (개선점) 중복된 인물(같은 배우/감독)이 여러 영화에 나올 경우, 인물 정보를 한 번만 저장하도록 처리 필요 (예: Map<ApiPersonId, MovieCrewEntity> 활용)
-        // Set<Long> processedCrewApiIds = new HashSet<>(); // TMDB 인물 ID 기준 중복 체크용
-
-        int movieCount = 0;
-        for (MovieEntity movie : movies) {
-            try {
-                log.debug("크레딧 API 호출 - 영화 ID: {}", movie.getMovieId());
-                Map<String, Object> creditsResponse = tmdbApiClient.fetchMovieCredits(movie.getMovieId());
-
-                if (creditsResponse == null) {
-                    log.warn("크레딧 API 응답 없음. 영화 ID: {}", movie.getMovieId());
-                    continue; // 다음 영화로
-                }
-
-                // a. 출연진(Cast) 정보 처리
-                List<Map<String, Object>> castList = (List<Map<String, Object>>) creditsResponse.get("cast");
-                if (castList != null) {
-                    for (Map<String, Object> cast : castList) {
-                        // Long personApiId = ((Number) cast.get("id")).longValue(); // TMDB 인물 ID
-                        // if (!processedCrewApiIds.contains(personApiId)) { // 중복 인물 저장 방지
-                        MovieCrewEntity crewEntity = createMovieCrewEntityFromCast(cast); // 배우 정보 엔티티 생성
-                        crewEntitiesToSave.add(crewEntity);
-                        // processedCrewApiIds.add(personApiId);
-                        // } else { crewEntity = existingCrewMap.get(personApiId); } // 기존 인물 정보 가져오기
-
-                        MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, crewEntity); // 영화-배우 관계 엔티티 생성
-                        movieRCrewEntitiesToSave.add(rCrewEntity);
-                        log.trace("처리된 배우: 이름={}, 역할={}", crewEntity.getName(), crewEntity.getCharName());
-                    }
-                }
-
-                // b. 제작진(Crew) 정보 처리 - 여기서는 '감독(Director)'만 추출
-                List<Map<String, Object>> crewList = (List<Map<String, Object>>) creditsResponse.get("crew");
-                if (crewList != null && !crewList.isEmpty()) {
-                    // Stream API를 사용하여 'job'이 'Director'인 사람 필터링
-                    Optional<Map<String, Object>> directorOpt = crewList.stream()
-                            .filter(crew -> "Director".equals(crew.get("job")))
-                            .findFirst(); // 감독이 여러 명일 수 있지만, 여기서는 첫 번째만 처리
-
-                    if (directorOpt.isPresent()) {
-                        Map<String, Object> directorMap = directorOpt.get();
-                        // Long directorApiId = ((Number) directorMap.get("id")).longValue();
-                        // if (!processedCrewApiIds.contains(directorApiId)) {
-                        MovieCrewEntity directorEntity = createMovieCrewEntityForDirector(directorMap); // 감독 정보 엔티티 생성
-                        crewEntitiesToSave.add(directorEntity);
-                        // processedCrewApiIds.add(directorApiId);
-                        // } else { directorEntity = existingCrewMap.get(directorApiId); }
-
-                        MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, directorEntity); // 영화-감독 관계 엔티티 생성
-                        movieRCrewEntitiesToSave.add(rCrewEntity);
-                        log.trace("처리된 감독: 이름={}", directorEntity.getName());
-                    }
-                }
-
-                movieCount++;
-                // (개선점) 여기에도 Rate Limit 제어를 위한 sleep 로직 추가 필요
-                // if (movieCount % SLEEP_MOD == 0) sleep(SLEEP_INTERVAL_MILLIS);
-
-            } catch (Exception e) {
-                log.error("영화 ID {} 크루 수집 중 오류 발생", movie.getMovieId(), e);
-            }
-        }
-
-        // c. 수집된 크루 정보와 관계 정보를 DB에 일괄 저장
-        // (개선점) crewEntitiesToSave 에 중복된 인물이 있을 수 있음. saveAll 전에 중복 제거 로직 필요.
-        // Map<MovieCrewId, MovieCrewEntity> uniqueCrewMap = crewEntitiesToSave.stream().collect(Collectors.toMap(MovieCrewEntity::getMovieCrewId, Function.identity(), (existing, replacement) -> existing));
-        // movieCrewJpaRepository.saveAll(uniqueCrewMap.values());
-        if (!crewEntitiesToSave.isEmpty()) {
-            log.info("DB 저장 시도 - 크루(인물) 정보 {} 건", crewEntitiesToSave.size());
-            // 실제로는 중복 인물 처리 후 저장 필요!
-            movieCrewJpaRepository.saveAll(crewEntitiesToSave);
-        }
-        if (!movieRCrewEntitiesToSave.isEmpty()) {
-            log.info("DB 저장 시도 - 영화-크루 관계 정보 {} 건", movieRCrewEntitiesToSave.size());
-            movieRCrewJpaRepository.saveAll(movieRCrewEntitiesToSave);
-        }
-
-        log.info("=== 영화 크루(감독/배우) 수집 종료 (처리 영화 수: {}) ===", movieCount);
-    }
-
-    // Cast 정보(Map)로부터 MovieCrewEntity(배우) 객체를 생성하는 메서드
-    private MovieCrewEntity createMovieCrewEntityFromCast(Map<String, Object> cast) {
-        MovieCrewId crewId = IdFactory.createMovieCrewId(); // 우리 시스템 고유 ID 생성
-        String name = (String) cast.get("name");
-        MovieRole role = MovieRole.CAST; // 역할: 배우
-        String charName = (String) cast.get("character"); // 배역 이름
-        // 프로필 이미지 경로 (null 처리 및 전체 URL 생성)
-        String profileImgUrl = Optional.ofNullable((String) cast.get("profile_path"))
-                                 .map(path -> "http://image.tmdb.org/t/p/w185" + path) // 적절한 사이즈 사용
-                                 .orElse(null);
-        int orderNo = (Integer) cast.getOrDefault("order", 999); // 출연 순서 (없으면 큰 값)
-
-        // TODO: 동일 인물(같은 TMDB ID)에 대해 중복 생성되지 않도록 로직 추가 필요
-        // 예: Map<Long, MovieCrewId> tmdbIdToOurIdMap;
-
-        return MovieCrewEntity.builder()
-                .movieCrewId(crewId)
-                // .tmdbPersonId(((Number) cast.get("id")).longValue()) // TMDB 인물 ID도 저장하면 좋음
-                .name(name)
-                .role(role)
-                .charName(charName)
-                .profileImgUrl(profileImgUrl)
-                .orderNo(orderNo)
-                // .regDt(LocalDateTime.now()) ... // 생성/수정 시각 설정
-                .build();
-    }
-
-    // Crew 정보(Map)로부터 MovieCrewEntity(감독) 객체를 생성하는 메서드
-    private MovieCrewEntity createMovieCrewEntityForDirector(Map<String, Object> crew) {
-        MovieCrewId crewId = IdFactory.createMovieCrewId();
-        String name = (String) crew.get("name");
-        MovieRole role = MovieRole.DIRECTOR; // 역할: 감독
-        String charName = null; // 감독은 배역명이 없음
-        String profileImgUrl = Optional.ofNullable((String) crew.get("profile_path"))
-                                 .map(path -> "http://image.tmdb.org/t/p/w185" + path)
-                                 .orElse(null);
-        int orderNo = -1; // 감독은 출연 순서가 의미 없으므로 특수값 사용
-
-        // TODO: 동일 인물 중복 생성 방지 로직 추가 필요
-
-        return MovieCrewEntity.builder()
-                .movieCrewId(crewId)
-                // .tmdbPersonId(((Number) crew.get("id")).longValue())
-                .name(name)
-                .role(role)
-                .charName(charName)
-                .profileImgUrl(profileImgUrl)
-                .orderNo(orderNo)
-                // .regDt(LocalDateTime.now()) ...
-                .build();
-    }
-
-    // 영화와 크루(인물) 사이의 N:M 관계를 나타내는 MovieRCrewEntity 객체를 생성하는 메서드
-    private MovieRCrewEntity createMovieRCrewEntity(MovieEntity movie, MovieCrewEntity crewEntity) {
-        // 복합 키 생성 (영화 ID, 크루 ID)
-        MovieRCrewIdForEntity rCrewId = new MovieRCrewIdForEntity(movie.getMovieId(), crewEntity.getMovieCrewId());
-        // 관계 엔티티 생성 (복합키, 크루 엔티티 참조, 영화 엔티티 참조)
-        return new MovieRCrewEntity(rCrewId, crewEntity, movie);
-        // (참고: 이 엔티티에도 생성/수정 시각 필드가 있다면 설정 필요)
-    }
-
-    // --- 기타 유틸리티 메서드 ---
-
-    // 지정된 시간(밀리초) 동안 현재 스레드를 잠시 멈추는 메서드 (Rate Limiting 용도)
-    private void sleep(int millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            // InterruptedException 발생 시, 현재 스레드의 인터럽트 상태를 다시 설정하는 것이 좋음
-            Thread.currentThread().interrupt();
-            // 또는 로깅 후 무시하거나, 애플리케이션 정책에 따라 처리
-            log.warn("Thread sleep 중 InterruptedException 발생", e);
-            // 여기서는 RuntimeException으로 감싸서 전파하지만, 상황에 따라 다른 처리 가능
-            throw new RuntimeException(e);
-        }
-    }
-
-}
-```
-
-### 핵심 로직 해부 🔬
-
-1.  **영화 목록 수집 (`collectDiscoverMovies`)**:
-
-    - `TmdbApiClient.fetchDiscoverMovies()`로 영화 목록(페이지 단위)을 가져옵니다.
-    - **중요**: 목록의 각 영화마다 `fetchMovieDetails()`를 또 호출합니다. 이는 **N+1 API 호출 문제**를 야기합니다. 영화 20개 목록을 가져오면, 상세 정보 호출까지 총 1 + 20 = 21번의 API 호출이 발생합니다. TMDB는 Rate Limit(단위 시간당 호출 횟수 제한)이 있으므로, 대량 수집 시 문제가 될 수 있습니다.
-      - **개선 방안**: 상세 정보 수집은 별도의 배치(Batch) 작업으로 분리하거나, 필요한 최소 정보만 Discover 단계에서 얻고 나머지는 나중에 채우는 전략을 고려해야 합니다.
-    - `convertToMovieEntity()`: API 응답 `Map`을 `MovieEntity` 객체로 변환합니다. 이 과정에서 필드 누락, 타입 불일치, 날짜 형식 오류 등 다양한 예외 상황이 발생할 수 있으므로 견고한 처리가 필요합니다. (`Optional`, `try-catch`, 기본값 설정 등)
-    - 미래 개봉 영화는 `releaseDate.isAfter(today)` 조건으로 걸러냅니다. (서비스 정책)
-    - `movieCollectRepository.saveAll()`: 변환된 `MovieEntity` 리스트를 DB에 한 번의 INSERT (또는 UPDATE) 쿼리로 저장합니다. 하나씩 `save()` 하는 것보다 성능상 훨씬 유리합니다.
-    - `sleep()`: TMDB API 호출 제한을 피하기 위해 주기적으로 `Thread.sleep()`을 호출합니다. 가장 간단한 방법이지만, 더 정교한 Rate Limiter 라이브러리(예: Resilience4j) 사용을 고려할 수 있습니다.
-
-2.  **키워드 수집 (`collectMovieKeywords`)**:
-
-    - `movieCollectRepository.findAll()`: DB에 저장된 **모든** 영화를 조회합니다. 영화 수가 수만 건 이상으로 많아지면 **OutOfMemoryError**가 발생할 수 있습니다!
-      - **개선 방안**: 페이징(Paging) 기법을 사용하거나 (`Pageable` 인터페이스 활용), Spring Batch의 `JpaPagingItemReader` 등을 사용하여 대량의 데이터를 안전하게 처리해야 합니다.
-    - 각 영화에 대해 `fetchAndSaveMovieKeywords()`를 호출합니다.
-    - `fetchAndSaveMovieKeywords()`: `tmdbApiClient.fetchMovieKeywords()`로 키워드를 가져오고, `MovieTagEntity`를 생성하여 `movieTagRepository.saveAll()`로 저장합니다. `MovieTagEntity`는 영화와 키워드의 관계를 나타내며, 아마도 (영화 ID, 키워드 API ID)를 복합 키로 가질 것입니다.
-
-3.  **장르 수집 (`collectMovieGenres`)**:
-
-    - 키워드 수집과 마찬가지로 `findAll()`의 위험성을 내포합니다.
-    - **중요**: 현재 로직은 각 영화마다 `fetchMovieDetails()`를 **다시 호출**하여 장르 정보를 가져옵니다. 이는 매우 비효율적입니다.
-      - **개선 방안**: Discover 수집 단계에서 얻은 상세 정보를 활용하거나, `MovieEntity`에 TMDB 장르 ID 목록을 임시 저장했다가 이 단계에서 매핑만 처리하는 것이 좋습니다.
-    - `mapApiGenreIdToServiceGenreId()`: TMDB의 장르 ID를 우리 서비스 내부에서 사용하는 장르 ID 체계로 **매핑**합니다. 이는 외부 시스템(TMDB)의 변화가 우리 시스템 내부에 직접적인 영향을 미치지 않도록 하는 중요한 단계입니다. `switch` 표현식을 사용했는데, 이 매핑 정보는 DB나 설정 파일로 관리하는 것이 더 유연합니다.
-    - `LinkedHashSet`: 중복된 장르 관계가 저장되는 것을 방지합니다.
-    - `movieGenreCollectRepository.saveAll()`: 영화와 매핑된 서비스 장르 ID 관계(`MovieGenreEntity`)를 저장합니다.
-
-4.  **크루(감독, 배우) 수집 (`collectMovieCrew`)**:
-    - 역시 `findAll()`의 위험성을 가집니다.
-    - `tmdbApiClient.fetchMovieCredits()`: 영화의 출연진(`cast`)과 제작진(`crew`) 정보를 한 번에 가져옵니다.
-    - **Cast 처리**: `cast` 리스트를 순회하며 배우 정보를 `MovieCrewEntity`로 만듭니다. 이때 `MovieRole`을 `CAST`로 설정합니다.
-    - **Crew 처리 (감독)**: `crew` 리스트에서 `job`이 "Director"인 사람을 찾아 `MovieCrewEntity`로 만듭니다. `MovieRole`은 `DIRECTOR`로 설정합니다.
-    - `createMovieCrewEntity...()`: Cast/Crew 정보를 바탕으로 `MovieCrewEntity`(인물 정보)를 생성합니다. **중요**: 현재 코드는 같은 배우나 감독이 여러 영화에 등장할 경우, `MovieCrewEntity`가 **중복 생성**될 수 있습니다.
-      - **개선 방안**: TMDB 인물 ID(`cast.get("id")`, `crew.get("id")`)를 기준으로 이미 처리된 인물인지 확인하고, 중복 생성을 피해야 합니다. `Map<Long, MovieCrewEntity>` 등을 사용하여 TMDB ID로 기존 엔티티를 관리하는 방식이 필요합니다.
-    - `createMovieRCrewEntity()`: 영화(`MovieEntity`)와 인물(`MovieCrewEntity`) 사이의 **N:M 관계**를 표현하는 `MovieRCrewEntity`(매핑 테이블용 엔티티)를 생성합니다.
-    - `movieCrewJpaRepository.saveAll()` / `movieRCrewJpaRepository.saveAll()`: 수집된 인물 정보와 영화-인물 관계 정보를 각각 일괄 저장합니다. (인물 정보 저장 시 중복 제거 후 저장해야 함!)
-
----
-
-## 전체 소스 코드 📦
-
-> 위에서 설명한 주요 클래스들의 전체 코드를 다시 한번 정리했습니다.
-
-### `MovieCollectionController.java`
-
-```java
-// (위에 제시된 코드와 동일)
-package movlit.be.data_collection.movie;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import movlit.be.movie_collect.application.service.MovieCollectionService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-@RequestMapping("/collect/movie")
-@RequiredArgsConstructor
-@Slf4j
-public class MovieCollectionController {
-
-    private final MovieCollectionService movieCollectionService;
-
-    @GetMapping("/discover")
-    public ResponseEntity<Void> collectDiscoverMovies() {
-        log.info("GET /collect/movie/discover 요청 수신");
-        movieCollectionService.collectDiscoverMovies();
-        log.info("collectDiscoverMovies 작업 완료 응답");
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/keywords")
-    public ResponseEntity<Void> collectMovieKeywords() {
-        log.info("GET /collect/movie/keywords 요청 수신");
-        movieCollectionService.collectMovieKeywords();
-        log.info("collectMovieKeywords 작업 완료 응답");
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/genres")
-    public ResponseEntity<Void> collectMovieGenres() {
-        log.info("GET /collect/movie/genres 요청 수신");
-        movieCollectionService.collectMovieGenres();
-        log.info("collectMovieGenres 작업 완료 응답");
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/discover/crew") // TODO: URL 변경 고려
-    public ResponseEntity<Void> collectMovieCrew() {
-        log.info("GET /collect/movie/discover/crew 요청 수신");
-        movieCollectionService.collectMovieCrew();
-        log.info("collectMovieCrew 작업 완료 응답");
-        return ResponseEntity.ok().build();
-    }
-
-}
-```
-
-### `TmdbApiClient.java`
-
-```java
-package movlit.be.movie_collect.application;
-
+// TmdbApiClient.java
 @Component
-@Slf4j // 로깅 추가
 public class TmdbApiClient {
 
     private final RestTemplate restTemplate;
     private final String apiKey;
 
     private static final String BASE_URL = "https://api.themoviedb.org/3";
-    private static final String LANGUAGE_KO = "ko-KR"; // 언어 코드
-    private static final String REGION_KR = "KR";       // 지역 코드
-    // ... (다른 상수들)
-    private static final String SORT_BY_POPULARITY = "popularity.desc";
+    private static final String LANGUAGE_KO = "ko-KR";
+    // ... (기타 상수)
 
     public TmdbApiClient(RestTemplateBuilder builder,
                          @Value("${tmdb.key}") String apiKey,
-                         @Value("${tmdb.accessToken}") String accessToken) { // AccessToken 사용 여부 확인 필요
+                         @Value("${tmdb.accessToken}") String accessToken) { // v4용 AccessToken (여기선 사용하지 않음)
         this.apiKey = apiKey;
-        // AccessToken 헤더 설정 (필요한 경우)
-        // HttpHeaders headers = new HttpHeaders();
-        // headers.setBearerAuth(accessToken);
-        // builder = builder.defaultHeaders(headers);
-
         this.restTemplate = builder.build();
-        this.restTemplate.getMessageConverters().add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
+        // UTF-8 인코딩 설정 (한글 깨짐 방지)
+        this.restTemplate.getMessageConverters()
+                .add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
     }
 
     public List<Map<String, Object>> fetchDiscoverMovies(String page) {
-        // UriComponentsBuilder 사용 예시 (더 권장됨)
-        String url = BASE_URL + "/discover/movie";
-        // String url = UriComponentsBuilder.fromHttpUrl(BASE_URL).path("/discover/movie")
-        //         .queryParam("api_key", apiKey)
-        //         .queryParam("page", page)
-        //         .queryParam("language", LANGUAGE_KO)
-        //         .queryParam("region", REGION_KR)
-        //         .queryParam("include_adult", "false")
-        //         .queryParam("release_date.gte", "2023-01-01") // 값은 설정 파일 등에서 관리 가능
-        //         .queryParam("release_date.lte", "2024-12-31")
-        //         .queryParam("sort_by", SORT_BY_POPULARITY)
-        //         .toUriString();
-         String url_legacy = "https://api.themoviedb.org/3/discover/movie?api_key=" + apiKey +
-                 "&page=" + page + "&language=" + LANGUAGE_KO + "&region=" + REGION_KR + "&include_adult=false" +
-                 "&release_date.gte=2023-01-01&release_date.lte=2024-12-31&sort_by=" + SORT_BY_POPULARITY; // 레거시 방식 URL
-
+        // UriComponentsBuilder 사용으로 가독성 및 안정성 향상
+        String url = UriComponentsBuilder.fromHttpUrl(BASE_URL + "/discover/movie")
+                .queryParam("api_key", apiKey)
+                .queryParam("page", page)
+                .queryParam("language", LANGUAGE_KO)
+                // ... (다른 필수 파라미터 추가)
+                .queryParam("sort_by", "popularity.desc")
+                .encode(StandardCharsets.UTF_8) // 필요시 인코딩 지정
+                .toUriString();
 
         try {
-            Map<String, Object> response = restTemplate.getForObject(url_legacy, Map.class);
-            if (response == null || response.get("results") == null) {
-                log.warn("TMDB Discover API 응답 결과 또는 results 필드 null. URL: {}", url_legacy);
-                return Collections.emptyList(); // 빈 Immutable 리스트 반환
-            }
-            // 타입 안정성을 위해 List<?> 로 받고, 내부에서 캐스팅 검사하는 것이 더 안전할 수 있음
+            // getForObject: GET 요청 후 응답 본문을 Map으로 변환 시도
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            // ... (null 및 'results' 필드 체크)
             return (List<Map<String, Object>>) response.get("results");
         } catch (RestClientException e) {
-            log.error("TMDB Discover API 호출 중 오류 발생. URL: {}", url_legacy, e);
-            return Collections.emptyList(); // 오류 시 빈 리스트 반환 (정책에 따라 null 또는 예외 던지기 가능)
+            log.error("TMDB Discover API 호출 오류. URL: {}", url, e);
+            return Collections.emptyList(); // 오류 시 빈 리스트 반환
         }
     }
-
-    public Map<String, Object> fetchMovieDetails(String apiId) {
-        String url = BASE_URL + "/movie/" + apiId + "?api_key=" + apiKey + "&language=" + LANGUAGE_KO;
-        try {
-            return restTemplate.getForObject(url, Map.class);
-        } catch (RestClientException e) {
-            log.error("TMDB Movie Detail API 호출 중 오류 발생. Movie ID: {}", apiId, e);
-            return null; // 오류 시 null 반환 (또는 예외)
-        }
-    }
-
-    public Map<String, Object> fetchMovieKeywords(Long movieId) {
-        String url = BASE_URL + "/movie/" + movieId + "/keywords?api_key=" + apiKey;
-        try {
-            return restTemplate.getForObject(url, Map.class);
-        } catch (RestClientException e) {
-            log.error("TMDB Movie Keywords API 호출 중 오류 발생. Movie ID: {}", movieId, e);
-            return null;
-        }
-    }
-
-    public Map<String, Object> fetchMovieCredits(Long movieId) {
-        String url = BASE_URL + "/movie/" + movieId + "/credits?api_key=" + apiKey + "&language=" + LANGUAGE_KO;
-        try {
-            return restTemplate.getForObject(url, Map.class);
-        } catch (RestClientException e) {
-            log.error("TMDB Movie Credits API 호출 중 오류 발생. Movie ID: {}", movieId, e);
-            return null;
-        }
-    }
+    // ... (fetchMovieDetails, fetchMovieKeywords 등)
 }
 ```
 
-### `MovieCollectionService.java`
+- `@Value("${tmdb.key}")`: API Key 같은 민감 정보는 `application.yml` (또는 `.properties`) 파일에 정의하고 주입받아 사용합니다.
+- `RestTemplateBuilder`: `RestTemplate` 인스턴스 생성 시 다양한 설정을 쉽게 적용할 수 있게 도와줍니다. 여기서는 UTF-8 메시지 컨버터를 추가하여 API 응답의 한글 깨짐을 방지했습니다.
+- **`UriComponentsBuilder`**: 문자열拼接 방식으로 URL을 만드는 것보다 `UriComponentsBuilder`를 사용하면 파라미터 인코딩 문제를 자동으로 처리해주고, 코드가 더 명확해집니다.
+- `restTemplate.getForObject(url, Map.class)`: GET 요청을 보내고 응답 JSON을 `Map<String, Object>` 형태로 받습니다. 구조가 복잡하거나 타입 안정성이 중요하다면, 전용 DTO(Data Transfer Object) 클래스를 만들어 사용하는 것이 더 좋습니다. (예: `TmdbDiscoverResponseDto.class`)
+- **오류 처리**: `try-catch` 블록으로 `RestClientException`(네트워크 오류, HTTP 상태 코드 오류 등)을 잡아 로깅하고, 빈 리스트나 `null`을 반환하여 전체 프로세스가 중단되지 않도록 처리했습니다.
+
+## API 응답 변환
+
+API 응답으로 받은 `Map` 데이터를 저희가 정의한 JPA `MovieEntity` 객체로 변환하는 과정은 오류 발생 가능성이 높습니다. Null 값, 예상치 못한 데이터 타입, 날짜 형식 불일치 등을 신중하게 처리했습니다.
 
 ```java
-package movlit.be.movie_collect.application.service;
+// MovieCollectionService.java - convertToMovieEntity 메서드 일부
+private MovieEntity convertToMovieEntity(Map<String, Object> result, Map<String, Object> detailResult) {
+    try {
+        Integer id = (Integer) result.get("id");
+        if (id == null) return null; // 필수 ID 누락 시 처리 불가
 
-@Slf4j
-@Service
-@Transactional
-@RequiredArgsConstructor
-public class MovieCollectionService {
+        // Optional과 map/orElse 사용하여 Null-safe 처리
+        String posterPath = Optional.ofNullable(result.get("poster_path"))
+                .map(String::valueOf) // Object -> String
+                .filter(s -> !s.isEmpty()) // 빈 문자열 제외
+                .map(path -> "http://image.tmdb.org/t/p/original" + path) // 전체 URL 생성
+                .orElse(null); // 없으면 null
 
-    private final TmdbApiClient tmdbApiClient;
-    private final MovieCollectRepository movieCollectRepository;
-    private final MovieTagRepository movieTagRepository;
-    private final MovieGenreCollectRepository movieGenreCollectRepository;
-    private final MovieCrewJpaRepository movieCrewJpaRepository;
-    private final MovieRCrewJpaRepository movieRCrewJpaRepository;
-    private final MovieHeartCountService movieHeartCountService;
-
-    private static final int MAX_DISCOVER_PAGE = 5; // 설정 파일로 관리 가능
-    private static final int DISCOVER_SLEEP_MOD = 2;
-    private static final int KEYWORD_GENRE_SLEEP_MOD = 40;
-    private static final int SLEEP_INTERVAL_MILLIS = 1000; // 1초
-
-    // --- 1) Discover 영화 수집 ---
-    public void collectDiscoverMovies() {
-        log.info("=== 영화 목록(Discover) 수집 시작 ===");
-        for (int i = 1; i <= MAX_DISCOVER_PAGE; i++) {
-            log.info("Discover API 호출 - 페이지: {}", i);
-            List<Map<String, Object>> discoverResults = tmdbApiClient.fetchDiscoverMovies(String.valueOf(i));
-            if (discoverResults.isEmpty()) {
-                log.info("Discover API 결과 없음. 수집 중단. (페이지: {})", i);
-                break;
-            }
-
-            List<MovieEntity> movieEntities = new ArrayList<>();
-            for (Map<String, Object> result : discoverResults) {
-                String apiId = String.valueOf(result.get("id"));
-                // TODO: N+1 API 호출 문제 해결 필요! (상세 정보는 별도 배치로 분리하거나, 최소 정보만 사용)
-                log.debug("Movie Detail API 호출 - 영화 ID: {}", apiId);
-                Map<String, Object> detailResult = tmdbApiClient.fetchMovieDetails(apiId);
-                try {
-                    MovieEntity movie = convertToMovieEntity(result, detailResult);
-                    if (movie != null) {
-                        movieEntities.add(movie);
-                        log.debug("영화 처리 완료 (DB 저장 대기): ID={}, 제목={}", movie.getMovieId(), movie.getTitle());
-                    }
-                } catch (Exception e) {
-                    log.error("MovieEntity 변환 중 예측 못한 오류 발생. Movie API ID: {}", apiId, e);
-                    // 개별 영화 변환 실패 시 계속 진행
-                }
-            }
-
-            if (!movieEntities.isEmpty()) {
-                try {
-                    log.info("DB 저장 시도 - {} 건의 영화 정보 (페이지: {})", movieEntities.size(), i);
-                    movieCollectRepository.saveAll(movieEntities);
-                } catch (DataAccessException e) { // JPA 관련 예외 처리
-                    log.error("영화 정보 DB 저장 중 오류 발생 (페이지: {})", i, e);
-                    // 필요시 예외 처리 정책 구현 (재시도, 로깅 후 무시 등)
-                }
-            }
-
-            if (i % DISCOVER_SLEEP_MOD == 0 && i < MAX_DISCOVER_PAGE) { // 마지막 페이지 후에는 sleep 불필요
-                log.info("Discover API 호출 조절을 위해 잠시 대기 ({}ms)...", SLEEP_INTERVAL_MILLIS);
-                sleep(SLEEP_INTERVAL_MILLIS);
-            }
-        }
-        log.info("=== 영화 목록(Discover) 수집 종료 ===");
-    }
-
-    private MovieEntity convertToMovieEntity(Map<String, Object> result, Map<String, Object> detailResult) {
-        // 이 메서드 내부에 try-catch를 두어 개별 변환 오류가 전체를 멈추지 않게 함
-        try {
-            Integer id = (Integer) result.get("id");
-            if (id == null) {
-                log.warn("API 응답에 영화 ID가 없습니다. result: {}", result);
-                return null; // ID 없으면 처리 불가
-            }
-
-            LocalDate today = LocalDate.now();
-            // ... (null 체크 및 타입 캐스팅 강화)
-            String title = (String) result.get("title");
-            String originalTitle = (String) result.get("original_title");
-            String overview = (String) result.get("overview");
-            Double popularity = result.get("popularity") != null ? ((Number) result.get("popularity")).doubleValue() : 0.0;
-
-            String posterPath = Optional.ofNullable(result.get("poster_path")).map(String::valueOf).filter(s -> !s.isEmpty()).map(path -> "http://image.tmdb.org/t/p/original" + path).orElse(null);
-            String backdropPath = Optional.ofNullable(result.get("backdrop_path")).map(String::valueOf).filter(s -> !s.isEmpty()).map(path -> "http://image.tmdb.org/t/p/original" + path).orElse(null);
-
-            String releaseDateStr = (String) result.get("release_date");
-            LocalDate releaseDate = null;
-            if (releaseDateStr != null && !releaseDateStr.trim().isEmpty()) {
-                try {
-                    releaseDate = LocalDate.parse(releaseDateStr, DateTimeFormatter.ISO_LOCAL_DATE);
-                } catch (DateTimeParseException e) {
-                    log.warn("개봉일({}) 파싱 실패. Movie ID: {}", releaseDateStr, id);
-                }
-            }
-
-            if (releaseDate != null && releaseDate.isAfter(today)) {
-                log.debug("미래 개봉 영화 스킵: movieId={}, releaseDate={}", id, releaseDate);
-                return null;
-            }
-
-            String originalLanguage = (String) result.get("original_language");
-            Long voteCount = result.get("vote_count") != null ? ((Number) result.get("vote_count")).longValue() : 0L;
-            Double voteAverage = result.get("vote_average") != null ? ((Number) result.get("vote_average")).doubleValue() : 0.0;
-
-            String productionCountry = "미확인";
-            Integer runtime = null;
-            String status = null;
-            String tagline = null;
-
-            if (detailResult != null) {
-                // 상세 정보에서 값 추출 (null 체크 강화)
-                Object countriesObj = detailResult.get("production_countries");
-                if (countriesObj instanceof List && !((List<?>) countriesObj).isEmpty()) {
-                    Map<?, ?> firstCountry = (Map<?, ?>) ((List<?>) countriesObj).get(0);
-                    productionCountry = ProductionCountry.getNameFromCode(String.valueOf(firstCountry.get("iso_3166_1")));
-                }
-                runtime = detailResult.get("runtime") != null ? ((Number) detailResult.get("runtime")).intValue() : null;
-                status = (String) detailResult.get("status");
-                tagline = (String) detailResult.get("tagline");
-            } else {
-                 log.warn("영화 상세 정보(detailResult)가 null입니다. movieId={}", id);
-            }
-
-
-            MovieEntity movie = MovieEntity.builder()
-                    .movieId(Long.valueOf(id))
-                    .title(title)
-                    .originalTitle(originalTitle)
-                    .overview(overview)
-                    .popularity(popularity)
-                    .posterPath(posterPath)
-                    .backdropPath(backdropPath)
-                    .releaseDate(releaseDate)
-                    .originalLanguage(originalLanguage)
-                    .voteCount(voteCount)
-                    .voteAverage(voteAverage)
-                    .productionCountry(productionCountry)
-                    .runtime(runtime)
-                    .status(status)
-                    .tagline(tagline)
-                    .regDt(LocalDateTime.now())
-                    .updDt(LocalDateTime.now())
-                    .delYn(false)
-                    .build();
-
-            // 좋아요 카운트 초기화
-            movieHeartCountService.save(MovieConvertor.toMovieHeartCountEntity(movie.getMovieId()));
-            return movie;
-
-        } catch (ClassCastException | NullPointerException e) {
-            log.error("MovieEntity 변환 중 데이터 오류 발생. result={}, detailResult={}", result, detailResult, e);
-            return null; // 오류 발생 시 null 반환
-        }
-    }
-
-    // --- 2) 영화 키워드 수집 ---
-    public void collectMovieKeywords() {
-        log.info("=== 영화 키워드 수집 시작 ===");
-        // TODO: findAll() 대신 페이징 처리 구현 필요!
-        // Pageable pageable = PageRequest.of(0, 100); // 예: 100개씩 처리
-        // Page<MovieEntity> moviePage;
-        // do {
-        //     moviePage = movieCollectRepository.findAll(pageable);
-        //     processKeywordPage(moviePage.getContent());
-        //     pageable = moviePage.nextPageable();
-        // } while (moviePage.hasNext());
-
-        List<MovieEntity> movies = movieCollectRepository.findAll(); // 임시 사용
-        log.info("키워드 수집 대상 영화 {} 건", movies.size());
-        int count = 0;
-        for (MovieEntity movie : movies) {
+        // 날짜 파싱 및 예외 처리
+        String releaseDateStr = (String) result.get("release_date");
+        LocalDate releaseDate = null;
+        if (releaseDateStr != null && !releaseDateStr.trim().isEmpty()) {
             try {
-                log.debug("키워드 API 호출 - 영화 ID: {}", movie.getMovieId());
-                fetchAndSaveMovieKeywords(movie);
-                count++;
-                if (count % KEYWORD_GENRE_SLEEP_MOD == 0) {
-                    log.info("키워드 API 호출 조절 대기 ({}ms)... (처리 건수: {})", SLEEP_INTERVAL_MILLIS, count);
-                    sleep(SLEEP_INTERVAL_MILLIS);
-                }
-            } catch (Exception e) {
-                log.error("영화 ID {} 키워드 수집 중 오류 발생", movie.getMovieId(), e);
-            }
-        }
-        log.info("=== 영화 키워드 수집 종료 (처리 건수: {}) ===", count);
-    }
-
-    // private void processKeywordPage(List<MovieEntity> moviesInPage) { ... } // 페이징 처리 시 로직 분리
-
-    private List<MovieTagEntity> fetchAndSaveMovieKeywords(MovieEntity movie) {
-        Map<String, Object> keywordResponse = tmdbApiClient.fetchMovieKeywords(movie.getMovieId());
-        if (keywordResponse == null || !(keywordResponse.get("keywords") instanceof List)) {
-            log.warn("키워드 API 응답/형식 오류. 영화 ID: {}", movie.getMovieId());
-            return Collections.emptyList();
-        }
-
-        List<Map<String, Object>> keywords = (List<Map<String, Object>>) keywordResponse.get("keywords");
-        if (keywords.isEmpty()) return Collections.emptyList();
-
-        List<MovieTagEntity> tagEntities = new ArrayList<>();
-        for (Map<String, Object> keyword : keywords) {
-             try {
-                Long id = keyword.get("id") != null ? ((Number) keyword.get("id")).longValue() : null;
-                String name = (String) keyword.get("name");
-                if (id == null || name == null) continue; // 필수 정보 없으면 스킵
-
-                MovieTagIdForEntity tagId = new MovieTagIdForEntity(id, movie.getMovieId());
-                MovieTagEntity tag = MovieTagEntity.builder()
-                        .movieTagIdForEntity(tagId)
-                        .name(name)
-                        .movieEntity(movie)
-                        .regDt(LocalDateTime.now())
-                        .updDt(LocalDateTime.now())
-                        .delYn(false)
-                        .build();
-                tagEntities.add(tag);
-             } catch (ClassCastException e) {
-                 log.warn("키워드 데이터 형식 오류. 영화 ID: {}, 키워드 데이터: {}", movie.getMovieId(), keyword, e);
-             }
-        }
-
-        if (!tagEntities.isEmpty()) {
-            try {
-                log.debug("DB 저장 시도 - 영화 ID {}의 키워드 {} 건", movie.getMovieId(), tagEntities.size());
-                movieTagRepository.saveAll(tagEntities);
-            } catch (DataAccessException e) {
-                log.error("영화 키워드 DB 저장 중 오류 발생. 영화 ID: {}", movie.getMovieId(), e);
-            }
-        }
-        return tagEntities;
-    }
-
-
-    // --- 3) 영화 장르 수집 ---
-    public void collectMovieGenres() {
-        log.info("=== 영화 장르 수집 시작 ===");
-        // TODO: findAll() 대신 페이징 처리 구현 필요!
-        List<MovieEntity> movies = movieCollectRepository.findAll();
-        log.info("장르 수집 대상 영화 {} 건", movies.size());
-        int count = 0;
-        for (MovieEntity movie : movies) {
-            try {
-                // TODO: 상세 API 중복 호출 개선 필요! (Discover 단계 정보 재활용 등)
-                log.debug("장르 정보 처리를 위해 상세 API 호출 - 영화 ID: {}", movie.getMovieId());
-                fetchAndSaveMovieGenres(movie);
-                count++;
-                if (count % KEYWORD_GENRE_SLEEP_MOD == 0) {
-                    log.info("장르 API 호출 조절 대기 ({}ms)... (처리 건수: {})", SLEEP_INTERVAL_MILLIS, count);
-                    sleep(SLEEP_INTERVAL_MILLIS);
-                }
-            } catch (Exception e) {
-                log.error("영화 ID {} 장르 수집 중 오류 발생", movie.getMovieId(), e);
-            }
-        }
-        log.info("=== 영화 장르 수집 종료 (처리 건수: {}) ===", count);
-    }
-
-    private List<MovieGenreEntity> fetchAndSaveMovieGenres(MovieEntity movie) {
-        Map<String, Object> detailResponse = tmdbApiClient.fetchMovieDetails(movie.getMovieId().toString());
-        if (detailResponse == null || !(detailResponse.get("genres") instanceof List)) {
-            log.warn("상세 API 응답/형식 오류 (장르). 영화 ID: {}", movie.getMovieId());
-            return Collections.emptyList();
-        }
-
-        List<Map<String, Object>> genres = (List<Map<String, Object>>) detailResponse.get("genres");
-        if (genres.isEmpty()) return Collections.emptyList();
-
-        Set<MovieGenreIdForEntity> genreIdSet = new LinkedHashSet<>();
-        for (Map<String, Object> genre : genres) {
-            try {
-                Integer apiGenreId = genre.get("id") != null ? ((Number) genre.get("id")).intValue() : null;
-                if (apiGenreId == null) continue;
-
-                Long serviceGenreId = mapApiGenreIdToServiceGenreId(apiGenreId);
-                if (serviceGenreId != 99999L) { // 매핑된 경우만
-                    genreIdSet.add(new MovieGenreIdForEntity(movie.getMovieId(), serviceGenreId));
-                } else {
-                    log.debug("매핑되지 않은 TMDB 장르 ID: apiGenreId={}, 영화 ID: {}", apiGenreId, movie.getMovieId());
-                }
-            } catch(ClassCastException e) {
-                 log.warn("장르 데이터 형식 오류. 영화 ID: {}, 장르 데이터: {}", movie.getMovieId(), genre, e);
+                releaseDate = LocalDate.parse(releaseDateStr, DateTimeFormatter.ISO_LOCAL_DATE);
+            } catch (DateTimeParseException e) {
+                log.warn("개봉일({}) 파싱 실패. Movie ID: {}", releaseDateStr, id);
+                // 파싱 실패 시 null 유지 또는 기본값 설정
             }
         }
 
-        if (!genreIdSet.isEmpty()) {
-            List<MovieGenreEntity> genreEntities = new ArrayList<>();
-            for (MovieGenreIdForEntity id : genreIdSet) {
-                MovieGenreEntity genreEntity = new MovieGenreEntity(id, movie);
-                // genreEntity.setRegDt(LocalDateTime.now()); // 필요시 설정
-                genreEntities.add(genreEntity);
-            }
-            try {
-                log.debug("DB 저장 시도 - 영화 ID {}의 장르 관계 {} 건", movie.getMovieId(), genreEntities.size());
-                movieGenreCollectRepository.saveAll(genreEntities);
-                return genreEntities;
-            } catch (DataAccessException e) {
-                log.error("영화 장르 관계 DB 저장 중 오류 발생. 영화 ID: {}", movie.getMovieId(), e);
-            }
-        }
-        return Collections.emptyList();
-    }
+        // Number 타입 처리 (Integer 또는 Double 가능성 고려)
+        Double popularity = result.get("popularity") != null ? ((Number) result.get("popularity")).doubleValue() : 0.0;
 
-    // TMDB 장르 ID -> 서비스 장르 ID 매핑
-    private Long mapApiGenreIdToServiceGenreId(int apiGenreId) {
-        // (위에 제시된 코드와 동일)
-        return switch (apiGenreId) {
-            case 28, 12 -> 1L;   // 액션, 모험
-            case 16 -> 2L;       // 애니메이션
-            case 35 -> 3L;       // 코미디
-            case 80 -> 4L;       // 범죄
-            case 99 -> 5L;       // 다큐
-            case 18, 10751 -> 6L;// 드라마, 가족
-            case 14 -> 7L;       // 판타지
-            case 36 -> 8L;       // 역사
-            case 10402 -> 9L;    // 음악
-            case 9648 -> 10L;    // 미스터리
-            case 10749 -> 11L;   // 로맨스
-            case 878 -> 12L;     // SF
-            case 10770 -> 13L;   // TV 영화
-            case 27, 53 -> 14L;  // 공포, 스릴러
-            case 10752 -> 15L;   // 전쟁
-            case 37 -> 16L;      // 서부
-            default -> 99999L;   // 없는 장르
-        };
-        // TODO: 이 매핑 정보는 DB나 Enum으로 관리하는 것이 더 좋음
-    }
-
-    // --- 4) 크루(감독, 배우) 수집 ---
-    public void collectMovieCrew() {
-        log.info("=== 영화 크루(감독/배우) 수집 시작 ===");
-        // TODO: findAll() 대신 페이징 처리 구현 필요!
-        List<MovieEntity> movies = movieCollectRepository.findAll();
-        log.info("크루 수집 대상 영화 {} 건", movies.size());
-
-        // TODO: 중복 인물 처리 로직 강화 필요 (Map<Long, MovieCrewEntity> 활용 등)
-        Map<Long, MovieCrewEntity> processedCrewMap = new HashMap<>(); // <TMDB Person ID, MovieCrewEntity>
-
-        List<MovieRCrewEntity> movieRCrewEntitiesToSave = new ArrayList<>();
-        int movieCount = 0;
-
-        for (MovieEntity movie : movies) {
-            try {
-                log.debug("크레딧 API 호출 - 영화 ID: {}", movie.getMovieId());
-                Map<String, Object> creditsResponse = tmdbApiClient.fetchMovieCredits(movie.getMovieId());
-                if (creditsResponse == null) {
-                     log.warn("크레딧 API 응답 없음. 영화 ID: {}", movie.getMovieId());
-                     continue;
-                }
-
-                // a. Cast (배우) 처리
-                if (creditsResponse.get("cast") instanceof List) {
-                    List<Map<String, Object>> castList = (List<Map<String, Object>>) creditsResponse.get("cast");
-                    for (Map<String, Object> cast : castList) {
-                        try {
-                            Long personApiId = cast.get("id") != null ? ((Number) cast.get("id")).longValue() : null;
-                            if (personApiId == null) continue;
-
-                            MovieCrewEntity crewEntity = processedCrewMap.computeIfAbsent(personApiId,
-                                    id -> createMovieCrewEntityFromCast(cast, personApiId)); // 없으면 생성, 있으면 기존 것 사용
-
-                            MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, crewEntity);
-                            movieRCrewEntitiesToSave.add(rCrewEntity);
-                        } catch (Exception e) { // 개별 cast 처리 오류
-                             log.warn("Cast 처리 중 오류. 영화 ID: {}, Cast 데이터: {}", movie.getMovieId(), cast, e);
-                        }
-                    }
-                }
-
-                // b. Crew (감독) 처리
-                if (creditsResponse.get("crew") instanceof List) {
-                    List<Map<String, Object>> crewList = (List<Map<String, Object>>) creditsResponse.get("crew");
-                     crewList.stream()
-                        .filter(crew -> "Director".equals(crew.get("job")))
-                        .findFirst() // 첫번째 감독만 처리 (정책에 따라 변경 가능)
-                        .ifPresent(directorMap -> {
-                            try {
-                                Long directorApiId = directorMap.get("id") != null ? ((Number) directorMap.get("id")).longValue() : null;
-                                if (directorApiId == null) return;
-
-                                MovieCrewEntity directorEntity = processedCrewMap.computeIfAbsent(directorApiId,
-                                        id -> createMovieCrewEntityForDirector(directorMap, directorApiId));
-
-                                MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, directorEntity);
-                                movieRCrewEntitiesToSave.add(rCrewEntity);
-                            } catch (Exception e) { // 개별 director 처리 오류
-                                log.warn("Director 처리 중 오류. 영화 ID: {}, Director 데이터: {}", movie.getMovieId(), directorMap, e);
-                            }
-                        });
-                }
-
-                movieCount++;
-                // TODO: 여기에 Rate Limit 제어 sleep 추가 필요
-                 if (movieCount % KEYWORD_GENRE_SLEEP_MOD == 0) { // 예시: 키워드/장르와 동일한 기준 사용
-                     log.info("크레딧 API 호출 조절 대기 ({}ms)... (처리 영화 수: {})", SLEEP_INTERVAL_MILLIS, movieCount);
-                     sleep(SLEEP_INTERVAL_MILLIS);
-                 }
-
-            } catch (Exception e) {
-                log.error("영화 ID {} 크루 수집 중 오류 발생", movie.getMovieId(), e);
-            }
+        // 상세 정보(detailResult)에서 추가 정보 추출 (null 체크 필수)
+        Integer runtime = null;
+        if (detailResult != null) {
+            runtime = detailResult.get("runtime") != null ? ((Number) detailResult.get("runtime")).intValue() : null;
+            // ... (productionCountry, status 등 추출)
         }
 
-        // c. 최종 저장 (중복 제거된 인물 정보 + 관계 정보)
-        if (!processedCrewMap.isEmpty()) {
-            try {
-                 // 새롭게 추가된 Crew만 필터링해서 저장하거나, Update 로직 고려 필요
-                 // 여기서는 간단히 모든 processed된 Crew 저장 시도
-                log.info("DB 저장 시도 - 유니크 크루(인물) 정보 {} 건", processedCrewMap.size());
-                movieCrewJpaRepository.saveAll(processedCrewMap.values());
-            } catch (DataAccessException e) {
-                log.error("크루 정보 DB 저장 중 오류 발생", e);
-            }
-        }
-        if (!movieRCrewEntitiesToSave.isEmpty()) {
-             try {
-                log.info("DB 저장 시도 - 영화-크루 관계 정보 {} 건", movieRCrewEntitiesToSave.size());
-                movieRCrewJpaRepository.saveAll(movieRCrewEntitiesToSave);
-             } catch (DataAccessException e) {
-                 log.error("영화-크루 관계 정보 DB 저장 중 오류 발생", e);
-             }
-        }
-
-        log.info("=== 영화 크루(감독/배우) 수집 종료 (처리 영화 수: {}) ===", movieCount);
-    }
-
-    // Cast 정보 -> MovieCrewEntity 변환 (중복 체크 로직 반영)
-    private MovieCrewEntity createMovieCrewEntityFromCast(Map<String, Object> cast, Long personApiId) {
-        MovieCrewId crewId = IdFactory.createMovieCrewId(); // 고유 ID 생성
-        String name = (String) cast.get("name");
-        MovieRole role = MovieRole.CAST;
-        String charName = (String) cast.get("character");
-        String profileImgUrl = Optional.ofNullable(cast.get("profile_path")).map(String::valueOf).filter(s -> !s.isEmpty()).map(path -> "http://image.tmdb.org/t/p/w185" + path).orElse(null);
-        int orderNo = cast.get("order") != null ? ((Number) cast.get("order")).intValue() : 999;
-
-        return MovieCrewEntity.builder()
-                .movieCrewId(crewId)
-                .tmdbPersonId(personApiId) // TMDB 인물 ID 저장
-                .name(name)
-                .role(role)
-                .charName(charName)
-                .profileImgUrl(profileImgUrl)
-                .orderNo(orderNo)
+        // Builder 패턴으로 Entity 생성
+        return MovieEntity.builder()
+                .movieId(Long.valueOf(id))
+                .posterPath(posterPath)
+                .releaseDate(releaseDate)
+                .popularity(popularity)
+                .runtime(runtime)
+                // ... (다른 필드 설정)
                 .regDt(LocalDateTime.now())
                 .updDt(LocalDateTime.now())
+                .delYn(false)
                 .build();
-    }
 
-    // Director 정보 -> MovieCrewEntity 변환 (중복 체크 로직 반영)
-    private MovieCrewEntity createMovieCrewEntityForDirector(Map<String, Object> crew, Long personApiId) {
-        MovieCrewId crewId = IdFactory.createMovieCrewId();
-        String name = (String) crew.get("name");
-        MovieRole role = MovieRole.DIRECTOR;
-        String profileImgUrl = Optional.ofNullable(crew.get("profile_path")).map(String::valueOf).filter(s -> !s.isEmpty()).map(path -> "http://image.tmdb.org/t/p/w185" + path).orElse(null);
-
-        return MovieCrewEntity.builder()
-                .movieCrewId(crewId)
-                .tmdbPersonId(personApiId) // TMDB 인물 ID 저장
-                .name(name)
-                .role(role)
-                .profileImgUrl(profileImgUrl)
-                .orderNo(-1) // 감독은 순서 의미 없음
-                .regDt(LocalDateTime.now())
-                .updDt(LocalDateTime.now())
-                .build();
-    }
-
-
-    private MovieRCrewEntity createMovieRCrewEntity(MovieEntity movie, MovieCrewEntity crewEntity) {
-        MovieRCrewIdForEntity rCrewId = new MovieRCrewIdForEntity(movie.getMovieId(), crewEntity.getMovieCrewId());
-        // TODO: 이미 해당 관계가 존재하는지 확인하는 로직 추가 고려 (Unique 제약 조건 등 활용)
-        return new MovieRCrewEntity(rCrewId, crewEntity, movie);
-    }
-
-    private void sleep(int millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("Thread sleep 중 InterruptedException 발생", e);
-            // throw new RuntimeException(e); // 필요시 예외 전파
-        }
+    } catch (ClassCastException | NullPointerException e) {
+        // 예상치 못한 타입 변환 오류나 Null 참조 발생 시 로깅하고 null 반환
+        log.error("MovieEntity 변환 중 데이터 오류 발생. result={}, detailResult={}", result, detailResult, e);
+        return null;
     }
 }
 ```
+
+- **Null Safety**: `Optional`을 활용하거나 `getOrDefault`, `!= null` 체크를 통해 `NullPointerException`을 방지합니다. 특히 이미지 경로(`poster_path`, `backdrop_path`)처럼 없을 수 있는 필드에 유용합니다.
+- **타입 변환**: JSON 숫자 타입은 Java에서 `Integer` 또는 `Double`로 해석될 수 있습니다. `(Number)`로 캐스팅 후 `.doubleValue()`, `.longValue()`, `.intValue()` 등을 사용하여 원하는 타입으로 안전하게 변환합니다.
+- **날짜 파싱**: 문자열 형태의 날짜(`release_date`)는 `LocalDate.parse()`를 사용해 `LocalDate` 객체로 변환합니다. 이때 `DateTimeParseException`이 발생할 수 있으므로 `try-catch`로 감싸야 합니다. 잘못된 형식의 날짜 데이터가 들어올 경우를 대비합니다.
+- **Builder 패턴**: 엔티티 객체 생성 시 Builder 패턴을 사용하면 코드가 더 읽기 쉬워지고, 필수 필드와 선택 필드를 명확히 구분하여 설정할 수 있습니다.
+- **개별 오류 처리**: `convertToMovieEntity` 메서드 전체를 `try-catch`로 감싸서, 특정 영화 데이터 변환 중 오류가 발생하더라도 전체 수집 작업이 중단되지 않고 해당 영화만 건너뛸 수 있도록 합니다.
+
+## API 제한 해결
+
+TMDB API는 짧은 시간에 과도한 요청을 보내는 것을 막기 위해 Rate Limit(호출 횟수 제한) 정책을 가지고 있습니다. 이를 준수하기 위해 간단하게 `Thread.sleep()`을 사용했습니다.
+
+```java
+// MovieCollectionService.java
+private static final int DISCOVER_SLEEP_MOD = 2; // 2 페이지마다
+private static final int SLEEP_INTERVAL_MILLIS = 1000; // 1초 대기
+
+public void collectDiscoverMovies() {
+    // ...
+    for (int i = 1; i <= MAX_DISCOVER_PAGE; i++) {
+        // ... (API 호출 및 처리) ...
+        if (i % DISCOVER_SLEEP_MOD == 0 && i < MAX_DISCOVER_PAGE) {
+            log.info("Discover API 호출 조절을 위해 잠시 대기 ({}ms)...", SLEEP_INTERVAL_MILLIS);
+            sleep(SLEEP_INTERVAL_MILLIS); // 스레드 잠시 멈춤
+        }
+    }
+    // ...
+}
+
+private void sleep(int millis) {
+    try {
+        Thread.sleep(millis);
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt(); // 인터럽트 상태 복원
+        log.warn("Thread sleep 중 InterruptedException 발생", e);
+    }
+}
+```
+
+- `DISCOVER_SLEEP_MOD` 페이지마다 `SLEEP_INTERVAL_MILLIS` 만큼 스레드를 잠시 멈춰 API 요청 간격을 조절합니다. 키워드나 장르 수집 시에는 더 많은 API 호출이 발생하므로 `KEYWORD_GENRE_SLEEP_MOD` (예: 40건마다) 같이 다른 기준을 적용했습니다.
+
+## 대량 데이터 처리
+
+
+```java
+// MovieCollectionService.java - collectMovieKeywords 메서드 (장르, 크루도 유사)
+public void collectMovieKeywords() {
+    log.info("=== 영화 키워드 수집 시작 ===");
+    // DB의 모든 영화를 메모리로 로드 시도 (위험!)
+    List<MovieEntity> movies = movieCollectRepository.findAll();
+    log.info("키워드 수집 대상 영화 {} 건", movies.size());
+    // ... (각 영화에 대해 API 호출 및 처리) ...
+}
+```
+
+- `movieCollectRepository.findAll()`은 테이블의 모든 레코드를 조회하여 메모리에 `List<MovieEntity>` 형태로 로드합니다. 영화 수가 수만, 수십만 건이 되면 **`OutOfMemoryError`**가 발생하여 애플리케이션이 중단될 수 있습니다. 이것은 추후에 Spring Batch를 사용하여 개선해볼 생각입니다.
+
+## 데이터 매핑
+
+TMDB의 장르 ID 체계와 우리 서비스의 장르 분류 체계가 다를 수 있습니다. 이를 연결하기 위한 매핑 로직이 필요합니다.
+
+```java
+// MovieCollectionService.java
+private Long mapApiGenreIdToServiceGenreId(int apiGenreId) {
+    // switch 표현식 (Java 14+) 사용
+    return switch (apiGenreId) {
+        case 28, 12 -> 1L;   // 액션(28), 모험(12) -> 우리 서비스 장르 1L (액션/모험)
+        case 16 -> 2L;       // 애니메이션(16) -> 2L
+        // ... (다른 장르 매핑)
+        case 37 -> 16L;      // 서부(37) -> 16L
+        default -> 99999L;   // 매핑되지 않거나 분류되지 않은 장르는 특수 ID 반환
+    };
+}
+
+private List<MovieGenreEntity> fetchAndSaveMovieGenres(MovieEntity movie) {
+    // ... (상세 정보 API 호출하여 genres 리스트 얻기) ...
+    Set<MovieGenreIdForEntity> genreIdSet = new LinkedHashSet<>(); // 중복 방지
+    for (Map<String, Object> genre : genres) {
+        Integer apiGenreId = (Integer) genre.get("id");
+        Long serviceGenreId = mapApiGenreIdToServiceGenreId(apiGenreId); // 매핑 함수 호출
+        if (serviceGenreId != 99999L) { // 유효한 서비스 장르 ID만 처리
+            genreIdSet.add(new MovieGenreIdForEntity(movie.getMovieId(), serviceGenreId));
+        }
+    }
+    // ... (MovieGenreEntity 생성 및 saveAll 호출) ...
+}
+```
+
+- `mapApiGenreIdToServiceGenreId` 메서드는 TMDB API에서 받은 장르 ID(`apiGenreId`)를 우리 시스템 내부에서 사용하는 장르 ID(`serviceGenreId`)로 변환합니다. 이를 통해 외부 시스템(TMDB)의 ID 체계 변경이 우리 시스템 내부에 직접적인 영향을 미치는 것을 최소화합니다. (느슨한 결합)
+- 매핑되지 않는 장르 ID(`default`)는 특정 값(여기서는 `99999L`)을 반환하여 처리에서 제외하거나 '기타' 장르로 분류할 수 있습니다.
+
+## 중복 데이터 방지
+
+한 명의 배우나 감독은 여러 영화에 출연/참여할 수 있습니다. 크루 정보를 수집할 때 동일 인물이 DB에 중복 저장되지 않도록 처리해야 합니다.
+
+```java
+// MovieCollectionService.java - collectMovieCrew 메서드 일부
+public void collectMovieCrew() {
+    // ...
+    // <TMDB 인물 ID, 우리 시스템의 MovieCrewEntity>
+    Map<Long, MovieCrewEntity> processedCrewMap = new HashMap<>();
+    List<MovieRCrewEntity> movieRCrewEntitiesToSave = new ArrayList<>();
+
+    for (MovieEntity movie : movies) {
+        // ... (크레딧 API 호출) ...
+
+        // Cast (배우) 처리
+        if (creditsResponse.get("cast") instanceof List) {
+            List<Map<String, Object>> castList = (List<Map<String, Object>>) creditsResponse.get("cast");
+            for (Map<String, Object> cast : castList) {
+                Long personApiId = cast.get("id") != null ? ((Number) cast.get("id")).longValue() : null;
+                if (personApiId == null) continue;
+
+                // Map.computeIfAbsent: 해당 ID가 Map에 없으면 새로 생성하고 Map에 넣음, 있으면 기존 값 반환
+                MovieCrewEntity crewEntity = processedCrewMap.computeIfAbsent(personApiId,
+                        id -> createMovieCrewEntityFromCast(cast, personApiId)); // 인물 정보 생성 (중복 방지)
+
+                // 영화-인물 관계(N:M) 정보 생성
+                MovieRCrewEntity rCrewEntity = createMovieRCrewEntity(movie, crewEntity);
+                movieRCrewEntitiesToSave.add(rCrewEntity);
+            }
+        }
+        // Crew (감독) 처리도 유사하게 computeIfAbsent 사용 ...
+    }
+
+    // 최종 저장: 중복 제거된 인물 정보 + 모든 관계 정보
+    if (!processedCrewMap.isEmpty()) {
+        // 주의: 이미 DB에 있는 인물 정보는 UPDATE 필요. saveAll은 INSERT 시도.
+        // 실제로는 findById 등으로 조회 후 없으면 save, 있으면 update 로직 필요.
+        // 또는 JPA의 save 메서드가 ID 존재 여부로 INSERT/UPDATE 분기하는 것을 활용.
+        movieCrewJpaRepository.saveAll(processedCrewMap.values()); // 중복 없는 인물 목록 저장
+    }
+    if (!movieRCrewEntitiesToSave.isEmpty()) {
+        movieRCrewJpaRepository.saveAll(movieRCrewEntitiesToSave); // 영화-인물 관계 저장
+    }
+    // ...
+}
+
+// 인물 Entity 생성 시 TMDB 인물 ID도 저장하도록 수정
+private MovieCrewEntity createMovieCrewEntityFromCast(Map<String, Object> cast, Long personApiId) {
+    // ...
+    return MovieCrewEntity.builder()
+            .movieCrewId(IdFactory.createMovieCrewId()) // 우리 시스템 고유 ID
+            .tmdbPersonId(personApiId) // TMDB 인물 ID 저장
+            .name((String) cast.get("name"))
+            .role(MovieRole.CAST)
+            // ...
+            .build();
+}
+```
+
+**설명:**
+
+- TMDB API 응답에는 고유한 인물 ID(`id` 필드)가 포함되어 있습니다. 이 ID를 기준으로 인물 정보(`MovieCrewEntity`)의 중복 생성을 방지합니다.
+- `Map<Long, MovieCrewEntity> processedCrewMap`을 사용하여, `TMDB 인물 ID`를 Key로 하고 생성된 `MovieCrewEntity`를 Value로 저장합니다.
+- `computeIfAbsent(key, mappingFunction)`: Map에 `key`(TMDB 인물 ID)가 존재하면 해당 Value(`MovieCrewEntity`)를 반환하고, 존재하지 않으면 `mappingFunction`(람다식: `id -> createMovieCrewEntity...`)을 실행하여 새로운 `MovieCrewEntity`를 생성하여 Map에 저장하고 그 값을 반환합니다. 이를 통해 동일 인물에 대한 `MovieCrewEntity` 생성이 단 한 번만 일어나도록 보장합니다.
+- `MovieCrewEntity`에는 TMDB 인물 ID를 저장할 필드(`tmdbPersonId`)를 추가하는 것이 좋습니다.
+- **데이터 저장**: `movieCrewJpaRepository.saveAll(processedCrewMap.values())`를 호출하여 중복 없이 수집된 인물 정보들을 한 번에 저장합니다.
+
+## `@Transactional` 활용하여 데이터 일관성 유지
+
+데이터 수집 과정 중 여러 테이블(영화, 키워드, 장르, 크루 등)에 걸쳐 DB 작업이 일어납니다. 중간에 오류가 발생했을 때 데이터 일관성을 유지하는 것이 중요합니다.
+
+```java
+// MovieCollectionService.java
+@Slf4j
+@Service
+@Transactional // 클래스 레벨에 선언
+@RequiredArgsConstructor
+public class MovieCollectionService {
+    // ... Repository 및 다른 의존성 주입 ...
+
+    // 이 클래스 내의 public 메서드들은 기본적으로 하나의 트랜잭션 내에서 실행됨
+    public void collectDiscoverMovies() { /* ... */ }
+    public void collectMovieKeywords() { /* ... */ }
+    // ...
+}
+```
+
+- `@Transactional` 어노테이션을 서비스 클래스 레벨에 추가하면, 해당 클래스의 `public` 메서드가 호출될 때 트랜잭션이 시작되고, 메서드가 성공적으로 완료되면 트랜잭션이 커밋(Commit)됩니다.
+- 만약 메서드 실행 중 **RuntimeException** (또는 설정된 다른 예외 타입)이 발생하면, 진행 중이던 모든 DB 작업(INSERT, UPDATE, DELETE)이 **롤백(Rollback)** 됩니다.
+- 이를 통해 예를 들어 `collectDiscoverMovies` 메서드 수행 중 영화 정보는 저장했지만 관련 좋아요 카운트 초기화에서 오류가 발생하면, 영화 정보 저장까지 모두 취소되어 데이터가 불일치 상태로 남는 것을 방지할 수 있습니다.
