@@ -14,15 +14,14 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-04
-last_modified_at: 2025-04-04
+last_modified_at: 2025-04-21
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
 ## 서론
 
-정말 많은 블로그에 Rest Assured와 Rest Docs를 연동하는 글이 있지만, 여러 가지 버전 문제 때문에 잘 안 되는 분들께 공유 드리고자 합니다.  
-
+정말 많은 블로그에 Rest Assured와 Rest Docs를 연동하는 글이 있지만, 버전 문제 때문에 잘 안 되는 분들께 공유 드리고자 합니다.  
 스프링부트 버전은 `3.4.1`을 사용했으며, 인수 테스트를 중심으로 개발하였습니다.
 
 ## `build.gradle`
@@ -236,7 +235,6 @@ public abstract class AcceptanceTest {
 ```
 
 ```java
-// (예시)
 @DisplayName("영화 코멘트를 작성하는 데 성공하면, 상태코드 200과 body를 반환한다.")
 @Test
 void when_create_movie_comment_then_response_200_and_body() {
@@ -282,7 +280,7 @@ public class RestDocsController {
 ```
 
 - 이 컨트롤러를 이용하시면 향후 배포가 되었을 때, `/api/docs` 경로로 API 문서를 접근할 수 있게 됩니다.
-- Vite React 개발 환경에서는 **프록시에 경로 추가**, 배포 환경에서는 **리스너 규칙에 경로 추가** 하는 것도 꼭 잊지 말아주세요!
+- Vite React 개발 환경에서는 **프록시에 경로 추가**, 배포 환경에서는 **리스너 규칙에 경로 추가**하는 것도 잊지 말아주세요.
 
 ### 성공 시 화면
 
