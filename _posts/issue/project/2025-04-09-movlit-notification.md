@@ -14,12 +14,12 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-09
-last_modified_at: 2025-04-16
+last_modified_at: 2025-04-24
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
 
-## 왜 Redis Pub/Sub일까요? 🤔
+## Redis Pub/Sub 사용 이유
 
 "실시간 알림? 그거 그냥 클라이언트가 주기적으로 서버에 물어보면(Polling) 안 돼?" 라고 생각할 수도 있습니다. 하지만 사용자가 많아지면 서버에 부담이 엄청나게 될 겁니다.
 
@@ -30,7 +30,7 @@ last_modified_at: 2025-04-16
 
 **Redis Pub/Sub**는 이 패턴을 정말 쉽고 빠르게 구현할 수 있게 도와줍니다. 메시지를 발행하는 쪽(Publisher)과 구독하는 쪽(Subscriber)이 서로를 몰라도 괜찮아요. 그냥 Redis라는 중간 우체통에 메시지를 넣고 빼기만 하면 됩니다.
 
-## 전체 흐름 🌊
+## 전체 알림 흐름 
 
 1.  **이벤트 발생:** 사용자가 채팅 메시지를 보내거나, 다른 사용자를 팔로우하는 등 알림을 발생시킬 이벤트가 생깁니다
 2.  **알림 생성 및 발행 (`NotificationUseCase`, `RedisNotificationPublisher`):**
@@ -44,7 +44,7 @@ last_modified_at: 2025-04-16
     - `RedisNotificationSubscriber`는 `SseEmitterService`를 통해 해당 알림을 받아야 할 사용자에게 SSE 연결로 실시간 전송합니다.
 6.  **클라이언트:** SSE 연결을 통해 받은 알림을 화면에 표시합니다.
 
-## 1. 알림 메시지 발행하기 (Publisher) 💌
+## 1. 알림 메시지 발행하기 (Publisher)
 
 어떤 이벤트가 발생했을 때, 알림을 만들어 Redis에 던져주는 역할이에요. `NotificationUseCase`와 `RedisNotificationPublisher`가 이 일을 담당합니다.
 
@@ -104,7 +104,7 @@ public class RedisNotificationPublisher {
 
 `RedisNotificationPublisher`는 정말 간단해요! `RedisTemplate`을 이용해서 `notificationTopic` (이름이 "notification"인 채널)에 `NotificationDto` 객체를 슝~ 하고 던져줍니다. `RedisTemplate`이 내부적으로 객체를 직렬화해서 보내줘요.
 
-## 2. 리스너 설정하기 (`RedisListenerConfig`) 🎧
+## 2. 리스너 설정하기 (`RedisListenerConfig`)
 
 자, 이제 누군가가 "notification" 채널에 메시지를 던졌을 때, 그걸 받아서 처리할 준비를 해야겠죠? `RedisListenerConfig`에서 이 설정을 담당해요.
 
@@ -164,7 +164,7 @@ public class RedisListenerConfig {
 - `MessageListenerAdapter(notificationSubscriber, "onNotification")`: "notification" 채널에 메시지가 오면, `notificationSubscriber`라는 빈(Bean)의 `onNotification` 메소드를 실행하라고 알려줍니다.
 - `RedisMessageListenerContainer`: 이 컨테이너가 실제로 Redis에 연결해서 특정 채널(`notificationTopic`)을 계속 지켜보고 있다가, 메시지가 오면 연결된 어댑터(`listenerAdapterNotification`)를 실행시켜주는 역할을 합니다.
 
-## 3. 메시지 수신 및 처리하기 (Subscriber) 📬
+## 3. 메시지 수신 및 처리하기 (Subscriber)
 
 이제 "notification" 채널을 구독하고 있다가 메시지가 오면 실제로 무언가를 하는 `RedisNotificationSubscriber`를 볼 차례입니다.
 
@@ -202,7 +202,7 @@ public class RedisNotificationSubscriber {
 1.  Redis는 메시지를 보통 문자열(여기서는 JSON 형태)로 전달해 줍니다. `ObjectMapper`를 사용해서 이 JSON 문자열을 우리가 다루기 쉬운 `NotificationDto` 객체로 다시 변환합니다.
 2.  가장 중요한 부분! 변환된 `notificationDto`를 `SseEmitterService`에게 넘겨주면서, "이 알림(`notificationDto`)을 이 사용자(`notificationDto.getId()`)에게 SSE로 보내줘!" 라고 요청합니다.
 
-## 4. 클라이언트에게 실시간 전송하기 (SSE) 📡
+## 4. 클라이언트에게 실시간 전송하기 (SSE)
 
 마지막 퍼즐 조각은 `SseEmitterService`와 `NotificationController`입니다. 클라이언트와 서버 간의 실시간 연결을 관리하고, 실제로 알림 데이터를 보내는 역할을 합니다.
 
@@ -290,7 +290,7 @@ public class SseEmitterService {
 - `addEmitter(id)`: 클라이언트가 구독 요청을 하면, 해당 사 용자 ID(`id`)에 대한 `SseEmitter` 객체를 만들고 내부 `emitters` 맵에 저장하고, 이 객체가 클라이언트와의 연결 통로입니다.
 - `sendNotification(id, notification)`: `RedisNotificationSubscriber`가 이 메소드를 호출하면, `emitters` 맵에서 알림을 받을 사용자 ID(`id`)에 해당하는 `SseEmitter`를 찾습니다. 그리고 찾은 `emitter`의 `send()` 메소드를 사용해서 `NotificationDto` 데이터를 클라이언트에게 실시간으로 보내줍니다. 이때 이벤트 이름으로 `"notification"`을 지정해서, 클라이언트가 어떤 종류의 데이터인지 알 수 있게 해주었습니다.
 
-## 정리 🎉
+## 정리
 
 - **Redis Pub/Sub:** 메시지를 발행(Publish)하고 구독(Subscribe)하는 간단한 방식으로 Publisher와 Subscriber를 분리(Decoupling)해서 시스템을 유연하게 만들었습니다.
 - **SSE (Server-Sent Events):** 서버가 클라이언트에게 단방향으로 데이터를 쉽게 Push하고, WebSocket보다 가볍고 구현이 간편하다는 장점도 있습니다.
