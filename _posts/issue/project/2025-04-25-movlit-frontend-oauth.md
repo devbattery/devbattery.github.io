@@ -14,16 +14,10 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-25
-last_modified_at: 2025-04-25
+last_modified_at: 2025-04-26
 ---
 
-## Vite + React 환경에서 OAuth 2.0 로그인 구현하기: 상세 가이드
-
-안녕하세요! 최근 웹 애플리케이션에서 소셜 로그인은 거의 필수가 되었습니다. 사용자에게 편리함을 제공하고, 개발자는 사용자 인증 시스템을 직접 구축하는 부담을 덜 수 있죠. 이번 포스팅에서는 Vite + React 환경에서 OAuth 2.0 (특히 Authorization Code Grant 방식)을 사용하여 로그인을 구현하는 기술적인 측면을 코드와 함께 자세히 살펴보겠습니다.
-
-### OAuth 2.0 로그인 흐름 간략 정리
-
-본격적인 코드 설명에 앞서, 우리가 구현할 OAuth 2.0 (Authorization Code Grant)의 일반적인 흐름을 간단히 짚고 넘어가겠습니다.
+## OAuth 2.0 로그인 흐름
 
 1.  **사용자 로그인 요청**: 사용자가 우리 서비스에서 "Google로 로그인" 같은 버튼을 클릭합니다.
 2.  **인증 서버로 리디렉션**: 사용자는 OAuth 제공자(예: Google)의 인증 페이지로 이동합니다.
@@ -32,9 +26,7 @@ last_modified_at: 2025-04-25
 5.  **토큰 교환**: 우리 프론트엔드는 이 `authorization_code`를 백엔드 서버로 전달합니다. 백엔드 서버는 이 코드를 사용하여 OAuth 제공자에게 `Access Token`과 `Refresh Token`을 요청하고 발급받습니다.
 6.  **토큰 저장 및 사용**: 백엔드는 발급받은 토큰을 프론트엔드로 전달합니다. 프론트엔드는 이 토큰들(주로 `Access Token`)을 저장해두고, 이후 API 요청 시 인증 헤더에 담아 사용합니다. `Refresh Token`은 `Access Token`이 만료되었을 때 새 `Access Token`을 발급받는 데 사용됩니다.
 
-이제 각 단계별 프론트엔드 구현을 살펴보겠습니다.
-
-### 1. OAuth 콜백(Callback) 처리: `OAuthCallback.jsx`
+## OAuth 콜백 처리
 
 사용자가 OAuth 제공자(Google, Kakao 등)에서 인증을 마치면, 제공자는 우리 애플리케이션의 미리 지정된 콜백 URL로 사용자를 리디렉션 시킵니다. 이때 URL 쿼리 파라미터로 `authorization_code`가 함께 전달됩니다. `OAuthCallback.jsx` 컴포넌트는 이 코드를 받아 백엔드에 토큰을 요청하는 역할을 합니다.
 
@@ -101,7 +93,7 @@ export default OAuthCallback;
     *   `Refresh Token`: 보안을 위해 `HttpOnly`, `Secure`, `SameSite=None` 속성을 가진 쿠키에 저장하는 것이 좋습니다. `HttpOnly`는 JavaScript로 토큰에 접근하는 것을 막아 XSS 공격으로부터 토큰을 보호합니다. `Secure`는 HTTPS를 통해서만 쿠키가 전송되도록 합니다. `SameSite=None`은 크로스-오리진 요청 시 쿠키를 전송하기 위해 필요하며, 이 경우 `Secure` 속성도 함께 설정해야 합니다. (예제 코드에서는 `document.cookie`를 사용했지만, 백엔드에서 `Set-Cookie` 헤더로 내려주는 것이 일반적입니다.)
 *   `updateLoginStatus(true)`를 호출하여 `App.jsx`의 로그인 상태를 업데이트하고, 사용자를 메인 페이지로 이동시킵니다.
 
-### 2. API 요청 및 토큰 관리: `axiosInstance.js`
+## API 요청 및 토큰 관리
 
 로그인 후 모든 API 요청에는 `Access Token`을 포함해야 합니다. 또한, `Access Token`이 만료되었을 경우 `Refresh Token`을 사용하여 자동으로 새 `Access Token`을 발급받는 로직이 필요합니다. `axios` 인터셉터를 사용하면 이를 효율적으로 관리할 수 있습니다.
 
@@ -232,7 +224,7 @@ export default axiosInstance;
     *   **실패 시**: `Refresh Token` 마저 만료되었거나 유효하지 않으면, 사용자를 로그아웃 처리하고 로그인 페이지로 이동시킵니다.
 *   `originalRequest._retry = true;`: 토큰 갱신 후 원래 요청을 재시도할 때, 이 재시도 요청이 또다시 401 에러를 발생시켜 무한 루프에 빠지는 것을 방지하기 위한 플래그입니다.
 
-### 3. 전역 로그인 상태 관리 및 UI 업데이트: `App.jsx`
+## 로그인 상태 관리
 
 애플리케이션 전역에서 로그인 상태를 공유하고, 이에 따라 UI(예: 네비게이션 바)를 다르게 보여줘야 합니다. `React Context`를 사용하면 편리합니다.
 
@@ -327,7 +319,7 @@ export default App;
 *   **조건부 렌더링**: `isLoggedIn` 상태에 따라 네비게이션 바에 "로그인/회원가입" 링크 또는 "마이페이지/알림/로그아웃" 등의 UI를 다르게 표시합니다.
 *   **인증 필요한 기능**: 예시로 SSE(Server-Sent Events) 연결 로직이 `isLoggedIn` 상태가 `true`일 때만 실행되도록 하여, 인증된 사용자만 특정 기능을 사용할 수 있게 합니다. SSE 연결 시에도 `axiosInstance`처럼 `Authorization` 헤더에 토큰을 담아 보내야 합니다 (EventSourcePolyfill의 headers 옵션).
 
-### 4. 개발 환경 설정: `vite.config.js` (Proxy 설정)
+## VITE 환경 설정 (Proxy 설정)
 
 개발 중에는 프론트엔드 서버(예: `localhost:3000`)와 백엔드 API 서버(예: `localhost:8080`)가 다른 포트에서 실행되는 경우가 많습니다. 이 경우 브라우저의 동일 출처 정책(Same-Origin Policy)으로 인해 CORS(Cross-Origin Resource Sharing) 에러가 발생할 수 있습니다. Vite의 프록시 설정을 사용하면 이 문제를 해결할 수 있습니다.
 
@@ -408,7 +400,7 @@ export default defineConfig(({mode}) => {
 *   `axiosInstance`의 `baseURL`은 프록시를 통하지 않는 실제 API 주소 (예: `http://localhost:8080/api`) 또는 프록시 경로 (예: `/api`)로 설정할 수 있습니다. 만약 `baseURL`을 `/api` 와 같이 상대경로로 설정했다면, `vite.config.js`에서 `/api`를 백엔드로 프록시해주면 됩니다.
     *   제공된 `App.jsx`에서 `EventSourcePolyfill` URL은 `import.meta.env.VITE_BASE_URL`을 직접 사용하고, `axiosInstance`의 `baseURL`도 `process.env.VITE_BASE_URL`을 사용합니다. 이 `VITE_BASE_URL`이 `http://localhost:8080`과 같은 실제 백엔드 주소라면, `vite.config.js`의 `proxyConfig` 키는 `/subscribe`, `/token`, `/refresh` 등 실제 엔드포인트 경로의 시작 부분이 되어야 합니다. (위 예시에서는 `/api` prefix 없이 직접적인 경로로 설정)
 
-### 마무리
+## 마무리
 
 지금까지 Vite + React 환경에서 OAuth 2.0 로그인을 구현하는 주요 기술적 요소들을 살펴보았습니다. 핵심은 다음과 같습니다.
 
