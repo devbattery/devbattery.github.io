@@ -1,5 +1,5 @@
 ---
-title: "[Project] Vite + React 환경에서 OAuth 2.0 로그인 구현 방법"
+title: "[Project] Vite + React 환경에서 OAuth 2.0 로그인 구현 방법 (프론트엔드 시점)"
 excerpt: "movlit, vite, react, oauth"
 
 categories:
@@ -14,8 +14,11 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-25
-last_modified_at: 2025-04-27
+last_modified_at: 2025-04-28
 ---
+
+> [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.  
+> [백엔드 시점 OAuth 2.0 로그인 구현 방법](TODO)의 링크를 참고하시면 좋습니다.
 
 ## OAuth 2.0 로그인 흐름
 
@@ -415,14 +418,10 @@ export default defineConfig(({ mode }) => {
 - `axiosInstance`의 `baseURL`은 프록시를 통하지 않는 실제 API 주소 (예: `http://localhost:8080/api`) 또는 프록시 경로 (예: `/api`)로 설정할 수 있습니다. 만약 `baseURL`을 `/api` 와 같이 상대경로로 설정했다면, `vite.config.js`에서 `/api`를 백엔드로 프록시해주면 됩니다.
   - 제공된 `App.jsx`에서 `EventSourcePolyfill` URL은 `import.meta.env.VITE_BASE_URL`을 직접 사용하고, `axiosInstance`의 `baseURL`도 `process.env.VITE_BASE_URL`을 사용합니다. 이 `VITE_BASE_URL`이 `http://localhost:8080`과 같은 실제 백엔드 주소라면, `vite.config.js`의 `proxyConfig` 키는 `/subscribe`, `/token`, `/refresh` 등 실제 엔드포인트 경로의 시작 부분이 되어야 합니다. (위 예시에서는 `/api` prefix 없이 직접적인 경로로 설정)
 
-## 마무리
-
-지금까지 Vite + React 환경에서 OAuth 2.0 로그인을 구현하는 주요 기술적 요소들을 살펴보았습니다. 핵심은 다음과 같습니다.
+## 정리
 
 1.  **콜백 처리**: OAuth 제공자로부터 `authorization_code`를 받아 백엔드에 토큰을 요청하고 저장합니다.
 2.  **토큰 저장**: `Access Token`은 `localStorage`에, `Refresh Token`은 보안을 위해 `HttpOnly` 쿠키에 저장하는 것을 권장합니다.
 3.  **Axios 인터셉터**: API 요청 시 `Access Token`을 자동으로 헤더에 추가하고, 401 에러 발생 시 `Refresh Token`으로 `Access Token`을 자동 갱신하는 로직을 구현합니다.
 4.  **전역 상태 관리**: `React Context` 등을 사용하여 로그인 상태를 애플리케이션 전역에서 공유하고 UI를 업데이트합니다.
 5.  **개발 환경 프록시**: 개발 시 CORS 문제를 해결하기 위해 Vite의 프록시 기능을 활용합니다.
-
-이 가이드가 여러분의 OAuth 2.0 로그인 구현에 도움이 되길 바랍니다. 실제 프로덕션 환경에서는 에러 처리, 보안(CSRF 방어 등), 사용자 경험 등을 더욱 세심하게 고려해야 합니다.
