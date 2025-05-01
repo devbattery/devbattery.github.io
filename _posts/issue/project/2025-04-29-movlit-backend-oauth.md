@@ -14,32 +14,13 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-29
-last_modified_at: 2025-04-30
+last_modified_at: 2025-05-01
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.  
 > [프론트엔드 시점 OAuth 2.0 로그인 구현 방법](TODO)의 링크를 참고하시면 좋습니다.
 
-## 백엔드 OAuth 2.0 로그인 흐름 (Spring Security)
-
-프론트엔드에서 "Google로 로그인" 버튼을 클릭하면, 사용자는 `/oauth2/authorization/{provider}` (예: `/oauth2/authorization/google`)와 같은 Spring Security가 기본적으로 제공하는 엔드포인트로 이동합니다. 이후의 흐름은 다음과 같습니다.
-
-1.  **OAuth 제공자로 리디렉션 (Spring Security 처리)**: Spring Security의 `OAuth2LoginAuthenticationFilter`가 요청을 가로채고, 설정에 따라 사용자를 Google, Kakao 등의 인증 서버로 리디렉션합니다.
-2.  **사용자 인증 및 권한 부여 (OAuth 제공자)**: 사용자는 OAuth 제공자 사이트에서 로그인하고, 우리 서비스가 요청한 정보 접근 권한을 승인합니다.
-3.  **백엔드 콜백으로 리디렉션 (Spring Security 처리)**: 인증 성공 시, OAuth 제공자는 Spring Security에 설정된 리디렉션 URI(기본적으로 `/login/oauth2/code/{provider}`)로 사용자를 리디렉션시키며, 이때 OAuth 제공자가 발급한 `authorization_code`를 전달합니다.
-4.  **Access Token 교환 (Spring Security 처리)**: Spring Security는 이 `authorization_code`를 사용하여 OAuth 제공자에게 `Access Token`을 요청하고 받아옵니다.
-5.  **사용자 정보 조회 및 처리 (Custom OAuth2UserService)**: Spring Security는 발급받은 `Access Token`을 사용하여 OAuth 제공자로부터 사용자 정보를 조회합니다. 이 과정에서 우리가 커스텀한 `MyOAuth2MemberService`가 사용됩니다.
-    - `MyOAuth2MemberService`는 조회된 사용자 정보(이메일, 프로필 사진 등)를 바탕으로 우리 서비스의 DB에서 사용자를 찾거나, 없다면 새로 가입시킵니다.
-    - 인증된 사용자 정보를 담은 `MyMemberDetails` (커스텀 `OAuth2User` 또는 `UserDetails` 구현체) 객체를 생성하여 Spring Security 컨텍스트에 저장합니다.
-6.  **인증 성공 후 처리 (Custom AuthenticationSuccessHandler)**: `OAuth2AuthenticationSuccessHandler`가 실행됩니다.
-    - 이 핸들러는 우리 서비스 내부용 **임시 `code`**를 생성합니다. (프론트엔드 글에서 언급된 `authorization_code`와는 다른, 우리 시스템 내에서 사용할 코드입니다.)
-    - 이 임시 `code`와 함께 프론트엔드의 OAuth 콜백 페이지 (`/oauth/callback`)로 사용자를 리디렉션 시킵니다. (예: `https://your-frontend.com/oauth/callback?code=backend_generated_temp_code`)
-    - (선택적으로, 이때 백엔드에서 즉시 사용할 수 있는 Access Token을 응답 헤더에 포함시켜 전달할 수도 있습니다. Movlit 코드에서는 `Authorization` 헤더에 JWT Access Token을 설정합니다.)
-7.  **프론트엔드의 토큰 요청**: 프론트엔드의 `OAuthCallback.jsx` 컴포넌트는 리디렉션 시 URL 쿼리 파라미터로 받은 **임시 `code`**를 백엔드의 `/token` 엔드포인트로 전송합니다.
-8.  **최종 토큰 발급 (백엔드 `/token` 엔드포인트)**:
-    - 백엔드는 전달받은 **임시 `code`**를 검증합니다 (예: `AuthCodeStorage`를 통해).
-    - 검증이 성공하면, 해당 사용자에 대한 우리 서비스의 `Access Token`과 `Refresh Token` (JWT 기반)을 생성하여 프론트엔드에 응답으로 전달합니다.
-9.  **프론트엔드의 토큰 저장**: 프론트엔드는 이 토큰들을 저장하고 이후 API 요청에 사용합니다.
+프론트엔드에서 "Google로 로그인" 버튼을 클릭하면, 사용자는 `/oauth2/authorization/{provider}` (예: `/oauth2/authorization/google`)와 같은 Spring Security가 기본적으로 제공하는 엔드포인트로 이동합니다.
 
 ## Spring Security 설정 (`SecurityConfig.java`)
 
