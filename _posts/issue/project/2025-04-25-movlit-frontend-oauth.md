@@ -14,20 +14,11 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-25
-last_modified_at: 2025-04-28
+last_modified_at: 2025-05-02
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.  
 > [백엔드 시점 OAuth 2.0 로그인 구현 방법](TODO)의 링크를 참고하시면 좋습니다.
-
-## OAuth 2.0 로그인 흐름
-
-1.  **사용자 로그인 요청**: 사용자가 우리 서비스에서 "Google로 로그인" 같은 버튼을 클릭합니다.
-2.  **인증 서버로 리디렉션**: 사용자는 OAuth 제공자(예: Google)의 인증 페이지로 이동합니다.
-3.  **사용자 인증 및 권한 부여**: 사용자는 해당 OAuth 제공자 계정으로 로그인하고, 우리 서비스가 요청하는 정보 접근 권한을 승인합니다.
-4.  **Authorization Code 발급 및 리디렉션**: 인증 성공 시, OAuth 제공자는 지정된 우리 서비스의 콜백(Callback) URI로 사용자를 리디렉션시키며, 이때 `authorization_code`를 함께 전달합니다.
-5.  **토큰 교환**: 우리 프론트엔드는 이 `authorization_code`를 백엔드 서버로 전달합니다. 백엔드 서버는 이 코드를 사용하여 OAuth 제공자에게 `Access Token`과 `Refresh Token`을 요청하고 발급받습니다.
-6.  **토큰 저장 및 사용**: 백엔드는 발급받은 토큰을 프론트엔드로 전달합니다. 프론트엔드는 이 토큰들(주로 `Access Token`)을 저장해두고, 이후 API 요청 시 인증 헤더에 담아 사용합니다. `Refresh Token`은 `Access Token`이 만료되었을 때 새 `Access Token`을 발급받는 데 사용됩니다.
 
 ## OAuth 콜백 처리
 
