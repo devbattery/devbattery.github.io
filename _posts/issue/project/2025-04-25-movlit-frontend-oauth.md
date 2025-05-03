@@ -14,11 +14,11 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-25
-last_modified_at: 2025-05-02
+last_modified_at: 2025-05-03
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.  
-> [백엔드 시점 OAuth 2.0 로그인 구현 방법](TODO)의 링크를 참고하시면 좋습니다.
+> [백엔드 시점 OAuth 2.0 로그인 구현 방법](https://devbattery.com/project/movlit-backend-oauth/)의 링크를 참고하시면 좋습니다.
 
 ## OAuth 콜백 처리
 
