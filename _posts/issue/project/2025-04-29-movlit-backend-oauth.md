@@ -14,11 +14,11 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-29
-last_modified_at: 2025-05-01
+last_modified_at: 2025-05-04
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.  
-> [프론트엔드 시점 OAuth 2.0 로그인 구현 방법](TODO)의 링크를 참고하시면 좋습니다.
+> [프론트엔드 시점 OAuth 2.0 로그인 구현 방법](https://devbattery.com/project/movlit-frontend-oauth/)의 링크를 참고하시면 좋습니다.
 
 프론트엔드에서 "Google로 로그인" 버튼을 클릭하면, 사용자는 `/oauth2/authorization/{provider}` (예: `/oauth2/authorization/google`)와 같은 Spring Security가 기본적으로 제공하는 엔드포인트로 이동합니다.
 
