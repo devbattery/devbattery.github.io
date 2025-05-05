@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-25
-last_modified_at: 2025-05-03
+last_modified_at: 2025-05-05
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.  
@@ -22,7 +22,7 @@ last_modified_at: 2025-05-03
 
 ## OAuth 콜백 처리
 
-사용자가 OAuth 제공자(Google, Kakao 등)에서 인증을 마치면, 제공자는 우리 애플리케이션의 미리 지정된 콜백 URL로 사용자를 리디렉션 시킵니다. 이때 URL 쿼리 파라미터로 `authorization_code`가 함께 전달됩니다. `OAuthCallback.jsx` 컴포넌트는 이 코드를 받아 백엔드에 토큰을 요청하는 역할을 합니다.
+사용자가 OAuth 제공자(Google, Kakao 등)에서 인증을 마치면, 우리 애플리케이션의 미리 지정된 콜백 URL로 사용자를 Redirect 시킵니다. 이때 URL 쿼리 파라미터로 `authorization_code`가 함께 전달됩니다. `OAuthCallback.jsx` 컴포넌트는 이 코드를 받아 백엔드에 토큰을 요청하는 역할을 합니다.
 
 ```jsx
 // OAuthCallback.jsx
@@ -204,11 +204,11 @@ axiosInstance.interceptors.response.use(
 export default axiosInstance;
 ```
 
-**Request Interceptor**
+### Request Interceptor
 
 - 모든 API 요청이 백엔드로 전송되기 전에 가로채어, `localStorage`에서 `Access Token`을 가져와 `Authorization: Bearer ${accessToken}` 형태로 HTTP 헤더에 추가합니다.
 
-**Response Interceptor**
+### Response Interceptor
 
 - API 응답을 받았을 때 실행됩니다.
 - **401 Unauthorized 에러 처리**: `Access Token`이 만료되었거나 유효하지 않을 때 백엔드에서 401 에러를 반환하면, 이 인터셉터가 이를 감지합니다.
@@ -407,7 +407,9 @@ export default defineConfig(({ mode }) => {
 - `proxyConfig`: 특정 경로(예: `/api`, `/oauth2`, `/token`, `/refresh`, `/subscribe`)로 시작하는 요청을 `target`에 지정된 백엔드 서버로 전달합니다. 이렇게 하면 프론트엔드는 마치 같은 출처에서 API를 호출하는 것처럼 동작하여 CORS 문제를 우회할 수 있습니다.
 - `changeOrigin: true`: 가상 호스팅되는 서버로 요청을 보낼 때 필요합니다.
 - `axiosInstance`의 `baseURL`은 프록시를 통하지 않는 실제 API 주소 (예: `http://localhost:8080/api`) 또는 프록시 경로 (예: `/api`)로 설정할 수 있습니다. 만약 `baseURL`을 `/api` 와 같이 상대경로로 설정했다면, `vite.config.js`에서 `/api`를 백엔드로 프록시해주면 됩니다.
-  - 제공된 `App.jsx`에서 `EventSourcePolyfill` URL은 `import.meta.env.VITE_BASE_URL`을 직접 사용하고, `axiosInstance`의 `baseURL`도 `process.env.VITE_BASE_URL`을 사용합니다. 이 `VITE_BASE_URL`이 `http://localhost:8080`과 같은 실제 백엔드 주소라면, `vite.config.js`의 `proxyConfig` 키는 `/subscribe`, `/token`, `/refresh` 등 실제 엔드포인트 경로의 시작 부분이 되어야 합니다. (위 예시에서는 `/api` prefix 없이 직접적인 경로로 설정)
+  - 제공된 `App.jsx`에서 `EventSourcePolyfill` URL은 `import.meta.env.VITE_BASE_URL`을 직접 사용하고, `axiosInstance`의 `baseURL`도 `process.env.VITE_BASE_URL`을 사용합니다. 이 `VITE_BASE_URL`이 `http://localhost:8080`과 같은 실제 백엔드 주소라면, `vite.config.js`의 `proxyConfig` 키는 `/subscribe`, `/token`, `/refresh` 등 실제 엔드포인트 경로의 시작 부분이 되어야 합니다.
+
+> 이게 aws 배포 때는 프록시 설정을 지우고 규칙에 추가해주면 됩니다.
 
 ## 정리
 
