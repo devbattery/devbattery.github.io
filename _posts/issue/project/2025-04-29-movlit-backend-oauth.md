@@ -14,19 +14,15 @@ sidebar:
   nav: "categories"
 
 date: 2025-04-29
-last_modified_at: 2025-05-04
+last_modified_at: 2025-05-06
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.  
 > [프론트엔드 시점 OAuth 2.0 로그인 구현 방법](https://devbattery.com/project/movlit-frontend-oauth/)의 링크를 참고하시면 좋습니다.
 
-프론트엔드에서 "Google로 로그인" 버튼을 클릭하면, 사용자는 `/oauth2/authorization/{provider}` (예: `/oauth2/authorization/google`)와 같은 Spring Security가 기본적으로 제공하는 엔드포인트로 이동합니다.
+기본적으로 프론트엔드에서 "Google로 로그인" 버튼을 클릭하면, 사용자는 `/oauth2/authorization/{provider}`와 같은 Spring Security가 기본적으로 제공하는 엔드포인트로 이동합니다.
 
-## Spring Security 설정 (`SecurityConfig.java`)
-
-Spring Security 설정을 통해 OAuth 2.0 로그인 과정을 구성합니다.
-
-먼저, `HttpSecurity`를 사용하여 전반적인 웹 보안 설정을 구성합니다.
+## Spring Security 설정
 
 ```java
 // SecurityConfig.java
@@ -50,6 +46,8 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurat
   - `userInfoEndpoint().userService(myOAuth2MemberService)`: OAuth 제공자로부터 사용자 정보를 성공적으로 가져온 후, 이를 처리할 커스텀 `OAuth2UserService`로 `MyOAuth2MemberService`를 지정합니다.
   - `successHandler(oAuth2AuthenticationSuccessHandler)`: OAuth2 인증이 최종적으로 성공했을 때 실행될 커스텀 핸들러로 `OAuth2AuthenticationSuccessHandler`를 지정합니다. 이 핸들러는 프론트엔드로의 리디렉션을 담당합니다.
 
+---
+
 다음으로, API 엔드포인트에 대한 접근 권한을 설정합니다.
 
 ```java
@@ -67,6 +65,8 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurat
 
 - `/oauth2/**`, `/login/oauth2/**`: Spring Security가 OAuth2 인증 흐름(제공자로의 리디렉션, 콜백 처리 등)을 위해 내부적으로 사용하는 경로들입니다. 이 경로들은 인증 없이 접근 가능해야 합니다.
 - `/token`, `/refresh`: 프론트엔드가 우리 서비스의 JWT Access Token과 Refresh Token을 발급받거나 갱신하기 위해 호출하는 엔드포인트입니다. 이 역시 인증 없이 접근 가능해야 합니다.
+
+---
 
 CORS(Cross-Origin Resource Sharing) 설정은 프론트엔드와 백엔드가 다른 도메인 또는 포트에서 실행될 때 필요합니다.
 
@@ -93,40 +93,7 @@ public CorsConfigurationSource corsConfigurationSource() {
 - `cors(Customizer.withDefaults())`: `corsConfigurationSource()` Bean에서 정의한 CORS 설정을 적용합니다.
 - `corsConfigurationSource()`: 프론트엔드 애플리케이션(`url` 변수에 지정된 주소)으로부터의 요청을 허용하도록 설정합니다. `allowCredentials(true)`는 쿠키 기반의 Refresh Token을 주고받기 위해 중요합니다.
 
-마지막으로, 우리가 구현한 `JwtRequestFilter`를 Spring Security 필터 체인에 추가하여, OAuth2 로그인이 아닌 일반적인 API 요청에 대해 JWT 토큰을 검증하도록 합니다.
-
-```java
-// SecurityConfig.java
-// ...
-.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class); // JWT 필터 추가
-// ...
-```
-
-- `addFilterBefore(...)`: `UsernamePasswordAuthenticationFilter` (일반적인 사용자명/비밀번호 인증 처리 필터)보다 먼저 `jwtRequestFilter`가 실행되도록 설정하여, 모든 요청에서 JWT의 유효성을 먼저 검사합니다.
-
-기타 설정:
-
-```java
-// SecurityConfig.java
-// ...
-.csrf(AbstractHttpConfigurer::disable) // CSRF 보호 비활성화 (Stateless JWT 사용 시 일반적)
-.headers(x -> x.frameOptions(FrameOptionsConfig::disable)) // H2 콘솔 사용 위한 설정 (개발 시)
-.formLogin(AbstractHttpConfigurer::disable) // 기본 폼 로그인 비활성화
-.logout(logout -> logout // 로그아웃 설정
-        .logoutUrl("/api/members/logout")
-        .permitAll()
-        .logoutSuccessHandler(((request, response, authentication) -> response.setStatus(
-                HttpServletResponse.SC_NO_CONTENT)))
-        .deleteCookies("refreshToken") // 로그아웃 시 refreshToken 쿠키 삭제
-)
-// ...
-```
-
-- CSRF 보호는 Stateless한 JWT 인증 방식에서는 일반적으로 비활성화합니다.
-- `formLogin(AbstractHttpConfigurer::disable)`: Spring Security가 제공하는 기본 로그인 폼을 사용하지 않도록 설정합니다.
-- 로그아웃 시에는 `/api/members/logout` 경로를 사용하고, 성공하면 HTTP 204 (No Content)를 반환하며 `refreshToken` 쿠키를 삭제합니다.
-
-## 사용자 정보 처리 (`MyOAuth2MemberService.java`)
+## 사용자 정보 처리
 
 OAuth 제공자로부터 사용자 정보를 받아와 우리 서비스의 사용자로 처리(조회 또는 신규 등록)하는 역할을 합니다. `DefaultOAuth2UserService`를 상속받아 `loadUser` 메소드를 오버라이드합니다.
 
@@ -170,6 +137,8 @@ public OAuth2User loadUser(OAuth2UserRequest memberRequest) {
 - 사용자가 없으면(`MemberNotFoundException`), `makeRequest` 헬퍼 메소드를 통해 회원 가입에 필요한 DTO(`MemberRegisterOAuth2Request`)를 생성하고 `MemberWriteService`로 신규 회원을 등록합니다.
 - `MyMemberDetails`는 `org.springframework.security.core.userdetails.UserDetails`와 `org.springframework.security.oauth2.core.user.OAuth2User`를 모두 구현한 커스텀 클래스로, Spring Security가 인증된 사용자 정보를 관리하는 데 사용됩니다.
 
+---
+
 신규 OAuth2 사용자를 위한 요청 DTO 생성 로직은 다음과 같습니다.
 
 ```java
@@ -185,7 +154,7 @@ private MemberRegisterOAuth2Request makeRequest(String email, OAuth2UserInfo oAu
 
 - 소셜 로그인 사용자는 우리 서비스의 비밀번호를 직접 설정하지 않으므로, `bCryptPasswordEncoder`를 사용하여 임의의 문자열("Social Login Provider Password")을 암호화하여 저장합니다. 이는 Member 엔티티의 password 필드가 non-null 제약조건을 가질 경우 등을 대비한 조치입니다.
 
-## 인증 성공 후 처리 및 프론트엔드 리디렉션 (`OAuth2AuthenticationSuccessHandler.java`)
+## 인증 성공 후 처리
 
 OAuth2 인증이 성공적으로 완료되면, 이 핸들러가 실행되어 프론트엔드로 특정 정보를 포함하여 리디렉션합니다. `SimpleUrlAuthenticationSuccessHandler`를 상속합니다.
 
@@ -205,13 +174,8 @@ public void onAuthenticationSuccess(HttpServletRequest request, HttpServletRespo
     authCodeStorage.saveCode(tempCode, email); // 생성된 임시 코드를 (예: Redis에) 사용자의 이메일과 매핑하여 저장 (짧은 만료 시간 설정 권장)
     log.info("OAuth2 인증 성공. 사용자: {}, 발급된 임시 코드: {}", email, tempCode);
 
-    // Movlit의 원본 코드에서는 이 단계에서 응답 헤더에 AccessToken을 설정했으나,
-    // 프론트엔드 포스트에서는 /oauth/callback에서 받은 code로 /token 엔드포인트를 호출하여
-    // AccessToken과 RefreshToken을 모두 받는 흐름으로 설명되어 있습니다.
-    // 여기서는 프론트엔드 포스트의 흐름을 따릅니다.
-    // 만약 여기서 AccessToken을 바로 내려주고 싶다면 아래 주석 해제:
-    // String accessToken = jwtTokenUtil.generateAccessToken(email);
-    // response.setHeader("Authorization", "Bearer " + accessToken);
+    String accessToken = jwtTokenUtil.generateAccessToken(email);
+    response.setHeader("Authorization", "Bearer " + accessToken);
 
 
     // 3. 프론트엔드의 OAuth 콜백 URL로 리디렉션할 최종 URL 구성
@@ -232,7 +196,7 @@ public void onAuthenticationSuccess(HttpServletRequest request, HttpServletRespo
   - 결과 URL 예시: `http://localhost:3000/oauth/callback?code=a1b2c3d4e5f6`
 - `getRedirectStrategy().sendRedirect()`: 사용자를 구성된 `targetUrl`로 리디렉션시킵니다.
 
-## 토큰 발급 및 갱신 엔드포인트 (컨트롤러 - 예시)
+## 토큰 발급 및 갱신
 
 프론트엔드의 `OAuthCallback.jsx` 및 `axiosInstance.js`에서 호출하는 `/token` 및 `/refresh` 엔드포인트는 별도의 컨트롤러에서 구현합니다.
 
@@ -339,7 +303,7 @@ public class AuthController {
 - (선택) Refresh Token Rotation: 보안 강화를 위해 `AccessToken` 갱신 시 새로운 `RefreshToken`도 함께 발급하고, 기존 `RefreshToken`은 만료시키는 전략입니다. 이 경우, 새로운 `RefreshToken`도 이전과 동일하게 HttpOnly 쿠키로 설정하여 응답에 포함시켜야 합니다.
 - 새로 발급된 `AccessToken`을 JSON 응답 본문에 담아 전달합니다.
 
-## 토큰 처리 로직 (`TokenService.java` - 예시)
+## 토큰 처리 로직
 
 `TokenService`는 실제 토큰 발급, 검증, 갱신 로직을 담당합니다.
 
@@ -432,12 +396,8 @@ public class TokenService {
 
 ## 정리
 
-백엔드에서는 Spring Security의 OAuth2 기능을 활용하여 외부 OAuth 제공자와의 인증 과정을 처리합니다.
-
 1.  **`SecurityConfig`**: OAuth2 로그인 흐름을 정의하고, 커스텀 `OAuth2UserService`와 `AuthenticationSuccessHandler`를 등록합니다. CORS 설정도 중요합니다.
 2.  **`MyOAuth2MemberService`**: OAuth 제공자로부터 받은 사용자 정보를 기반으로 우리 서비스의 회원 정보를 조회하거나 새로 생성합니다.
 3.  **`OAuth2AuthenticationSuccessHandler`**: 인증 성공 후, 프론트엔드의 특정 콜백 (`/oauth/callback`)으로 리디렉션시키며, 이때 프론트엔드가 최종 토큰을 요청하는 데 사용할 **임시 코드**를 전달합니다.
 4.  **`AuthController` (및 `TokenService`)**: 프론트엔드가 임시 코드를 보내 토큰을 요청하는 `/token` 엔드포인트와, `AccessToken` 만료 시 `RefreshToken`으로 새 토큰을 요청하는 `/refresh` 엔드포인트를 제공합니다. `RefreshToken`은 `HttpOnly` 쿠키로 관리하는 것이 보안상 좋습니다.
 5.  **`JwtRequestFilter`**: 로그인 이후의 모든 API 요청에 대해 `AccessToken`을 검증합니다.
-
-이러한 백엔드 구성은 프론트엔드에서 설명한 OAuth 2.0 로그인 및 토큰 관리 흐름과 긴밀하게 연동되어 동작합니다.
