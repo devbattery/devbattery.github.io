@@ -58,6 +58,9 @@ categories:
       - title: "Vue"
         url: /vue/
         category: "Vue"
+      - title: "React"
+        url: /react/
+        category: "React"
 
   - title: "🖥️ Computer Science"
     children:
