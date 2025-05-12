@@ -14,7 +14,7 @@ sidebar:
   nav: "categories"
 
 date: 2025-05-09
-last_modified_at: 2025-05-11
+last_modified_at: 2025-05-12
 ---
 
 > [Movlit 프로젝트](https://github.com/venus-lion/movlit-plus)에 대한 설명입니다.
@@ -22,13 +22,10 @@ last_modified_at: 2025-05-11
 ## 서론
 
 Movlit 프로젝트에서 이미지 로딩은 TMDB의 고화질 포스터의 이미지 url을 가져오는 것이기 때문에 필연적으로 로딩이 발생할 수밖에 없습니다.  
-새로고침 시, 뒤죽박죽 이미지가 로딩이 되어 사용자에게 불편함을 줄 수 있다는 점을 인지하여 이것에 대한 해결 방안을 찾아보게 되었습니다.  
-
+새로고침 시, 뒤죽박죽 이미지가 로딩이 되어 사용자에게 불편함을 줄 수 있다는 점을 인지하여 아래 요소들을 만족시키는 해결 방안을 찾아보게 되었습니다.  
 
 1. 세로 컴포넌트들은 순서대로 화면에 표시됩니다.
 2. 가로 컴포넌트들은 그 안의 모든 컴포넌트들이 로딩이 되어야 화면에 표시됩니다.
-
-위 조건을 만족시켜야 합니다.
 
 ## 핵심 구현
 
@@ -127,7 +124,7 @@ const updateComponentLoaded = useCallback(
 ### 5. `Suspense`와 조건부 렌더링
 
 `Suspense` 컴포넌트는 `lazy`로 로드되는 컴포넌트들이 준비될 때까지 `fallback` UI(로딩 스피너 등)를 보여줍니다.
-그리고 `componentsLoaded` 상태에 따라 각 컴포넌트를 순차적으로 렌더링하고, `hidden` prop을 통해 실제 표시 여부를 제어합니다.
+그리고 `componentsLoaded` 상태에 따라 각 컴포넌트를 순차적으로 렌더링하고, `hidden`을 통해 실제 표시 여부를 제어합니다.
 
 ```jsx
 // MovieHome.jsx
@@ -198,8 +195,8 @@ return (
 );
 ```
 
-- **순차적 렌더링:** `PopularMoviesComponent`는 항상 렌더링을 시도합니다. `LatestMoviesComponent`는 `componentsLoaded.popular`가 `true`일 때, 즉 인기 영화 데이터가 준비되었을 때 렌더링을 시도합니다. 이런 식으로 다음 컴포넌트는 이전 필수 컴포넌트의 데이터 로딩 완료 여부에 따라 렌더링이 결정됩니다.
-- **`hidden` prop** 각 컴포넌트는 렌더링되더라도 `hidden` prop이 `true`이면 (즉, `componentsLoaded`의 해당 상태가 `false`이면) 내부적으로 `null`을 반환하여 화면에 아무것도 그리지 않습니다. 이를 통해 "데이터가 완전히 준비되었을 때만 표시"하는 요구사항을 만족합니다.
+- `PopularMoviesComponent`는 항상 렌더링을 시도합니다. `LatestMoviesComponent`는 `componentsLoaded.popular`가 `true`일 때, 즉 인기 영화 데이터가 준비되었을 때 렌더링을 시도합니다. 이런 식으로 다음 컴포넌트는 이전 필수 컴포넌트의 데이터 로딩 완료 여부에 따라 렌더링이 결정됩니다.
+- 각 컴포넌트는 렌더링되더라도 `hidden`이 `true`이면 (즉, `componentsLoaded`의 해당 상태가 `false`이면) 내부적으로 `null`을 반환하여 화면에 아무것도 그리지 않습니다. 이를 통해 "데이터가 완전히 준비되었을 때만 표시"하는 요구사항을 만족합니다.
 
 ## 자식 컴포넌트의 역할
 
@@ -242,14 +239,13 @@ function PopularMoviesComponent({ onMoviesLoaded, hidden }) {
       </div>
     );
 
-  // hidden prop이 true이면 (부모가 아직 보이지 말라고 하면) null 반환
+  // hidden이 true이면 (부모가 아직 보이지 말라고 하면) null 반환
   if (hidden) return null;
 
   return (
     <MovieCarousel
       title="인기 많은 영화"
       movies={movies}
-      // ... (캐러셀 props)
     />
   );
 }
@@ -257,9 +253,9 @@ function PopularMoviesComponent({ onMoviesLoaded, hidden }) {
 export default PopularMoviesComponent;
 ```
 
-- **`onMoviesLoaded` 호출:** `useEffect`를 사용하여 `movies` 데이터가 성공적으로 로드되면 부모로부터 받은 `onMoviesLoaded` 콜백 함수를 호출합니다. 이때 `MovieHome`의 `areMoviesLoaded` 함수를 통해 "완전 로드" 여부가 판단됩니다.
-- **`hidden` prop 처리:** 부모 컴포넌트(`MovieHome`)에서 전달받은 `hidden` prop이 `true`이면, 이 컴포넌트는 `null`을 반환하여 아무것도 렌더링하지 않습니다. 즉, 데이터가 내부적으로는 로드되었더라도, 부모가 "이제 보여줘도 돼"라고 하기 전까지는 화면에 나타나지 않습니다.
-- **자체 로딩 UI:** 각 자식 컴포넌트는 자신의 데이터를 `useMovieList` (또는 유사한 커스텀 훅)를 통해 가져오는 동안 자체적인 로딩 UI (예: `인기 있는 영화 목록을 불러오는 중입니다!`)를 표시합니다.
+- `useEffect`를 사용하여 `movies` 데이터가 성공적으로 로드되면 부모로부터 받은 `onMoviesLoaded` 콜백 함수를 호출합니다. 이때 `MovieHome`의 `areMoviesLoaded` 함수를 통해 "완전 로드" 여부가 판단됩니다.
+- 부모 컴포넌트(`MovieHome`)에서 전달받은 `hidden`이 `true`이면, 이 컴포넌트는 `null`을 반환하여 아무것도 렌더링하지 않습니다. 즉, 데이터가 내부적으로는 로드되었더라도, 부모가 "이제 보여줘도 돼"라고 하기 전까지는 화면에 나타나지 않습니다.
+- 각 자식 컴포넌트는 자신의 데이터를 `useMovieList` (또는 유사한 커스텀 훅)를 통해 가져오는 동안 자체적인 로딩 UI (예: `인기 있는 영화 목록을 불러오는 중입니다!`)를 표시합니다.
 
 ## 결론
 
