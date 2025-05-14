@@ -14,11 +14,6 @@ main:
 
 # sidebar navigation (categories)
 categories:
-  - title: "🕹️ Issue"
-    children:
-      - title: "Project"
-        url: /project/
-        category: "Project"
 
   - title: "📈 Algorithm"
     children:
@@ -43,6 +38,12 @@ categories:
       - title: "Inflearn"
         url: /inflearn/
         category: "Inflearn"
+  
+  - title: "📒 Issue"
+    children:
+      - title: "Project"
+        url: /project/
+        category: "Project"
 
   - title: "🧑🏻‍💻 Programming"
     children:
