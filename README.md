@@ -1,17 +1,17 @@
 # [Dev Battery](https://devbattery.com)
 
 - [Powered by Jekyll & Minima Mistakes](https://mmistakes.github.io/minimal-mistakes/)
-- [DNS](https://devbattery.com)
+- [https://devbattery.com](https://devbattery.com)
 
 ## Theme
 
 ### Light Mode
 
-<img width="1616" alt="스크린샷 2023-07-21 오전 11 00 10" src="https://github.com/won4885/won4885.github.io/assets/62871026/8428bbd3-640d-4195-b0cb-be4e8c4fed3d">
+<img width="1278" alt="Screenshot 2025-05-16 at 21 59 07" src="https://github.com/user-attachments/assets/854e6a79-b371-4d81-9eae-ed0951cb4231" />
 
 ### Dark Mode
 
-<img width="1616" alt="스크린샷 2023-07-21 오전 11 00 18" src="https://github.com/won4885/won4885.github.io/assets/62871026/3ba05807-68e3-4da6-a311-7c054c251cc9">
+<img width="1277" alt="Screenshot 2025-05-16 at 21 59 17" src="https://github.com/user-attachments/assets/80f853ff-243a-4530-a056-4536829f6dac" />
 
 ## Previous Blog
 
