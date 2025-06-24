@@ -89,14 +89,24 @@ cloudflared tunnel route dns englishteacher englishteacher.store
   - `englishteacher.store`는 당연히 DNS다.
 - 성공하면 `CNAME`가 잘 생성된 걸 볼 수 있을 거다.
 
-### 3-4. Vite React 서버, Spring Boot 서버 동시 연결
+### 3-4. 프론트엔드, 백엔드 개념 분리
 
-프론트, 백 서버 각각을 동시에 연결해야 하기 때문에 config 개념을 이용한다.  
+`englishteacher.store`로 들어오는 것은 5173 포트인 프론트엔드로 생각할 수 있다.  
+하지만 백엔드 개념으로는 어떻게 해야 할지 처음에는 막막할 것이다.  
+
+그럴 때는 `api.englishteacher.store`처럼 8080 포트로 접속한다는 것을 의도적으로 설정해주면 된다.
+
+<img width="901" alt="Screenshot 2025-06-24 at 21 57 13" src="https://github.com/user-attachments/assets/d73e7e29-576a-407e-ba48-be10a72be702" />
+
+- "Cloudflare -> DNS -> 레코드"에서 "유형: CNAME, 이름: api, 대상: 동일"을 추가해주자.
+
+### 3-5. Vite React 서버, Spring Boot 서버 동시 연결
+
+프론트엔드, 백엔드 서버를 각각 동시에 연결해야 하기 때문에 config 개념을 이용한다.  
 
 ```shell
 vim ~/.cloudflared/config.yml
 ```
-
 
 ```shell
 # 터널의 UUID
@@ -119,7 +129,7 @@ ingress:
 
 - 위처럼 해주면 끝이다.
 
-### 3-5. 접속하기 (이걸로만 계속)
+### 3-6. 접속하기 (이걸로만 계속)
 
 이제 다 끝났으니 접속만 이 명령어로 계속 하면 된다.
 
