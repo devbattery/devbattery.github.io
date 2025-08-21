@@ -7,11 +7,12 @@
 
 ### Light Mode
 
-<img width="1278" alt="Screenshot 2025-05-16 at 21 59 07" src="https://github.com/user-attachments/assets/854e6a79-b371-4d81-9eae-ed0951cb4231" />
+<img width="1279" height="1293" alt="Screenshot 2025-08-21 at 12 56 48" src="https://github.com/user-attachments/assets/880c1ffc-30f8-4dfc-8617-1bc9af08ebca" />
 
 ### Dark Mode
 
-<img width="1277" alt="Screenshot 2025-05-16 at 21 59 17" src="https://github.com/user-attachments/assets/80f853ff-243a-4530-a056-4536829f6dac" />
+<img width="1276" height="1294" alt="Screenshot 2025-08-21 at 12 56 57" src="https://github.com/user-attachments/assets/6132d4b7-963f-40e3-a509-598c1594a219" />
+
 
 ## Previous Blog
 
