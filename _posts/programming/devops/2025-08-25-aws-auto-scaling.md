@@ -14,7 +14,7 @@ sidebar:
     nav: "categories"
 
 date: 2025-08-25
-last_modified_at: 2025-08-25
+last_modified_at: 2025-08-26
 ---
 
 > 나는 동시 접속자를 최대 1500명으로 생각하고 워스트 케이스를 잡았다.  
@@ -163,3 +163,42 @@ won4885/lionchat_be:latest
 - 아래 사진은 같이 Docker Hub에 레포지토리 생성 후 `latest`까지 버전을 붙여줘야 한다.
 
 <img width="831" height="675" alt="Screenshot 2025-08-28 at 10 09 05" src="https://github.com/user-attachments/assets/5d9998c1-95e2-405b-b1e1-138ffc67439b" />
+
+## Auto Scaling 그룹
+
+<img width="1206" height="743" alt="Screenshot 2025-08-28 at 10 18 51" src="https://github.com/user-attachments/assets/50ad2ad3-bda0-4e91-a286-c321933ad3e7" />
+
+<img width="1321" height="603" alt="Screenshot 2025-08-28 at 10 19 18" src="https://github.com/user-attachments/assets/b2dce42d-0435-442c-800d-d1617c75b83a" />
+
+<img width="1317" height="349" alt="Screenshot 2025-08-28 at 10 23 55" src="https://github.com/user-attachments/assets/4b14a617-a140-4611-aeb5-19cfdf66a3d9" />
+
+<img width="1313" height="738" alt="Screenshot 2025-08-28 at 10 24 15" src="https://github.com/user-attachments/assets/ae56e28d-6c81-4d52-b971-e734303e01d5" />
+
+<img width="1328" height="592" alt="Screenshot 2025-08-28 at 10 20 49" src="https://github.com/user-attachments/assets/a58ee978-1dd7-4b93-ba06-598ee8922e39" />
+
+- 로드 밸런서는 ALB로 8080 포트로 이동하는 대상 그룹을 선택했다.
+- 그룹 크기는 "원하는 용량"으로 "기본 크기"를 설정하고, "크기 조정"으로는 늘어날 미니멈과 맥시멈 값을 조정할 수 있다.
+  - 현재는 기본적으로 인스턴스 2개로 돌아가면서, CPU 사용률이 60%가 넘었을 때 최대 4개까지 늘어나게끔 설정했다.
+
+## Github Actions용 IAM "사용자" 생성
+
+<img width="1700" height="481" alt="Screenshot 2025-08-28 at 10 27 55" src="https://github.com/user-attachments/assets/b7f9c099-0258-4aba-8ac7-c2a02b7fa611" />
+
+<img width="1701" height="619" alt="Screenshot 2025-08-28 at 10 32 33" src="https://github.com/user-attachments/assets/1ae890c0-e217-422a-bbe8-41f0b191332f" />
+
+- "권한 추가"를 눌러서 `Github-Actions-ASG-Refresh-Policy` 이름의 권한을 아래와 같이 생성한다.
+
+<img width="1421" height="582" alt="Screenshot 2025-08-28 at 10 34 02" src="https://github.com/user-attachments/assets/2eb17610-1a78-4922-917e-a79f314966ab" />
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "autoscaling:StartInstanceRefresh",
+            "Resource": "*"
+        }
+    ]
+}
+```
