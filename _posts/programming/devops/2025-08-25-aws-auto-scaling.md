@@ -14,7 +14,7 @@ sidebar:
     nav: "categories"
 
 date: 2025-08-25
-last_modified_at: 2025-08-26
+last_modified_at: 2025-08-28
 ---
 
 > 나는 동시 접속자를 최대 1500명으로 생각하고 워스트 케이스를 잡았다.  
@@ -202,3 +202,89 @@ won4885/lionchat_be:latest
     ]
 }
 ```
+
+<img width="1406" height="529" alt="Screenshot 2025-08-28 at 10 37 55" src="https://github.com/user-attachments/assets/5121a6de-11f8-46fd-9368-3b8d0de9b40a" />
+
+- 여기에서 액세스 키를 만들고, 아래의 환경 변수에 넣어줄 거다.
+
+## CI/CD 연동
+
+```yml
+name: be-cd
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - '**'
+env:
+  ROOT_PATH: ${{ github.workspace }}
+  MAIN_RESOURCE_PATH: ${{ github.workspace }}/src/main/resources
+  TEST_RESOURCE_PATH: ${{ github.workspace }}/src/test/resources
+
+jobs:
+  be-cd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 레포지토리를 체크아웃한다
+        uses: actions/checkout@v4
+      - name: 자바를 설치한다
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '17'
+      - name: 설정파일을 추가한다
+        run: |
+          cd ${{ env.TEST_RESOURCE_PATH }}
+          printf '%s' "${{ secrets.APPLICATION_TEST_YML }}" > application-test.yml
+          
+          # 생성 후 파일 확인 명령어 추가
+          ls -l ${{ env.TEST_RESOURCE_PATH }}/application-test.yml
+          stat ${{ env.TEST_RESOURCE_PATH }}/application-test.yml
+      - name: 어플리케이션을 빌드한다
+        run: |
+          chmod +x gradlew
+          echo "::group::Gradle Build Logs"
+          ./gradlew clean build --info
+          echo "::endgroup::"
+
+        working-directory: ${{ env.ROOT_PATH }}
+      - name: 도커 허브에 로그인한다
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+      - name: 어플리케이션의 도커 이미지를 빌드하고 도커 허브에 푸시한다
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.be
+          push: true
+          tags: ${{ secrets.BE_DOCKER_IMAGE_NAME }}
+      - name: AWS 자격 증명 설정
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Auto Scaling Group 인스턴스 새로고침 시작
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name tokit-asg \
+            --strategy "Rolling" \
+            --preferences "MinHealthyPercentage=50"
+```
+
+- `.github/workflows/be-cd.yml` 파일이다.
+- `secrets.$환경변수`로 찍혀있는 부분은 깃허브 레포의 Settings -> Security -> Secrets and variables -> Actions에서 Repository secrets에 추가하면 된다.
+
+<img width="1160" height="475" alt="Screenshot 2025-08-28 at 10 53 05" src="https://github.com/user-attachments/assets/0ef7c853-b678-4f7b-aa2e-9af4e6f5ba20" />
+
+- `APPLICATION_TEST_YML`: 테스트 코드용 yml 파일
+- `AWS_ACCESS_KEY_ID`: Github Actions IAM 사용자를 만들 때 생성한 액세스 키에서 받은 key id
+- `AWS_SECRET_ACCESS_KEY`: Github Actions IAM 사용자를 만들 때 생성한 액세스 키에서 받은 secret key
+- `BE_DOCKER_IMAGE_NAME`: Docker hub의 레포지토리 네이밍 (`won4885/lionchat_be`)
+  - 혹시 잘 안 되면 `won4885/lionchat_be:latest`로 `latest` 태그 추가
+- `DOCKER_HUB_USERNAME`: docker hub의 id
+- `DOCKER_HUB_PASSWORD`: docker hub의 access key
