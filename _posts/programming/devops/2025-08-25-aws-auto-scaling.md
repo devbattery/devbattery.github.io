@@ -288,3 +288,32 @@ jobs:
   - 혹시 잘 안 되면 `won4885/lionchat_be:latest`로 `latest` 태그 추가
 - `DOCKER_HUB_USERNAME`: docker hub의 id
 - `DOCKER_HUB_PASSWORD`: docker hub의 access key
+
+## 실제 서비스 경험
+
+> `8월 23일 18시 ~ 8월 25일 12시`: 사전예약 기간  
+> `8월 25일 12시 ~ 8월 26일 05시`: 본 서비스 기간
+
+### 접속자 수
+
+<img width="1582" height="1031" alt="스크린샷 2025-08-27 오전 10 51 03" src="https://github.com/user-attachments/assets/2157bf90-856c-45cc-8085-3ba85c1495e2" />
+
+### EC2 인스턴스
+
+<img width="2290" height="962" alt="Screenshot 2025-08-26 at 20 35 06" src="https://github.com/user-attachments/assets/ef21955b-2f07-465f-94a2-238160586855" />
+
+### RDS for MySQL
+
+<img width="1079" height="718" alt="Screenshot 2025-08-26 at 20 57 58" src="https://github.com/user-attachments/assets/96d2f719-3414-48d8-ac42-9db00d75d760" />
+
+### ElastiCache for Valkey
+
+<img width="1619" height="616" alt="Screenshot 2025-08-26 at 20 53 57" src="https://github.com/user-attachments/assets/60dd8ffc-a5a0-41cd-9acc-ddce69960f21" />
+
+<img width="1643" height="307" alt="Screenshot 2025-08-26 at 20 54 13" src="https://github.com/user-attachments/assets/f7e53ad8-ad7d-42d8-8a1e-5e4d72528cfd" />
+
+<img width="810" height="309" alt="Screenshot 2025-08-26 at 20 54 21" src="https://github.com/user-attachments/assets/f9a288bd-e551-43f2-b265-2a94c07bc576" />
+
+### AmazonMQ for ActiveMQ
+
+<img width="1607" height="461" alt="Screenshot 2025-08-26 at 20 55 17" src="https://github.com/user-attachments/assets/4a9dbe77-e572-4d59-bcf1-cea4819084f8" />
