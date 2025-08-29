@@ -14,7 +14,7 @@ sidebar:
     nav: "categories"
 
 date: 2025-08-25
-last_modified_at: 2025-08-28
+last_modified_at: 2025-08-29
 ---
 
 > 나는 동시 접속자를 최대 1500명으로 생각하고 워스트 케이스를 잡았다.  
@@ -317,3 +317,34 @@ jobs:
 ### AmazonMQ for ActiveMQ
 
 <img width="1607" height="461" alt="Screenshot 2025-08-26 at 20 55 17" src="https://github.com/user-attachments/assets/4a9dbe77-e572-4d59-bcf1-cea4819084f8" />
+
+## 추가 정보
+
+### Route 53
+
+<img width="395" height="546" alt="Screenshot 2025-08-29 at 12 00 29" src="https://github.com/user-attachments/assets/3bd2a183-ed95-4fda-a009-b827a36c2016" />
+
+- A 타입(별칭): 위 이미지를 참고하여, 백엔드용 `api.google.com`으로 api 서브 도메인을 사용하여 연결
+  - A 타입(값): Vercel에서 발급 받은 A 타입 주소
+- NS 타입: 가비아와 같은 도메인 사이트에서 발급받은 네임서버 넣기
+- CNAME 타입(AWS): 아래의 Certificate Manager 참고
+  - CNAME 타입(Vercel): Vercel에서 CNAME 값을 받고, 레코드 이름에 `www.google.com`과 같이 `www`도 지정하기
+
+### Certificate Manager
+
+<img width="1710" height="690" alt="Screenshot 2025-08-29 at 11 59 42" src="https://github.com/user-attachments/assets/b6586e41-b341-4b76-b944-d20055efa311" />
+
+- 정규화 도메인을 `*.google.com`과 같이 설정
+- 이렇게 한다면 `www.google.com`와 `api.google.com` 둘 다 커버 가능
+
+### ALB
+
+<img width="1484" height="728" alt="Screenshot 2025-08-29 at 11 54 38" src="https://github.com/user-attachments/assets/b4327a01-e1e6-43c9-8c0e-6615104fc03b" />
+
+<img width="1235" height="785" alt="Screenshot 2025-08-29 at 11 55 28" src="https://github.com/user-attachments/assets/5787f6a5-4d6f-4b14-988f-df32c327cbb3" />
+
+<img width="1472" height="527" alt="Screenshot 2025-08-29 at 11 55 43" src="https://github.com/user-attachments/assets/624f90b4-8b8d-4e50-8268-be1388e95439" />
+
+### 대상 그룹
+
+<img width="1476" height="658" alt="Screenshot 2025-08-29 at 11 56 13" src="https://github.com/user-attachments/assets/b15eaa25-06ad-4ad2-8473-d74e8e736961" />
