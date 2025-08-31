@@ -14,7 +14,7 @@ sidebar:
     nav: "categories"
 
 date: 2025-08-25
-last_modified_at: 2025-08-29
+last_modified_at: 2025-08-31
 ---
 
 > 나는 동시 접속자를 최대 1500명으로 생각하고 워스트 케이스를 잡았다.  
@@ -27,6 +27,8 @@ last_modified_at: 2025-08-29
 - AmazonMQ for ActiveMQ (Message Broker)
 - RDS for MySQL (DB)
 - Atlas for MongoDB (DB for Message)
+
+<img width="7680" height="4320" alt="2d-architecture" src="https://github.com/user-attachments/assets/d92c6dcf-e1cb-4448-b8db-3ae9346392b8" />
 
 ## EC2 - 시작 템플릿
 
