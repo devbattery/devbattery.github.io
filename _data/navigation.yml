@@ -15,6 +15,12 @@ main:
 # sidebar navigation (categories)
 categories:
 
+  - title: "🍀 Diary"
+    children:
+      - title: "Today I Learned"
+        url: /til/
+        category: "TIL"
+
   - title: "📈 Algorithm"
     children:
       - title: "Recap"
@@ -78,8 +84,3 @@ categories:
         url: /data-structure/
         category: "data-structure"
 
-  - title: "🍀 CodeSquad"
-    children:
-      - title: "Today I Learned"
-        url: /til/
-        category: "TIL"
