@@ -1,30 +1,52 @@
-{% if post.header.teaser %}
-  {% capture teaser %}{{ post.header.teaser }}{% endcapture %}
-{% else %}
-  {% assign teaser = site.teaser %}
-{% endif %}
-
-{% if post.id %}
-  {% assign title = post.title | markdownify | remove: "<p>" | remove: "</p>" %}
-{% else %}
-  {% assign title = post.title %}
-{% endif %}
+{%- comment -%} Auto teaser by category (fallback when a post has no
+`header.teaser`) {%- endcomment -%} {%- assign _cat = post.categories | first |
+default: '' -%} {%- assign _cat_down = _cat | downcase | strip -%} {%- assign
+_auto_teaser = '/assets/images/teasers/default.png' -%} {%- case _cat_down -%}
+{%- when 'til' -%} {%- assign _auto_teaser = '/assets/images/teasers/til.png'
+-%} {%- when 'algorithm' -%} {%- assign _auto_teaser =
+'/assets/images/teasers/algorithm.png' -%} {%- when 'devops' -%} {%- assign
+_auto_teaser = '/assets/images/teasers/devops.png' -%} {%- when 'java' -%} {%-
+assign _auto_teaser = '/assets/images/teasers/java.png' -%} {%- when 'spring'
+-%} {%- assign _auto_teaser = '/assets/images/teasers/spring.png' -%} {%- when
+'vue' -%} {%- assign _auto_teaser = '/assets/images/teasers/vue.png' -%} {%-
+when 'react' -%} {%- assign _auto_teaser = '/assets/images/teasers/react.png'
+-%} {%- when 'issue' -%} {%- assign _auto_teaser =
+'/assets/images/teasers/issue.png' -%} {%- when 'programming' -%} {%- assign
+_auto_teaser = '/assets/images/teasers/programming.png' -%} {%- when 'computer
+science' -%} {%- assign _auto_teaser = '/assets/images/teasers/cs.png' -%} {%-
+endcase -%} {%- comment -%} Prefer explicit post teaser; otherwise fall back to
+category teaser; otherwise site teaser. {%- endcomment -%} {%- assign teaser =
+post.header.teaser | default: _auto_teaser | default: site.teaser -%} {% if
+post.id %} {% assign title = post.title | markdownify | remove: "
+<p>" | remove: "</p>
+" %} {% else %} {% assign title = post.title %} {% endif %}
 
 <div class="{{ include.type | default: 'list' }}__item">
-  <article class="archive__item" itemscope itemtype="https://schema.org/CreativeWork">
+  <article
+    class="archive__item"
+    itemscope
+    itemtype="https://schema.org/CreativeWork"
+  >
     {% if include.type == "grid" and teaser %}
-      <div class="archive__item-teaser">
-        <img src="{{ teaser | relative_url }}" alt="">
-      </div>
+    <div class="archive__item-teaser">
+      <img src="{{ teaser | relative_url }}" alt="" />
+    </div>
     {% endif %}
     <h2 class="archive__item-title no_toc" itemprop="headline">
       {% if post.link %}
-        <a href="{{ post.link }}">{{ title }}</a> <a href="{{ post.url | relative_url }}" rel="permalink"><i class="fas fa-link" aria-hidden="true" title="permalink"></i><span class="sr-only">Permalink</span></a>
+      <a href="{{ post.link }}">{{ title }}</a>
+      <a href="{{ post.url | relative_url }}" rel="permalink"
+        ><i class="fas fa-link" aria-hidden="true" title="permalink"></i
+        ><span class="sr-only">Permalink</span></a
+      >
       {% else %}
-        <a href="{{ post.url | relative_url }}" rel="permalink">{{ title }}</a>
+      <a href="{{ post.url | relative_url }}" rel="permalink">{{ title }}</a>
       {% endif %}
     </h2>
-    {% include page__meta.html type=include.type %}
-    {% if post.excerpt %}<p class="archive__item-excerpt" itemprop="description">{{ post.excerpt | markdownify | strip_html | truncate: 160 }}</p>{% endif %}
+    {% include page__meta.html type=include.type %} {% if post.excerpt %}
+    <p class="archive__item-excerpt" itemprop="description">
+      {{ post.excerpt | markdownify | strip_html | truncate: 160 }}
+    </p>
+    {% endif %}
   </article>
 </div>
