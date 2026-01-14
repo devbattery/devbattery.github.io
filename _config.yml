@@ -220,6 +220,101 @@ defaults:
       mathjax: true
       sidebar:
         nav: "categories"
+      # ✅ 전역 기본 썸네일 (카테고리 매칭 안 되면 이걸 사용)
+      header:
+        teaser: /assets/images/teasers/default.png
+      og_image: /assets/images/teasers/default.png
+
+  # Category-based thumbnails
+  - scope:
+      path: ""
+      type: posts
+      category: TIL
+    values:
+      header:
+        teaser: /assets/images/teasers/til.png
+      og_image: /assets/images/teasers/til.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: Algorithm
+    values:
+      header:
+        teaser: /assets/images/teasers/algorithm.png
+      og_image: /assets/images/teasers/algorithm.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: ISSUE
+    values:
+      header:
+        teaser: /assets/images/teasers/issue.png
+      og_image: /assets/images/teasers/issue.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: PROGRAMMING
+    values:
+      header:
+        teaser: /assets/images/teasers/programming.png
+      og_image: /assets/images/teasers/programming.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: DevOps
+    values:
+      header:
+        teaser: /assets/images/teasers/devops.png
+      og_image: /assets/images/teasers/devops.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: Java
+    values:
+      header:
+        teaser: /assets/images/teasers/java.png
+      og_image: /assets/images/teasers/java.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: Spring
+    values:
+      header:
+        teaser: /assets/images/teasers/spring.png
+      og_image: /assets/images/teasers/spring.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: Vue
+    values:
+      header:
+        teaser: /assets/images/teasers/vue.png
+      og_image: /assets/images/teasers/vue.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: React
+    values:
+      header:
+        teaser: /assets/images/teasers/react.png
+      og_image: /assets/images/teasers/react.png
+
+  - scope:
+      path: ""
+      type: posts
+      category: COMPUTER SCIENCE
+    values:
+      header:
+        teaser: /assets/images/teasers/cs.png
+      og_image: /assets/images/teasers/cs.png
 
 date_format: "%Y-%m-%d"
 after_footer_scripts:
