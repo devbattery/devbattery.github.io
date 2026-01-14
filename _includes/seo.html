@@ -22,7 +22,8 @@
 {%- endif -%}
 
 {%- assign page_large_image = page.header.og_image | default: page.header.overlay_image | default: page.header.image | absolute_url | escape -%}
-{%- assign page_teaser_image = page.header.teaser | default: site.og_image | absolute_url | escape -%}
+{%- capture _auto_teaser -%}{% include auto-teaser-path.html %}{%- endcapture -%}
+{%- assign page_teaser_image = page.header.teaser | default: _auto_teaser | default: site.og_image | absolute_url | escape -%}
 {%- assign site_og_image = site.og_image | absolute_url | escape -%}
 
 {%- if page.date -%}

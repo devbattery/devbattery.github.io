@@ -1,0 +1,48 @@
+{%- comment -%}
+  Determine the automatic teaser path based on categories.
+  Expects `post` or `page` to be available.
+{%- endcomment -%}
+
+{%- assign _document = post | default: page -%}
+{%- assign _auto_teaser = '/assets/images/teasers/default.png' -%}
+{%- assign _cats_joined = _document.categories | join: '|' | downcase -%}
+
+{%- if _cats_joined contains 'til' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/til.png' -%}
+{%- elsif _cats_joined contains 'recap' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/recap.png' -%}
+{%- elsif _cats_joined contains 'leetcode' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/leetcode.png' -%}
+{%- elsif _cats_joined contains 'hackerrank' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/hackerrank.png' -%}
+{%- elsif _cats_joined contains 'codeforces' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/codeforces.png' -%}
+{%- elsif _cats_joined contains 'programmers' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/programmers.png' -%}
+{%- elsif _cats_joined contains 'baekjoon' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/baekjoon.png' -%}
+{%- elsif _cats_joined contains 'inflearn' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/inflearn.png' -%}
+{%- elsif _cats_joined contains 'project' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/project.png' -%}
+{%- elsif _cats_joined contains 'devops' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/devops.png' -%}
+{%- elsif _cats_joined contains 'java' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/java.png' -%}
+{%- elsif _cats_joined contains 'spring' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/spring.png' -%}
+{%- elsif _cats_joined contains 'fastapi' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/fastapi.png' -%}
+{%- elsif _cats_joined contains 'vue' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/vue.png' -%}
+{%- elsif _cats_joined contains 'react' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/react.png' -%}
+{%- elsif _cats_joined contains 'network' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/network.png' -%}
+{%- elsif _cats_joined contains 'database' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/database.png' -%}
+{%- elsif _cats_joined contains 'data-structure' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/data-structure.png' -%}
+{%- endif -%}
+
+{{ _auto_teaser }}
