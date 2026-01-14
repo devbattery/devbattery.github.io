@@ -1,6 +1,6 @@
-{%- comment -%} Auto teaser by category (fallback when a post has no
-`header.teaser`) Based on categories defined in _data/navigation.yml (field:
-category) {%- endcomment -%} {%- assign _auto_teaser =
+{%- comment -%} archive-single.html - Auto teaser by category (fallback when a
+post has no `header.teaser`) - Keep the original `title` assignment block
+(required) {%- endcomment -%} {%- assign _auto_teaser =
 '/assets/images/teasers/default.png' -%} {%- assign _cats_joined =
 post.categories | join: '|' | downcase -%} {%- if _cats_joined contains 'til'
 -%} {%- assign _auto_teaser = '/assets/images/teasers/til.png' -%} {%- elsif
@@ -30,8 +30,14 @@ _cats_joined contains 'network' -%} {%- assign _auto_teaser =
 '/assets/images/teasers/network.png' -%} {%- elsif _cats_joined contains
 'database' -%} {%- assign _auto_teaser = '/assets/images/teasers/database.png'
 -%} {%- elsif _cats_joined contains 'data-structure' -%} {%- assign _auto_teaser
-= '/assets/images/teasers/data-structure.png' -%} {%- endif -%} {%- assign
-teaser = post.header.teaser | default: _auto_teaser | default: site.teaser -%}
+= '/assets/images/teasers/data-structure.png' -%} {%- endif -%} {%- comment -%}
+Prefer explicit post teaser; otherwise fall back to category teaser; otherwise
+site teaser. {%- endcomment -%} {%- assign teaser = post.header.teaser |
+default: _auto_teaser | default: site.teaser -%} {%- comment -%} TITLE BLOCK
+(must exist) {%- endcomment -%} {% if post.id %} {% assign title = post.title |
+markdownify | remove: "
+<p>" | remove: "</p>
+" %} {% else %} {% assign title = post.title %} {% endif %}
 
 <div class="{{ include.type | default: 'list' }}__item">
   <article
