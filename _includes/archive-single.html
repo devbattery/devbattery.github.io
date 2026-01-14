@@ -1,4 +1,5 @@
 {%- capture _auto_teaser -%}{% include auto-teaser-path.html %}{%- endcapture -%}
+{%- assign _auto_teaser = _auto_teaser | strip -%}
 {%- assign teaser = post.header.teaser | default: _auto_teaser | default: site.teaser -%} {%- comment -%} TITLE BLOCK
 (must exist) {%- endcomment -%} {% if post.id %} {% assign title = post.title |
 markdownify | remove: "

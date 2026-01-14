@@ -4,6 +4,7 @@ layout: category
 permalink: /til/
 author_profile: true
 taxonomy: TIL
+entries_layout: grid
 sidebar:
   nav: "categories"
 ---
