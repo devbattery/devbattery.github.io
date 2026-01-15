@@ -17,7 +17,9 @@ layout: null
       <guid isPermaLink="true">{{ post.url | absolute_url }}</guid>
       <description>{{ post.excerpt | strip_html | truncatewords: 30 | xml_escape }}</description>
       {%- capture teaser_path -%}{% include auto-teaser-path.html post=post %}{%- endcapture -%}
-      <media:content url="{{ teaser_path | strip | absolute_url }}" medium="image" />
+      {%- assign teaser_url = teaser_path | strip | absolute_url -%}
+      <media:content url="{{ teaser_url }}" medium="image" />
+      <enclosure url="{{ teaser_url }}" type="image/png" length="0" />
     </item>
     {% endfor %}
   </channel>
