@@ -19,23 +19,23 @@
   {%- assign _auto_teaser = '/assets/images/teasers/inflearn.png' -%}
 {%- elsif _cats_joined contains 'project' -%}
   {%- assign _auto_teaser = '/assets/images/teasers/project.png' -%}
+{%- elsif _cats_joined contains 'issue' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/issue.png' -%}
+{%- elsif _cats_joined contains 'programming' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/programming.png' -%}
+{%- elsif _cats_joined contains 'algorithm' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/algorithm.png' -%}
+{%- elsif _cats_joined contains 'computer science' or _cats_joined contains 'cs' -%}
+  {%- assign _auto_teaser = '/assets/images/teasers/cs.png' -%}
 {%- elsif _cats_joined contains 'devops' -%}
   {%- assign _auto_teaser = '/assets/images/teasers/devops.png' -%}
 {%- elsif _cats_joined contains 'java' -%}
   {%- assign _auto_teaser = '/assets/images/teasers/java.png' -%}
 {%- elsif _cats_joined contains 'spring' -%}
   {%- assign _auto_teaser = '/assets/images/teasers/spring.png' -%}
-{%- elsif _cats_joined contains 'fastapi' -%}
-  {%- assign _auto_teaser = '/assets/images/teasers/fastapi.png' -%}
 {%- elsif _cats_joined contains 'vue' -%}
   {%- assign _auto_teaser = '/assets/images/teasers/vue.png' -%}
 {%- elsif _cats_joined contains 'react' -%}
   {%- assign _auto_teaser = '/assets/images/teasers/react.png' -%}
-{%- elsif _cats_joined contains 'network' -%}
-  {%- assign _auto_teaser = '/assets/images/teasers/network.png' -%}
-{%- elsif _cats_joined contains 'database' -%}
-  {%- assign _auto_teaser = '/assets/images/teasers/database.png' -%}
-{%- elsif _cats_joined contains 'data-structure' -%}
-  {%- assign _auto_teaser = '/assets/images/teasers/data-structure.png' -%}
 {%- endif -%}
 {{ _auto_teaser | strip }}
