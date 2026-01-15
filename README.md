@@ -2,7 +2,6 @@
 
 - [Powered by Jekyll & Minima Mistakes](https://mmistakes.github.io/minimal-mistakes/)
 - [https://devbattery.com](https://devbattery.com)
-
 ## Theme
 
 ### Light Mode
