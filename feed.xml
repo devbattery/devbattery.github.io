@@ -15,9 +15,9 @@ layout: null
       <link>{{ post.url | absolute_url }}</link>
       <pubDate>{{ post.date | date_to_rfc822 }}</pubDate>
       <guid isPermaLink="true">{{ post.url | absolute_url }}</guid>
-      <description>{{ post.excerpt | strip_html | truncatewords: 30 | xml_escape }}</description>
       {%- capture teaser_path -%}{% include auto-teaser-path.html post=post %}{%- endcapture -%}
       {%- assign teaser_url = teaser_path | strip | absolute_url -%}
+      <description>&lt;img src="{{ teaser_url }}" width="220" /&gt; {{ post.excerpt | strip_html | truncatewords: 30 | xml_escape }}</description>
       <teaser_image>{{ teaser_url }}</teaser_image>
       <media:content url="{{ teaser_url }}" medium="image" />
       <enclosure url="{{ teaser_url }}" type="image/png" length="0" />
