@@ -6,6 +6,7 @@ on:
       - opened
       - edited
       - reopened
+      - labeled
 
 permissions:
   contents: write
@@ -13,7 +14,7 @@ permissions:
 
 jobs:
   publish:
-    if: contains(github.event.issue.labels.*.name, 'post')
+    if: contains(github.event.issue.labels.*.name, 'post') || contains(github.event.issue.body, '### 본문')
     runs-on: ubuntu-latest
     concurrency:
       group: issue-post-${{ github.event.issue.number }}

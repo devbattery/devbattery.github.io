@@ -10,6 +10,7 @@
 3. Create issue
 
 Template fields: `excerpt`, `categories`, `tags`, `date`, `last_modified_at`, `content` (`title`은 GitHub `Add a title` 사용).
+Workflow runs when `post` label exists, or issue body contains `### 본문` from the template.
 
 ## Theme
 
