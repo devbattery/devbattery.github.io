@@ -10,7 +10,7 @@ on:
 
 permissions:
   contents: write
-  issues: read
+  issues: write
 
 jobs:
   publish:
@@ -189,6 +189,7 @@ jobs:
 
       - name: Comment issue with post path
         if: steps.commit.outputs.committed == 'true'
+        continue-on-error: true
         uses: actions/github-script@v7
         env:
           POST_PATH: ${{ steps.write_post.outputs.path }}
