@@ -26,8 +26,11 @@ body:
     id: categories
     attributes:
       label: 카테고리
-      description: 쉼표(,)로 여러 개 입력 가능, 비우면 TIL
-      placeholder: 예) TIL, Network
+      description: |
+        쉼표(,)로 여러 개 입력 가능, 비우면 TIL
+        현재 사용 중인 카테고리 예시:
+        Baekjoon, Codeforces, DataBase, Database, DevOps, HackerRank, Inflearn, Java, LeetCode, Network, Programmers, Project, React, Recap, Spring, TIL, Vue, data-structure, operating-system
+      placeholder: 예) TIL, Network, DevOps
     validations:
       required: false
 
