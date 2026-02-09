@@ -1,0 +1,204 @@
+name: Publish Post From Issue
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - reopened
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  publish:
+    if: contains(github.event.issue.labels.*.name, 'post')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: issue-post-${{ github.event.issue.number }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release
+
+      - name: Build markdown from issue form
+        id: write_post
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+            const core = require("@actions/core");
+
+            const issue = context.payload.issue;
+            const body = issue.body || "";
+
+            function escapeRegex(input) {
+              return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+
+            function getField(label) {
+              const re = new RegExp(
+                `###\\s*${escapeRegex(label)}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s|$)`
+              );
+              const match = body.match(re);
+              if (!match) {
+                return "";
+              }
+
+              const value = match[1].trim();
+              if (/^_No response_$/i.test(value)) {
+                return "";
+              }
+
+              return value;
+            }
+
+            function listFromComma(input) {
+              return input
+                .split(",")
+                .map((item) => item.trim())
+                .filter(Boolean);
+            }
+
+            function quoteYaml(input) {
+              return `'${String(input).replace(/'/g, "''")}'`;
+            }
+
+            function formatDate(input) {
+              return new Intl.DateTimeFormat("en-CA", {
+                timeZone: "Asia/Seoul",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit"
+              }).format(input);
+            }
+
+            function resolveDate(raw, fallback, fieldName) {
+              const value = (raw || "").trim();
+              if (!value) {
+                return fallback;
+              }
+
+              const isValidFormat = /^\d{4}-\d{2}-\d{2}$/.test(value);
+              const parsed = new Date(`${value}T00:00:00+09:00`);
+              const isValidDate = !Number.isNaN(parsed.getTime());
+
+              if (!isValidFormat || !isValidDate) {
+                core.warning(`${fieldName} 형식이 올바르지 않아 기본값을 사용합니다: ${value}`);
+                return fallback;
+              }
+
+              return value;
+            }
+
+            const titleFromForm = getField("제목");
+            const titleFromIssue = issue.title.replace(/^\s*\[POST\]\s*/i, "").trim();
+            const title = titleFromForm || titleFromIssue || `Issue ${issue.number}`;
+
+            const excerpt = getField("요약");
+            const categories = listFromComma(getField("카테고리"));
+            const tags = listFromComma(getField("태그"));
+            const content = getField("본문").trim();
+            const dateInput = getField("작성일");
+            const lastModifiedInput = getField("수정일");
+
+            if (!content) {
+              core.setFailed("본문이 비어 있습니다.");
+              return;
+            }
+
+            if (categories.length === 0) {
+              categories.push("TIL");
+            }
+
+            const createdDate = resolveDate(
+              dateInput,
+              formatDate(new Date(issue.created_at)),
+              "작성일"
+            );
+            const modifiedDate = resolveDate(
+              lastModifiedInput,
+              formatDate(new Date()),
+              "수정일"
+            );
+            const suffix = `-issue-${issue.number}.md`;
+            const postsDir = "_posts";
+            const existing = fs
+              .readdirSync(postsDir)
+              .find((entry) => entry.endsWith(suffix) && fs.statSync(path.join(postsDir, entry)).isFile());
+
+            const fileName = existing || `${createdDate}${suffix}`;
+            const filePath = path.join(postsDir, fileName);
+
+            const lines = [];
+            lines.push("---");
+            lines.push(`title: ${quoteYaml(title)}`);
+            if (excerpt) {
+              lines.push(`excerpt: ${quoteYaml(excerpt)}`);
+            }
+            lines.push("");
+            lines.push("categories:");
+            for (const category of categories) {
+              lines.push(`  - ${quoteYaml(category)}`);
+            }
+            if (tags.length > 0) {
+              lines.push("tags:");
+              for (const tag of tags) {
+                lines.push(`  - ${quoteYaml(tag)}`);
+              }
+            } else {
+              lines.push("tags: []");
+            }
+            lines.push("");
+            lines.push("toc: true");
+            lines.push("toc_sticky: true");
+            lines.push("");
+            lines.push("sidebar:");
+            lines.push('  nav: "categories"');
+            lines.push("");
+            lines.push(`date: ${createdDate}`);
+            lines.push(`last_modified_at: ${modifiedDate}`);
+            lines.push("---");
+            lines.push("");
+            lines.push(content);
+            lines.push("");
+
+            fs.writeFileSync(filePath, lines.join("\n"), "utf8");
+            core.setOutput("path", filePath);
+
+      - name: Commit and push
+        id: commit
+        env:
+          POST_PATH: ${{ steps.write_post.outputs.path }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$POST_PATH"
+          if git diff --cached --quiet; then
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+            echo "No post changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(post): publish issue #${{ github.event.issue.number }}"
+          git push origin release
+          echo "committed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Comment issue with post path
+        if: steps.commit.outputs.committed == 'true'
+        uses: actions/github-script@v7
+        env:
+          POST_PATH: ${{ steps.write_post.outputs.path }}
+        with:
+          script: |
+            const postPath = process.env.POST_PATH;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `포스트가 자동 반영되었습니다: \`${postPath}\``
+            });

@@ -1,0 +1,69 @@
+name: Blog Post
+description: 모바일에서 작성한 내용을 자동으로 블로그 포스트로 발행합니다.
+title: "[POST] "
+labels:
+  - post
+body:
+  - type: input
+    id: title
+    attributes:
+      label: 제목
+      description: 포스트 제목을 입력하세요.
+      placeholder: 예) 오늘 배운 내용 정리
+    validations:
+      required: true
+
+  - type: input
+    id: excerpt
+    attributes:
+      label: 요약
+      description: 목록/SEO에 사용할 짧은 설명 (선택)
+      placeholder: 예) Kotlin 코루틴 핵심 요약
+    validations:
+      required: false
+
+  - type: input
+    id: categories
+    attributes:
+      label: 카테고리
+      description: 쉼표(,)로 여러 개 입력 가능, 비우면 TIL
+      placeholder: 예) TIL, Network
+    validations:
+      required: false
+
+  - type: input
+    id: tags
+    attributes:
+      label: 태그
+      description: 쉼표(,)로 구분해서 입력 (선택)
+      placeholder: 예) kotlin, coroutine
+    validations:
+      required: false
+
+  - type: input
+    id: date
+    attributes:
+      label: 작성일
+      description: YYYY-MM-DD 형식 (비우면 이슈 생성일)
+      placeholder: 예) 2026-02-09
+    validations:
+      required: false
+
+  - type: input
+    id: last_modified_at
+    attributes:
+      label: 수정일
+      description: YYYY-MM-DD 형식 (비우면 오늘 날짜)
+      placeholder: 예) 2026-02-09
+    validations:
+      required: false
+
+  - type: textarea
+    id: content
+    attributes:
+      label: 본문
+      description: 마크다운으로 작성하세요.
+      placeholder: |
+        오늘 배운 내용을 적어주세요.
+    validations:
+      required: true
