@@ -96,9 +96,8 @@ jobs:
               return value;
             }
 
-            const titleFromForm = getField("제목");
             const titleFromIssue = issue.title.replace(/^\s*\[POST\]\s*/i, "").trim();
-            const title = titleFromForm || titleFromIssue || `Issue ${issue.number}`;
+            const title = titleFromIssue || `Issue ${issue.number}`;
 
             const excerpt = getField("요약");
             const categories = listFromComma(getField("카테고리"));

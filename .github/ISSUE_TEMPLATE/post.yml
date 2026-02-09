@@ -5,15 +5,6 @@ labels:
   - post
 body:
   - type: input
-    id: title
-    attributes:
-      label: 제목
-      description: 포스트 제목을 입력하세요.
-      placeholder: 예) 오늘 배운 내용 정리
-    validations:
-      required: true
-
-  - type: input
     id: excerpt
     attributes:
       label: 요약

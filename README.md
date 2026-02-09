@@ -9,7 +9,7 @@
 2. Write to use `Blog Post` Template
 3. Create issue
 
-Template fields: `title`, `excerpt`, `categories`, `tags`, `date`, `last_modified_at`, `content`.
+Template fields: `excerpt`, `categories`, `tags`, `date`, `last_modified_at`, `content` (`title`은 GitHub `Add a title` 사용).
 
 ## Theme
 
