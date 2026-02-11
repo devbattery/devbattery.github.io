@@ -36,6 +36,8 @@ jobs:
 
             const issue = context.payload.issue;
             const body = issue.body || "";
+            const postsDir = "_posts";
+            const issueNumber = issue.number;
 
             function escapeRegex(input) {
               return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -69,6 +71,32 @@ jobs:
               return `'${String(input).replace(/'/g, "''")}'`;
             }
 
+            function normalizeSlug(raw) {
+              return String(raw || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFKD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9가-힣\s_-]/g, "")
+                .replace(/[\s_]+/g, "-")
+                .replace(/-+/g, "-")
+                .replace(/^-|-$/g, "");
+            }
+
+            function resolveSlug(raw, fallback) {
+              const slugFromInput = normalizeSlug(raw);
+              if (slugFromInput) {
+                return slugFromInput;
+              }
+
+              const slugFromFallback = normalizeSlug(fallback);
+              if (slugFromFallback) {
+                return slugFromFallback;
+              }
+
+              return `post-${issueNumber}`;
+            }
+
             function formatDate(input) {
               return new Intl.DateTimeFormat("en-CA", {
                 timeZone: "Asia/Seoul",
@@ -96,11 +124,117 @@ jobs:
               return value;
             }
 
+            function sanitizeFolder(raw) {
+              const value = (raw || "").trim();
+              if (!value) {
+                return "";
+              }
+
+              const normalized = value.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+              if (!normalized) {
+                return "";
+              }
+
+              const segments = normalized.split("/").map((segment) => segment.trim()).filter(Boolean);
+              for (const segment of segments) {
+                if (segment === "." || segment === "..") {
+                  throw new Error("저장 폴더에 . 또는 .. 경로는 사용할 수 없습니다.");
+                }
+                if (!/^[a-zA-Z0-9._-]+$/.test(segment)) {
+                  throw new Error(`저장 폴더 형식이 올바르지 않습니다: ${segment}`);
+                }
+              }
+
+              return segments.join("/");
+            }
+
+            function listMarkdownFiles(rootDir) {
+              const files = [];
+              const stack = [rootDir];
+
+              while (stack.length > 0) {
+                const currentDir = stack.pop();
+                for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+                  const fullPath = path.join(currentDir, entry.name);
+                  if (entry.isDirectory()) {
+                    stack.push(fullPath);
+                    continue;
+                  }
+                  if (entry.isFile() && entry.name.endsWith(".md")) {
+                    files.push(fullPath);
+                  }
+                }
+              }
+
+              return files.sort();
+            }
+
+            function findExistingPostByIssueId() {
+              const legacySuffix = `-issue-${issueNumber}.md`;
+              const issueIdRegex = new RegExp(`^issue_id:\\s*${issueNumber}\\s*$`, "m");
+
+              for (const filePath of listMarkdownFiles(postsDir)) {
+                if (filePath.endsWith(legacySuffix)) {
+                  return filePath;
+                }
+
+                const content = fs.readFileSync(filePath, "utf8");
+                const frontMatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+                if (!frontMatterMatch) {
+                  continue;
+                }
+                if (issueIdRegex.test(frontMatterMatch[1])) {
+                  return filePath;
+                }
+              }
+
+              return "";
+            }
+
+            const categoryFolderMap = {
+              til: "diary/til",
+              baekjoon: "algorithms/baekjoon",
+              hackerrank: "algorithms/hackerrank",
+              leetcode: "algorithms/leetcode",
+              programmers: "algorithms/programmers",
+              codeforces: "algorithms/codeforces",
+              inflearn: "algorithms/inflearn",
+              recap: "algorithms/recap",
+              network: "computing/network",
+              "data-structure": "computing/data-structure",
+              database: "computing/database",
+              "operating-system": "computing/operating-system",
+              project: "issue/project",
+              spring: "programming/spring",
+              java: "programming/java",
+              devops: "programming/devops",
+              react: "programming/react",
+              vue: "programming/vue"
+            };
+
+            function resolveFolder(categories, folderInput) {
+              const customFolder = sanitizeFolder(folderInput);
+              if (customFolder) {
+                return customFolder;
+              }
+
+              for (const category of categories) {
+                const mapped = categoryFolderMap[category.toLowerCase()];
+                if (mapped) {
+                  return mapped;
+                }
+              }
+
+              return "";
+            }
+
             const titleFromIssue = issue.title.replace(/^\s*\[POST\]\s*/i, "").trim();
             const title = titleFromIssue || `Issue ${issue.number}`;
 
             const excerpt = getField("요약");
             const categories = listFromComma(getField("카테고리"));
+            const fileSlugInput = getField("파일 슬러그");
+            const folderInput = getField("저장 폴더");
             const tags = listFromComma(getField("태그"));
             const content = getField("본문").trim();
             const dateInput = getField("작성일");
@@ -125,14 +259,23 @@ jobs:
               formatDate(new Date()),
               "수정일"
             );
-            const suffix = `-issue-${issue.number}.md`;
-            const postsDir = "_posts";
-            const existing = fs
-              .readdirSync(postsDir)
-              .find((entry) => entry.endsWith(suffix) && fs.statSync(path.join(postsDir, entry)).isFile());
+            const slug = resolveSlug(fileSlugInput, title);
+            const folder = resolveFolder(categories, folderInput);
+            const fileName = `${createdDate}-${slug}.md`;
+            const targetPath = folder
+              ? path.join(postsDir, folder, fileName)
+              : path.join(postsDir, fileName);
+            const existingPath = findExistingPostByIssueId();
 
-            const fileName = existing || `${createdDate}${suffix}`;
-            const filePath = path.join(postsDir, fileName);
+            const keepExistingPath = Boolean(existingPath) && !fileSlugInput && !folderInput;
+            const filePath = keepExistingPath ? existingPath : targetPath;
+
+            if (existingPath && existingPath !== filePath) {
+              fs.mkdirSync(path.dirname(filePath), { recursive: true });
+              fs.renameSync(existingPath, filePath);
+            }
+
+            fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
             const lines = [];
             lines.push("---");
@@ -162,13 +305,14 @@ jobs:
             lines.push("");
             lines.push(`date: ${createdDate}`);
             lines.push(`last_modified_at: ${modifiedDate}`);
+            lines.push(`issue_id: ${issueNumber}`);
             lines.push("---");
             lines.push("");
             lines.push(content);
             lines.push("");
 
             fs.writeFileSync(filePath, lines.join("\n"), "utf8");
-            core.setOutput("path", filePath);
+            core.setOutput("path", filePath.split(path.sep).join("/"));
 
       - name: Commit and push
         id: commit
@@ -177,7 +321,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$POST_PATH"
+          git add -A _posts
           if git diff --cached --quiet; then
             echo "committed=false" >> "$GITHUB_OUTPUT"
             echo "No post changes to commit."

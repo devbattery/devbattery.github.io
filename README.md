@@ -9,7 +9,8 @@
 2. Write to use `Blog Post` Template
 3. Create issue
 
-Template fields: `excerpt`, `categories`, `tags`, `date`, `last_modified_at`, `content` (`title`은 GitHub `Add a title` 사용).
+Template fields: `file_slug`, `post_folder`, `excerpt`, `categories`, `tags`, `date`, `last_modified_at`, `content` (`title`은 GitHub `Add a title` 사용).
+Filename rule: `YYYY-MM-DD-<file_slug>.md` (folder default is inferred from category, or uses `post_folder` when filled).
 Workflow runs when `post` label exists, or issue body contains `### 본문` from the template.
 
 ## Theme

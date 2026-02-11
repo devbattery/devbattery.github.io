@@ -4,6 +4,11 @@ title: "[POST] "
 labels:
   - post
 body:
+  - type: markdown
+    attributes:
+      value: |
+        `Add a title` 값이 포스트 제목으로 사용됩니다.
+
   - type: input
     id: excerpt
     attributes:
@@ -22,6 +27,28 @@ body:
         현재 사용 중인 카테고리 예시:
         Baekjoon, Codeforces, DataBase, Database, DevOps, HackerRank, Inflearn, Java, LeetCode, Network, Programmers, Project, React, Recap, Spring, TIL, Vue, data-structure, operating-system
       placeholder: 예) TIL, Network, DevOps
+    validations:
+      required: false
+
+  - type: input
+    id: file_slug
+    attributes:
+      label: 파일 슬러그
+      description: |
+        파일명에서 날짜 뒤에 붙는 값 (URL 슬러그)
+        예) company-39, til-redis-lock
+      placeholder: 예) company-39
+    validations:
+      required: true
+
+  - type: input
+    id: post_folder
+    attributes:
+      label: 저장 폴더
+      description: |
+        `_posts/` 기준 하위 폴더 (선택)
+        비우면 카테고리 기반 기본 폴더를 자동 선택
+      placeholder: 예) diary/til
     validations:
       required: false
 
