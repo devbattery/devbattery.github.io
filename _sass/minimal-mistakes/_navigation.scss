@@ -201,6 +201,22 @@
     }
   }
 
+  .theme-toggle {
+    display: block;
+    margin: 0 1rem;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    color: $masthead-link-color;
+    font-size: inherit;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      color: $masthead-link-color-hover;
+    }
+  }
+
   img {
     -webkit-transition: none;
     transition: none;
@@ -280,6 +296,23 @@
       margin: 0;
       padding: 10px 20px;
       font-size: $type-size-5;
+
+      &:hover {
+        color: $masthead-link-color-hover;
+        background: $navicon-link-color-hover;
+      }
+    }
+
+    .theme-toggle {
+      margin: 0;
+      padding: 10px 20px;
+      width: 100%;
+      border: 0;
+      background-color: transparent;
+      color: $masthead-link-color;
+      font-size: $type-size-5;
+      text-align: left;
+      cursor: pointer;
 
       &:hover {
         color: $masthead-link-color-hover;

@@ -1,6 +1,7 @@
 source "https://rubygems.org"
-gemspec
+gemspec path: "."
 
 gem 'jekyll-seo-tag'
+gem 'faraday-retry'
 
 gem 'rouge'

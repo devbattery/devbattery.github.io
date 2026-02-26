@@ -89,21 +89,21 @@ body {
 
 .page__content {
   h1 {
-    color: #C6566A; // Obsidian Minimal Theme에서 추출
+    color: mix($text-color, $danger-color, 84%);
   }
 
   h2 {
     padding-bottom: 0.5em;
     border-bottom: 1px solid $border-color;
-    color: #D88145; // Obsidian Minimal Theme에서 추출
+    color: mix($text-color, $warning-color, 82%);
   }
 
   h3 {
-    color: #E4B874; // Obsidian Minimal Theme에서 추출
+    color: mix($text-color, $info-color, 80%);
   }
   
   h4 {
-    color: #AEC083; // Obsidian Minimal Theme에서 추출
+    color: mix($text-color, $success-color, 78%);
   }
   
 	h1, h2, h3, h4, h5, h6 {

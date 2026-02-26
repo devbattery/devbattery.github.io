@@ -116,6 +116,7 @@ exclude:
   - node_modules
   - package.json
   - package-lock.json
+  - minimal-mistakes-jekyll.gemspec
   - Rakefile
   - README
   - tmp
@@ -147,6 +148,9 @@ kramdown:
 sass:
   sass_dir: _sass
   style: compressed
+  quiet_deps: true
+  silence_deprecations:
+    - slash-div
 
 # Outputting
 permalink: /:categories/:title/
@@ -230,8 +234,8 @@ defaults:
 date_format: "%Y-%m-%d"
 after_footer_scripts:
   - /assets/js/dark-theme.js
+  - https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js
   - /assets/js/clipboardrouge.js
-  - https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js
 
 sitemap:
   path: sitemap.xml

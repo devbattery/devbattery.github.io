@@ -12,6 +12,7 @@ toc_sticky: true
 
 date: 2022-06-29
 last_modified_at: 2022-06-29
+slug: valid-username-regular-expression-2
 ---
 
 <https://www.hackerrank.com/challenges/valid-username-checker/problem?isFullScreen=true>

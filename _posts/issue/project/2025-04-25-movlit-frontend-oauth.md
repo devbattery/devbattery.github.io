@@ -278,7 +278,7 @@ function App() {
 
   return (
     // AppContext.Provider로 하위 컴포넌트에 상태와 함수 전달
-    <AppContext.Provider value={{ updateLoginStatus, isLoggedIn /* ... */ }}>
+    <AppContext.Provider value={ { updateLoginStatus, isLoggedIn /* ... */ } }>
       <nav className="navbar">
         {/* ... (네비게이션 링크들) ... */}
         <div className="nav-right">
@@ -311,7 +311,7 @@ function App() {
       </nav>
 
       {/* Outlet을 통해 자식 라우트 컴포넌트들이 context 값을 사용할 수 있도록 전달 */}
-      <Outlet context={{ updateLoginStatus, isLoggedIn /* ... */ }} />
+      <Outlet context={ { updateLoginStatus, isLoggedIn /* ... */ } } />
 
       {/* ... (Snackbar 등) ... */}
     </AppContext.Provider>

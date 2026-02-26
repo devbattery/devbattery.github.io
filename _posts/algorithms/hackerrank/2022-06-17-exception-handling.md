@@ -12,6 +12,7 @@ toc_sticky: true
 
 date: 2022-06-17
 last_modified_at: 2022-06-17
+slug: java-exception-handling-try-catch
 ---
 
 <https://www.hackerrank.com/challenges/java-exception-handling-try-catch/problem?isFullScreen=true>

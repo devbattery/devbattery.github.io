@@ -1,57 +1,143 @@
-const defaultTheme = [...document.styleSheets].find((style) =>
-  /(main.css)$/.test(style.href)
-);
-const darkTheme = [...document.styleSheets].find((style) =>
-  /(main_dark.css)$/.test(style.href)
-);
+(function () {
+  "use strict";
 
-const toggleThemeBtn = document.getElementById("toggle-theme");
+  var root = document.documentElement;
+  var defaultTheme = document.getElementById("theme-default-css");
+  var darkTheme = document.getElementById("theme-dark-css");
+  var toggleThemeBtn = document.getElementById("toggle-theme");
 
-const toLight = () => {
-  toggleThemeBtn.innerHTML = `<i class="fa-solid fa-sun"></i>`;
-  defaultTheme.disabled = false;
-  darkTheme.disabled = true;
-  localStorage.setItem("theme", "default");
-};
-
-const toDark = () => {
-  toggleThemeBtn.innerHTML = `<i class="fa-solid fa-moon"></i>`;
-  defaultTheme.disabled = true;
-  darkTheme.disabled = false;
-  localStorage.setItem("theme", "dark");
-};
-
-const currentTheme = () => localStorage.getItem("theme");
-
-const setDarkMode = (isDark) => {
-  if (isDark) {
-    toLight();
-  } else {
-    toDark();
-  }
-};
-
-if (darkTheme) {
-  let isDarkMode = false;
-  if (currentTheme() === "dark") {
-    isDarkMode = true;
-  } else if (currentTheme() === "default") {
-    isDarkMode = false;
-  } else {
-    isDarkMode = matchMedia("(prefers-color-scheme: dark)").matches;
+  if (!defaultTheme || !darkTheme) {
+    return;
   }
 
-  if (toggleThemeBtn) {
-    if (isDarkMode) {
-      toDark();
-    } else {
-      toLight();
+  function readThemePreference() {
+    try {
+      return localStorage.getItem("theme");
+    } catch (error) {
+      return null;
     }
   }
 
-  const changeTheme = () => {
-    setDarkMode(currentTheme() === "dark");
-  };
+  function writeThemePreference(theme) {
+    try {
+      localStorage.setItem("theme", theme);
+    } catch (error) {
+      // Ignore private mode/storage restrictions and keep runtime-only state.
+    }
+  }
 
-  toggleThemeBtn.addEventListener("click", changeTheme);
-}
+  function getSystemDarkModePreference() {
+    return (
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    );
+  }
+
+  function getInitialTheme() {
+    var savedTheme = readThemePreference();
+
+    if (savedTheme === "dark") {
+      return "dark";
+    }
+
+    if (savedTheme === "default") {
+      return "default";
+    }
+
+    return getSystemDarkModePreference() ? "dark" : "default";
+  }
+
+  function syncGiscusTheme(theme) {
+    var giscusFrame = document.querySelector("iframe.giscus-frame");
+
+    if (!giscusFrame || !giscusFrame.contentWindow) {
+      return;
+    }
+
+    giscusFrame.contentWindow.postMessage(
+      {
+        giscus: {
+          setConfig: {
+            theme: theme === "dark" ? "dark" : "light",
+          },
+        },
+      },
+      "https://giscus.app"
+    );
+  }
+
+  function renderToggleButton(theme) {
+    if (!toggleThemeBtn) {
+      return;
+    }
+
+    var isDarkMode = theme === "dark";
+    var nextActionLabel = isDarkMode
+      ? "Switch to light mode"
+      : "Switch to dark mode";
+    var iconClass = isDarkMode ? "fa-solid fa-moon" : "fa-solid fa-sun";
+
+    toggleThemeBtn.setAttribute("aria-label", nextActionLabel);
+    toggleThemeBtn.setAttribute("title", nextActionLabel);
+    toggleThemeBtn.setAttribute("aria-pressed", isDarkMode ? "true" : "false");
+    toggleThemeBtn.innerHTML =
+      '<i class="' +
+      iconClass +
+      '" aria-hidden="true"></i><span class="visually-hidden">' +
+      nextActionLabel +
+      "</span>";
+  }
+
+  function applyTheme(theme, persistPreference) {
+    var isDarkMode = theme === "dark";
+
+    defaultTheme.disabled = isDarkMode;
+    darkTheme.disabled = !isDarkMode;
+    root.setAttribute("data-theme", theme);
+    renderToggleButton(theme);
+    syncGiscusTheme(theme);
+
+    if (persistPreference) {
+      writeThemePreference(theme);
+    }
+  }
+
+  var mediaQueryList = window.matchMedia
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
+  var initialTheme = root.getAttribute("data-theme") || getInitialTheme();
+
+  applyTheme(initialTheme, false);
+
+  if (toggleThemeBtn) {
+    toggleThemeBtn.addEventListener("click", function () {
+      var currentTheme = root.getAttribute("data-theme") === "dark" ? "dark" : "default";
+      var nextTheme = currentTheme === "dark" ? "default" : "dark";
+      applyTheme(nextTheme, true);
+    });
+  }
+
+  if (mediaQueryList) {
+    var syncWithSystem = function (event) {
+      if (readThemePreference() !== null) {
+        return;
+      }
+
+      applyTheme(event.matches ? "dark" : "default", false);
+    };
+
+    if (mediaQueryList.addEventListener) {
+      mediaQueryList.addEventListener("change", syncWithSystem);
+    } else if (mediaQueryList.addListener) {
+      mediaQueryList.addListener(syncWithSystem);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.origin !== "https://giscus.app") {
+      return;
+    }
+
+    syncGiscusTheme(root.getAttribute("data-theme") || "default");
+  });
+})();

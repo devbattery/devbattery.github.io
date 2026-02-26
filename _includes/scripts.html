@@ -29,29 +29,6 @@ analytics.html %} {% include /comments-providers/scripts.html %}
   });
 </script>
 
-<!-- Clipboard.js 추가 -->
-<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
-<script>
-  // Initialize Clipboard.js
-  var clipboard = new ClipboardJS(".copy-button");
-
-  // Success event handling (optional)
-  clipboard.on("success", function (e) {
-    e.trigger.textContent = "Copied!";
-    setTimeout(function () {
-      e.trigger.textContent = "Copy";
-    }, 2000); // Reset button text after 2 seconds
-
-    e.clearSelection();
-  });
-
-  // Error event handling (optional)
-  clipboard.on("error", function (e) {
-    console.error("Action:", e.action);
-    console.error("Trigger:", e.trigger);
-  });
-</script>
-
 {% if site.after_footer_scripts %} {% for script in site.after_footer_scripts %}
 <script src="{{ script | relative_url }}"></script>
 {% endfor %} {% endif %}

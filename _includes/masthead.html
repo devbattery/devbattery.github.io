@@ -43,47 +43,32 @@
                     </li>
                     {%- endfor -%} -->
                     <li class="masthead__menu-item">
-                        <a id="toggle-theme"></a>
+                        <button
+                            id="toggle-theme"
+                            class="theme-toggle"
+                            type="button"
+                            aria-label="Toggle dark mode"
+                            title="Toggle dark mode"
+                            aria-pressed="false"
+                        >
+                            <span class="visually-hidden">Toggle dark mode</span>
+                        </button>
                     </li>
                     <li class="masthead__menu-item">
-                        <a
-                            href="/about/"
-                            {%
-                            if
-                            link.description
-                            %}
-                            title="{{ link.description }}"
-                            {%
-                            endif
-                            %}
+                        <a href="/about/" aria-label="About" title="About"
                             ><i class="fa-solid fa-address-card"></i
                         ></a>
                     </li>
                     <li class="masthead__menu-item">
                         <a
                             href="https://github.com/devbattery"
-                            {%
-                            if
-                            link.description
-                            %}
-                            title="{{ link.description }}"
-                            {%
-                            endif
-                            %}
+                            aria-label="GitHub"
+                            title="GitHub"
                             ><i class="fa-brands fa-github"></i
                         ></a>
                     </li>
                     <li class="masthead__menu-item">
-                        <a
-                            href="/tags/"
-                            {%
-                            if
-                            link.description
-                            %}
-                            title="{{ link.description }}"
-                            {%
-                            endif
-                            %}
+                        <a href="/tags/" aria-label="Tags" title="Tags"
                             ><i class="fa-solid fa-tags"></i
                         ></a>
                     </li>
