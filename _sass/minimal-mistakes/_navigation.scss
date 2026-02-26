@@ -202,10 +202,22 @@
   }
 
   .theme-toggle {
-    display: block;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    -ms-flex-pack: center;
+    justify-content: center;
     margin: 0 1rem;
     padding: 0;
+    height: $nav-height;
+    -webkit-appearance: none;
+    appearance: none;
     border: 0;
+    border-radius: $border-radius;
     background-color: transparent;
     color: $masthead-link-color;
     font-size: inherit;
@@ -214,6 +226,16 @@
 
     &:hover {
       color: $masthead-link-color-hover;
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $focus-color;
+      outline-offset: 2px;
     }
   }
 
@@ -248,6 +270,7 @@
       -webkit-box-flex: 0;
       -ms-flex: none;
       flex: none;
+      margin-bottom: 0;
     }
 
     a {
@@ -304,9 +327,19 @@
     }
 
     .theme-toggle {
+      display: -webkit-box;
+      display: -ms-flexbox;
+      display: flex;
+      -webkit-box-align: center;
+      -ms-flex-align: center;
+      align-items: center;
+      -webkit-box-pack: start;
+      -ms-flex-pack: start;
+      justify-content: flex-start;
       margin: 0;
       padding: 10px 20px;
       width: 100%;
+      height: auto;
       border: 0;
       background-color: transparent;
       color: $masthead-link-color;

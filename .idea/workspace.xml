@@ -34,20 +34,20 @@
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "com.github.patou.gitmoji.migration-offered": "true",
-    "git-widget-placeholder": "release",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/ibm/Blog/devbattery.github.io",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;com.github.patou.gitmoji.migration-offered&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;release&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/ibm/Blog/devbattery.github.io&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -70,6 +70,8 @@
       <workItem from="1766306071652" duration="11000" />
       <workItem from="1770814373415" duration="43000" />
       <workItem from="1772112935261" duration="400000" />
+      <workItem from="1772115797851" duration="45000" />
+      <workItem from="1772115852210" duration="26000" />
     </task>
     <task id="LOCAL-00001" summary="feat: update til image">
       <option name="closed" value="true" />
@@ -79,7 +81,15 @@
       <option name="project" value="LOCAL" />
       <updated>1770814406941</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="feat: update til image">
+      <option name="closed" value="true" />
+      <created>1772115834001</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1772115834001</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
