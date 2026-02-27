@@ -17,24 +17,49 @@ seo.html %} {% unless site.atom_feed.hide %}
 <script>
   (function () {
     var root = document.documentElement;
+    var THEME_STORAGE_KEY = "theme";
     var storedTheme = null;
     var prefersDarkMode = false;
 
-    try {
-      storedTheme = localStorage.getItem("theme");
-    } catch (error) {
-      storedTheme = null;
+    function normalizeTheme(value) {
+      return value === "dark" || value === "default" ? value : null;
     }
+
+    function readCookie(name) {
+      var escaped = name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1");
+      var match = document.cookie.match(
+        new RegExp("(?:^|; )" + escaped + "=([^;]*)")
+      );
+      return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    function readStorage(storage) {
+      if (!storage) {
+        return null;
+      }
+
+      try {
+        return storage.getItem(THEME_STORAGE_KEY);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    storedTheme =
+      normalizeTheme(readStorage(window.localStorage)) ||
+      normalizeTheme(readStorage(window.sessionStorage)) ||
+      normalizeTheme(readCookie(THEME_STORAGE_KEY));
 
     if (window.matchMedia) {
       prefersDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
     }
 
     var isDarkMode =
-      storedTheme === "dark" || (storedTheme !== "default" && prefersDarkMode);
+      storedTheme === "dark" || (storedTheme === null && prefersDarkMode);
 
     root.className = root.className.replace(/\bno-js\b/g, "") + " js ";
     root.setAttribute("data-theme", isDarkMode ? "dark" : "default");
+    root.style.colorScheme = isDarkMode ? "dark" : "light";
   })();
 </script>
 
@@ -59,6 +84,8 @@ seo.html %} {% unless site.atom_feed.hide %}
       return;
     }
 
+    defaultTheme.media = isDarkMode ? "not all" : "all";
+    darkTheme.media = isDarkMode ? "all" : "not all";
     defaultTheme.disabled = isDarkMode;
     darkTheme.disabled = !isDarkMode;
   })();

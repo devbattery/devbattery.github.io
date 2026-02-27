@@ -1,6 +1,7 @@
 (function () {
   "use strict";
 
+  var THEME_STORAGE_KEY = "theme";
   var root = document.documentElement;
   var defaultTheme = document.getElementById("theme-default-css");
   var darkTheme = document.getElementById("theme-dark-css");
@@ -10,20 +11,70 @@
     return;
   }
 
-  function readThemePreference() {
+  function normalizeTheme(value) {
+    return value === "dark" || value === "default" ? value : null;
+  }
+
+  function readCookie(name) {
+    var escaped = name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1");
+    var match = document.cookie.match(
+      new RegExp("(?:^|; )" + escaped + "=([^;]*)")
+    );
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  function writeCookie(name, value, maxAgeSeconds) {
+    document.cookie =
+      name +
+      "=" +
+      encodeURIComponent(value) +
+      "; path=/; max-age=" +
+      maxAgeSeconds +
+      "; SameSite=Lax";
+  }
+
+  function readStorage(storage) {
+    if (!storage) {
+      return null;
+    }
+
     try {
-      return localStorage.getItem("theme");
+      return storage.getItem(THEME_STORAGE_KEY);
     } catch (error) {
       return null;
     }
   }
 
-  function writeThemePreference(theme) {
-    try {
-      localStorage.setItem("theme", theme);
-    } catch (error) {
-      // Ignore private mode/storage restrictions and keep runtime-only state.
+  function writeStorage(storage, value) {
+    if (!storage) {
+      return;
     }
+
+    try {
+      storage.setItem(THEME_STORAGE_KEY, value);
+    } catch (error) {
+      // Ignore storage restrictions and rely on other persistence channels.
+    }
+  }
+
+  function readThemePreference() {
+    return (
+      normalizeTheme(readStorage(window.localStorage)) ||
+      normalizeTheme(readStorage(window.sessionStorage)) ||
+      normalizeTheme(readCookie(THEME_STORAGE_KEY))
+    );
+  }
+
+  function writeThemePreference(theme) {
+    var normalizedTheme = normalizeTheme(theme);
+
+    if (!normalizedTheme) {
+      return;
+    }
+
+    writeStorage(window.localStorage, normalizedTheme);
+    writeStorage(window.sessionStorage, normalizedTheme);
+    writeCookie(THEME_STORAGE_KEY, normalizedTheme, 60 * 60 * 24 * 365);
   }
 
   function getSystemDarkModePreference() {
@@ -93,9 +144,12 @@
   function applyTheme(theme, persistPreference) {
     var isDarkMode = theme === "dark";
 
+    defaultTheme.media = isDarkMode ? "not all" : "all";
+    darkTheme.media = isDarkMode ? "all" : "not all";
     defaultTheme.disabled = isDarkMode;
     darkTheme.disabled = !isDarkMode;
     root.setAttribute("data-theme", theme);
+    root.style.colorScheme = isDarkMode ? "dark" : "light";
     renderToggleButton(theme);
     syncGiscusTheme(theme);
 
@@ -107,7 +161,7 @@
   var mediaQueryList = window.matchMedia
     ? window.matchMedia("(prefers-color-scheme: dark)")
     : null;
-  var initialTheme = root.getAttribute("data-theme") || getInitialTheme();
+  var initialTheme = getInitialTheme();
 
   applyTheme(initialTheme, false);
 
@@ -141,5 +195,9 @@
     }
 
     syncGiscusTheme(root.getAttribute("data-theme") || "default");
+  });
+
+  window.addEventListener("pageshow", function () {
+    applyTheme(getInitialTheme(), false);
   });
 })();
