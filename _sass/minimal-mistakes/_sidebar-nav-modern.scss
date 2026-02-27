@@ -267,16 +267,28 @@
 
 @include breakpoint(max-width $large - 1px) {
   .nav__list--categories {
+    display: flex;
+    flex-direction: column;
     border-radius: 14px;
     padding: 0.72rem;
   }
 
+  .nav__list--categories .nav__all-posts-link {
+    order: 1;
+    margin-bottom: 0.54rem;
+  }
+
   .nav__list--categories label {
+    order: 2;
     width: 100%;
     border-radius: 10px;
     margin-bottom: 0.6rem;
     font-size: 0.86rem;
     background-color: mix($background-color, $primary-color, 92%);
+  }
+
+  .nav__list--categories .nav__items {
+    order: 3;
   }
 
   .nav__list--categories .nav__sub-title--group {

@@ -96,10 +96,6 @@
       return;
     }
 
-    if (window.jQuery) {
-      window.jQuery(".author__urls-wrapper button").off("click");
-    }
-
     var mobileMedia = window.matchMedia
       ? window.matchMedia("(max-width: 1023px)")
       : { matches: true };
@@ -174,12 +170,15 @@
         }
 
         event.preventDefault();
+        if (event.stopImmediatePropagation) {
+          event.stopImmediatePropagation();
+        }
         event.stopPropagation();
 
         var open = !item.list.classList.contains("is--visible");
         closeAll(item);
         setItemState(item, open);
-      });
+      }, true);
     });
 
     document.addEventListener("click", function (event) {
