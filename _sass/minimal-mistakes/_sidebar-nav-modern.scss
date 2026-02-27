@@ -1,0 +1,230 @@
+/* ==========================================================================
+   Sidebar Navigation (Modern)
+   ========================================================================== */
+
+.nav__list--categories {
+  margin-top: 0.5rem;
+  padding: 0.9rem;
+  border: 1px solid mix($border-color, $primary-color, 82%);
+  border-radius: 16px;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba($primary-color, 0.14) 0,
+      rgba($primary-color, 0) 50%
+    ),
+    linear-gradient(
+      165deg,
+      mix($background-color, #fff, 95%) 0%,
+      mix($background-color, $primary-color, 94%) 100%
+    );
+  box-shadow: 0 20px 28px -28px rgba(#000, 0.7);
+}
+
+.nav__list--categories .nav__title--sidebar {
+  padding-left: 0;
+  margin-bottom: 0.65rem;
+}
+
+.nav__list--categories .nav__all-posts-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba($primary-color, 0.26);
+  border-radius: 12px;
+  color: $text-color;
+  text-decoration: none;
+  background: linear-gradient(
+    130deg,
+    rgba($primary-color, 0.18),
+    rgba($primary-color, 0.06)
+  );
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.nav__list--categories .nav__all-posts-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba($primary-color, 0.34);
+  box-shadow: 0 12px 20px -18px rgba(#000, 0.8);
+}
+
+.nav__list--categories .nav__all-posts-link.is-active {
+  border-color: rgba($primary-color, 0.42);
+  box-shadow: 0 12px 20px -18px rgba($primary-color, 0.6);
+}
+
+.nav__list--categories .nav__all-posts-title {
+  font-weight: bold;
+  letter-spacing: 0.01em;
+}
+
+.nav__list--categories .nav__all-posts-count {
+  min-width: 2.1rem;
+  height: 1.5rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  font-family: $sans-serif;
+  font-size: $type-size-8;
+  font-weight: bold;
+  line-height: 1.5rem;
+  color: #fff;
+  text-align: center;
+  background: $primary-color;
+  box-shadow: 0 6px 12px -9px rgba(#000, 0.9);
+}
+
+.nav__list--categories .nav__items--category-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.45rem;
+  font-size: $type-size-7;
+}
+
+.nav__list--categories .nav__group {
+  padding: 0.5rem;
+  border: 1px solid mix($border-color, $primary-color, 88%);
+  border-radius: 12px;
+  background-color: rgba($primary-color, 0.04);
+  animation: sidebar-nav-group-in 0.35s ease both;
+}
+
+.nav__list--categories .nav__group:nth-child(2) {
+  animation-delay: 0.04s;
+}
+
+.nav__list--categories .nav__group:nth-child(3) {
+  animation-delay: 0.08s;
+}
+
+.nav__list--categories .nav__group:nth-child(4) {
+  animation-delay: 0.12s;
+}
+
+.nav__list--categories .nav__group:nth-child(5) {
+  animation-delay: 0.16s;
+}
+
+.nav__list--categories .nav__group-title-link {
+  text-decoration: none;
+}
+
+.nav__list--categories .nav__sub-title--group {
+  margin: 0;
+  padding: 0.2rem 0.3rem 0.4rem;
+  border-bottom: none;
+  font-size: $type-size-7;
+  font-weight: bold;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: mix($text-color, $primary-color, 72%);
+}
+
+.nav__list--categories .nav__group-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav__list--categories .nav__child-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0.18rem 0;
+  padding: 0.42rem 0.56rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.nav__list--categories .nav__child-link:hover {
+  transform: translateX(2px);
+  border-color: rgba($primary-color, 0.26);
+  background-color: rgba($primary-color, 0.1);
+}
+
+.nav__list--categories .nav__items .active {
+  margin-left: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.nav__list--categories .nav__child-link.active {
+  padding-left: 0.56rem;
+  padding-right: 0.56rem;
+  font-weight: bold;
+  color: #fff;
+  background-color: mix($primary-color, #000, 88%);
+  box-shadow: 0 10px 14px -12px rgba(#000, 0.9);
+}
+
+.nav__list--categories .nav__child-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav__list--categories .nav__child-count {
+  min-width: 1.65rem;
+  height: 1.3rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  font-size: $type-size-8;
+  font-weight: bold;
+  line-height: 1.3rem;
+  color: mix($text-color, $primary-color, 65%);
+  text-align: center;
+  background-color: rgba($primary-color, 0.12);
+}
+
+.nav__list--categories .nav__child-link.active .nav__child-count {
+  color: #fff;
+  background-color: rgba(#fff, 0.22);
+}
+
+@include breakpoint(max-width $large - 1px) {
+  .nav__list--categories {
+    border-radius: 14px;
+  }
+
+  .nav__list--categories label {
+    width: 100%;
+    border-radius: 10px;
+    margin-bottom: 0.6rem;
+    background-color: mix($background-color, $primary-color, 92%);
+  }
+}
+
+@keyframes sidebar-nav-group-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav__list--categories .nav__all-posts-link,
+  .nav__list--categories .nav__group,
+  .nav__list--categories .nav__child-link {
+    transition: none;
+    animation: none;
+    transform: none;
+  }
+}
