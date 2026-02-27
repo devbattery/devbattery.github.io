@@ -8,7 +8,7 @@ search_provider -%} {%- when "lunr" -%} {% include_cached
 search/lunr-search-scripts.html %} {%- when "google" -%} {% include_cached
 search/google-search-scripts.html %} {%- when "algolia" -%} {% include_cached
 search/algolia-search-scripts.html %} {%- endcase -%} {% endif %} {% include
-analytics.html %} {% include /comments-providers/scripts.html %}
+analytics.html %} {% include comments-providers/scripts.html %}
 
 <script
   type="text/javascript"

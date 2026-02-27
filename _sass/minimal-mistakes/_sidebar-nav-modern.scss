@@ -92,7 +92,7 @@
   flex-direction: column;
   gap: 0.58rem;
   margin-top: 0.45rem;
-  font-size: clamp(0.9rem, 0.86rem + 0.18vw, 0.96rem);
+  font-size: clamp(0.9rem, calc(0.86rem + 0.18vw), 0.96rem);
 }
 
 .nav__list--categories .nav__group {
