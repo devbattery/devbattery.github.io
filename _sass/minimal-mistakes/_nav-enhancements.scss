@@ -1,0 +1,104 @@
+/* ==========================================================================
+   Custom Navigation Enhancements
+   ========================================================================== */
+
+.greedy-nav .visible-links {
+  align-items: center;
+}
+
+.greedy-nav .visible-links .masthead__menu-item > a,
+.greedy-nav .visible-links .masthead__menu-item > .theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $nav-toggle-height;
+  height: $nav-toggle-height;
+  line-height: 1;
+}
+
+.greedy-nav .greedy-nav__toggle {
+  position: relative;
+  width: $nav-toggle-height;
+  height: $nav-toggle-height;
+  border-radius: 999px;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.greedy-nav .greedy-nav__toggle:not(.hidden):hover,
+.greedy-nav .greedy-nav__toggle:not(.hidden):focus-visible {
+  transform: translateY(-1px);
+  background-color: rgba($primary-color, 0.12);
+  box-shadow: 0 10px 20px -16px rgba(#000, 0.7);
+}
+
+.greedy-nav .greedy-nav__toggle:focus-visible {
+  outline: 2px solid $primary-color;
+  outline-offset: 2px;
+}
+
+.greedy-nav .greedy-nav__toggle:not(.hidden)::after {
+  content: attr(count);
+  position: absolute;
+  top: -0.2rem;
+  right: -0.25rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  font-size: $type-size-8;
+  font-weight: bold;
+  line-height: 1.05rem;
+  color: #fff;
+  text-align: center;
+  background-color: $primary-color;
+  box-shadow: 0 4px 10px -6px rgba(#000, 0.9);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.greedy-nav .greedy-nav__toggle.close:not(.hidden)::after {
+  transform: scale(0.85);
+  opacity: 0.75;
+}
+
+.greedy-nav .hidden-links {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transform-origin: top right;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s linear;
+}
+
+.greedy-nav .hidden-links.hidden {
+  display: block;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-0.5rem) scale(0.98);
+  pointer-events: none;
+}
+
+.greedy-nav .hidden-links li {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.greedy-nav .hidden-links.hidden li {
+  opacity: 0;
+  transform: translateY(-0.2rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greedy-nav .greedy-nav__toggle,
+  .greedy-nav .greedy-nav__toggle:not(.hidden)::after,
+  .greedy-nav .hidden-links,
+  .greedy-nav .hidden-links li {
+    transition: none;
+  }
+}

@@ -9,6 +9,7 @@ search: false
 
 @import "minimal-mistakes/skins/default"; // 변경
 @import "minimal-mistakes";
+@import "minimal-mistakes/nav-enhancements";
 
 @import url("//spoqa.github.io/spoqa-han-sans/css/SpoqaHanSans-kr.css");
 
@@ -18,18 +19,4 @@ search: false
     format("woff");
   font-weight: 400;
   font-style: normal;
-}
-
-.greedy-nav .visible-links {
-  align-items: center;
-}
-
-.greedy-nav .visible-links .masthead__menu-item > a,
-.greedy-nav .visible-links .masthead__menu-item > .theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: $nav-toggle-height;
-  height: $nav-toggle-height;
-  line-height: 1;
 }

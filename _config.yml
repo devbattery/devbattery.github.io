@@ -1,5 +1,5 @@
-# Welcome to Jekyll!
-# This config file sets up global settings for your site.
+# Jekyll configuration for global site behavior.
+# The parameters below define metadata, rendering rules, and integrations.
 
 # Theme Settings
 minimal_mistakes_skin: "default" # Options: "air", "aqua", "contrast", "dark", "dirt", "neon", "mint", "plum", "sunrise"
@@ -8,9 +8,9 @@ minimal_mistakes_skin: "default" # Options: "air", "aqua", "contrast", "dark", "
 locale: "en-US"
 title: "Dev Battery"
 title_separator: "|"
-subtitle: "Keep your battery charged"
+subtitle: "Sustain intellectual momentum through disciplined engineering practice"
 name: "Wonjun Jeong"
-description: "Keep your battery charged"
+description: "A technical journal on algorithms, backend architecture, and evidence-based software engineering."
 url: "https://devbattery.com"
 baseurl: "" # the subpath of your site, e.g. "/blog"
 repository: "devbattery/devbattery.github.io"
@@ -64,8 +64,8 @@ analytics:
 author:
   name: "Wonjun Jeong"
   avatar: "/assets/images/bio-photo.png"
-  bio: "Backend Developer"
-  location: "Korea Republic"
+  bio: "Backend engineer specializing in scalable systems and reliable API design."
+  location: "Republic of Korea"
   links:
     - label: "Email"
       icon: "fas fa-fw fa-envelope-square"
@@ -234,6 +234,7 @@ defaults:
 date_format: "%Y-%m-%d"
 after_footer_scripts:
   - /assets/js/dark-theme.js
+  - /assets/js/nav-menu-enhancement.js
   - https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js
   - /assets/js/clipboardrouge.js
 

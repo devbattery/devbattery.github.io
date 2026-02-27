@@ -82,14 +82,25 @@
                     <i class="fas fa-fw fa-search"></i>
                 </button>
                 {% endif %}
-                <button class="greedy-nav__toggle hidden" type="button">
+                {% assign menu_open_label = site.data.ui-text[site.locale].menu_label | default: "Open navigation menu" %}
+                {% assign menu_close_label = site.data.ui-text[site.locale].menu_close_label | default: "Close navigation menu" %}
+                <button
+                    class="greedy-nav__toggle hidden"
+                    type="button"
+                    aria-expanded="false"
+                    aria-label="{{ menu_open_label }}"
+                    title="{{ menu_open_label }}"
+                    aria-haspopup="true"
+                    aria-controls="site-nav-hidden-links"
+                    data-menu-open-label="{{ menu_open_label }}"
+                    data-menu-close-label="{{ menu_close_label }}"
+                >
                     <span class="visually-hidden"
-                        >{{ site.data.ui-text[site.locale].menu_label | default:
-                        "Toggle menu" }}</span
+                        >{{ menu_open_label }}</span
                     >
                     <div class="navicon"></div>
                 </button>
-                <ul class="hidden-links hidden"></ul>
+                <ul id="site-nav-hidden-links" class="hidden-links hidden" aria-hidden="true"></ul>
             </nav>
         </div>
     </div>
