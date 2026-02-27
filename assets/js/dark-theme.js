@@ -75,7 +75,9 @@
     var nextActionLabel = isDarkMode
       ? "Switch to light mode"
       : "Switch to dark mode";
-    var iconClass = isDarkMode ? "fa-solid fa-moon" : "fa-solid fa-sun";
+    var iconClass = isDarkMode
+      ? "fa-solid fa-fw fa-moon"
+      : "fa-solid fa-fw fa-sun";
 
     toggleThemeBtn.setAttribute("aria-label", nextActionLabel);
     toggleThemeBtn.setAttribute("title", nextActionLabel);
