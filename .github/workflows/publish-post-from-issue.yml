@@ -43,9 +43,29 @@ jobs:
               return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             }
 
+            const issueFieldOrder = [
+              "요약",
+              "카테고리",
+              "파일 슬러그",
+              "저장 폴더",
+              "태그",
+              "작성일",
+              "수정일",
+              "본문"
+            ];
+
             function getField(label) {
+              const fieldIndex = issueFieldOrder.indexOf(label);
+              if (fieldIndex === -1) {
+                throw new Error(`알 수 없는 필드입니다: ${label}`);
+              }
+
+              const nextLabel = issueFieldOrder[fieldIndex + 1];
+              const boundary = nextLabel
+                ? `(?=\\n###\\s*${escapeRegex(nextLabel)}\\s*\\n|$)`
+                : "$";
               const re = new RegExp(
-                `###\\s*${escapeRegex(label)}\\s*\\n+([\\s\\S]*?)(?=\\n###\\s|$)`
+                `(?:^|\\n)###\\s*${escapeRegex(label)}\\s*\\n+([\\s\\S]*?)${boundary}`
               );
               const match = body.match(re);
               if (!match) {
