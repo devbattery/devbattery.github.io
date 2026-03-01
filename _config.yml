@@ -157,7 +157,7 @@ permalink: /:categories/:title/
 timezone: Asia/Seoul
 
 # Pagination with jekyll-paginate
-paginate: 8 # amount of posts to show
+paginate: 6 # amount of posts to show
 paginate_path: /page:num/
 
 pagination:
