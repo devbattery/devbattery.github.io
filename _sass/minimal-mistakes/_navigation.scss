@@ -164,6 +164,24 @@
   border-top: 1px solid $border-color;
 }
 
+.layout--home {
+  .pagination {
+    float: none;
+    display: flex;
+    justify-content: center;
+
+    ul {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    li {
+      float: none;
+    }
+  }
+}
+
 /*
      Priority plus navigation
      ========================================================================== */

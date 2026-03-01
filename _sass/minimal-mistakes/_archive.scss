@@ -439,6 +439,46 @@
 }
 
 /*
+   Home Archive Balancing
+   ========================================================================== */
+
+.layout--home {
+  .archive {
+    .entries-grid {
+      display: grid;
+      gap: 2.5rem 1.5rem;
+      align-items: start;
+
+      @include breakpoint($small) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      @include breakpoint($large) {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    .entries-grid > .grid__item,
+    .entries-grid > .grid__item:nth-child(n) {
+      float: none;
+      clear: none;
+      width: auto;
+      margin: 0;
+    }
+
+    .entries-grid > .grid__item .archive__item-teaser {
+      max-height: none;
+      aspect-ratio: 16 / 9;
+
+      img {
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+  }
+}
+
+/*
    Wide Pages
    ========================================================================== */
 
