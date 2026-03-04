@@ -1,0 +1,580 @@
+/* ==========================================================================
+   SITE MODERN
+   ========================================================================== */
+
+html {
+  scroll-padding-top: 5rem;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family:
+    "Pretendard",
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    "Segoe UI",
+    sans-serif;
+  letter-spacing: -0.012em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  line-height: 1.72;
+}
+
+.greedy-nav .site-title,
+.page__title,
+.archive__item-title,
+.author__name,
+.nav__title,
+.page__related-title,
+.page__comments-title,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family:
+    "Space Grotesk",
+    "Pretendard",
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: "JetBrainsMono", "SFMono-Regular", Consolas, monospace;
+}
+
+.greedy-nav .site-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.greedy-nav .visible-links a {
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.sidebar {
+  @include breakpoint($large) {
+    opacity: 1;
+  }
+}
+
+.sidebar > .h-card {
+  padding: 1rem 1rem 1.1rem;
+  border: 1px solid mix($border-color, $primary-color, 84%);
+  border-radius: 1.45rem;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba($primary-color, 0.12) 0,
+      rgba($primary-color, 0) 48%
+    ),
+    linear-gradient(
+      165deg,
+      mix($background-color, #fff, 97%) 0%,
+      mix($background-color, $primary-color, 95%) 100%
+    );
+  box-shadow: 0 24px 44px -34px rgba(#000, 0.75);
+}
+
+.sidebar .author__avatar img {
+  max-width: 118px;
+  border-radius: 1rem;
+}
+
+.sidebar .author__content {
+  line-height: 1.25;
+}
+
+.sidebar .author__name {
+  font-size: clamp(1.08rem, calc(0.98rem + 0.3vw), 1.28rem);
+}
+
+.sidebar .author__bio {
+  color: mix($text-color, $muted-text-color, 82%);
+
+  p {
+    font-size: 0.92rem;
+    line-height: 1.68;
+  }
+}
+
+.sidebar .author__urls {
+  margin-top: 0.72rem;
+}
+
+.sidebar .author__urls li,
+.sidebar .author__urls a {
+  font-size: 0.9rem;
+}
+
+.sidebar .author__urls a {
+  border-radius: 0.8rem;
+}
+
+.layout--single {
+  .breadcrumbs {
+    @include breakpoint($large) {
+      max-width: 96rem;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+
+    ol {
+      @include breakpoint($large) {
+        float: none;
+        width: auto;
+      }
+    }
+  }
+
+  #main {
+    @include breakpoint($large) {
+      display: grid;
+      grid-template-columns: minmax(15.5rem, 18rem) minmax(0, 1fr);
+      gap: clamp(2rem, calc(1.4rem + 1.6vw), 3.5rem);
+      align-items: start;
+      max-width: 96rem;
+      padding-left: clamp(1.25rem, calc(0.9rem + 1vw), 2rem);
+      padding-right: clamp(1.25rem, calc(0.9rem + 1vw), 2rem);
+    }
+  }
+
+  .sidebar {
+    @include breakpoint($large) {
+      float: none;
+      width: auto;
+      margin-top: 1.5rem;
+      align-self: start;
+    }
+  }
+
+  .page,
+  .page__related {
+    @include breakpoint($large) {
+      grid-column: 2;
+      float: none;
+      width: auto;
+      min-width: 0;
+      padding-right: 0;
+    }
+  }
+
+  .page {
+    margin-top: 1.5rem;
+
+    .page__inner-wrap {
+      margin-top: 0;
+    }
+  }
+
+  .page__header {
+    margin-bottom: 1.15rem;
+    padding: clamp(1.15rem, calc(0.95rem + 0.7vw), 1.8rem);
+    border: 1px solid mix($border-color, $primary-color, 84%);
+    border-radius: 1.6rem;
+    background:
+      radial-gradient(
+        circle at 100% 0%,
+        rgba($primary-color, 0.14) 0,
+        rgba($primary-color, 0) 45%
+      ),
+      linear-gradient(
+        165deg,
+        mix($background-color, #fff, 97%) 0%,
+        mix($background-color, $primary-color, 95%) 100%
+      );
+    box-shadow: 0 24px 44px -34px rgba(#000, 0.72);
+  }
+
+  .page__title {
+    margin-bottom: 0.85rem;
+    line-height: 0.94;
+    font-size: clamp(2.4rem, calc(1.9rem + 1.8vw), 4rem);
+  }
+
+  .page__header .page__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 0.8rem;
+    margin-top: 0;
+    font-size: 0.88rem;
+  }
+
+  .page__header .page__meta br,
+  .page__header .page__meta-sep {
+    display: none;
+  }
+
+  .page__header .page__meta-date,
+  .page__header .page__meta-readtime {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    padding: 0.48rem 0.74rem;
+    border: 1px solid rgba($primary-color, 0.2);
+    border-radius: 999px;
+    color: mix($text-color, $muted-text-color, 78%);
+    background: rgba($primary-color, 0.07);
+  }
+
+  .page__content {
+    padding: clamp(1.2rem, calc(1rem + 0.8vw), 2rem);
+    border: 1px solid mix($border-color, $primary-color, 88%);
+    border-radius: 1.55rem;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(mix($background-color, #fff, 98%), 0.99) 0%,
+        rgba(mix($background-color, $border-color, 95%), 0.99) 100%
+      );
+    box-shadow: 0 26px 48px -38px rgba(#000, 0.72);
+  }
+
+  .page__content--with-toc {
+    @include breakpoint($x-large) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 17rem;
+      column-gap: 1.4rem;
+      align-items: start;
+    }
+
+    @include breakpoint($x-large) {
+      > :not(.sidebar__right) {
+        grid-column: 1;
+        min-width: 0;
+      }
+    }
+
+    @include breakpoint($x-large) {
+      > .sidebar__right {
+        grid-column: 2;
+        grid-row: 1 / span 999;
+        position: sticky;
+        top: 1.4rem;
+        width: auto;
+        margin: 0;
+        padding: 0;
+      }
+    }
+  }
+
+  .page__content p,
+  .page__content li,
+  .page__content dl {
+    font-size: 1.04rem;
+    line-height: 1.82;
+  }
+
+  .page__content h2 {
+    margin-top: 2.8rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid mix($border-color, $primary-color, 82%);
+    color: mix($text-color, $primary-color, 86%);
+    font-size: clamp(1.45rem, calc(1.2rem + 0.8vw), 2rem);
+  }
+
+  .page__content h3 {
+    margin-top: 2.1rem;
+    color: mix($text-color, $primary-color, 78%);
+    font-size: clamp(1.2rem, calc(1.05rem + 0.5vw), 1.6rem);
+  }
+
+  .page__content h4 {
+    margin-top: 1.7rem;
+    color: mix($text-color, $primary-color, 72%);
+    font-size: 1.1rem;
+  }
+
+  .page__content blockquote {
+    margin: 1.6rem 0;
+    padding: 1rem 1.1rem 1rem 1.2rem;
+    border-left: 3px solid $primary-color;
+    border-radius: 0 1rem 1rem 0;
+    background: rgba($primary-color, 0.08);
+  }
+
+  .page__content pre,
+  .page__content .highlight {
+    border-radius: 1.1rem;
+    box-shadow: 0 20px 34px -30px rgba(#000, 0.72);
+  }
+
+  .page__content img {
+    border-radius: 1rem;
+  }
+
+  .page__content :not(pre) > code {
+    padding-top: 0.14rem;
+    padding-bottom: 0.14rem;
+    border: 1px solid mix($border-color, $primary-color, 88%);
+    background: mix($background-color, $primary-color, 94%);
+  }
+
+  .sidebar__right {
+    margin-bottom: 1rem;
+  }
+
+  .toc {
+    overflow: hidden;
+    border: 1px solid mix($border-color, $primary-color, 82%);
+    border-radius: 1.25rem;
+    background:
+      linear-gradient(
+        180deg,
+        mix($background-color, #fff, 98%) 0%,
+        mix($background-color, $primary-color, 95%) 100%
+      );
+    box-shadow: 0 20px 40px -34px rgba(#000, 0.8);
+  }
+
+  .toc .nav__title {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0.95rem 1rem 0.85rem;
+    font-size: 0.9rem;
+    letter-spacing: -0.02em;
+    background: linear-gradient(
+      135deg,
+      mix($primary-color, #000, 88%),
+      mix($primary-color, #fff, 78%)
+    );
+  }
+
+  .toc__menu {
+    padding: 0.62rem;
+    font-size: 0.86rem;
+  }
+
+  .toc__menu a {
+    padding: 0.45rem 0.68rem;
+    border-bottom: 0;
+    border-radius: 0.8rem;
+    font-weight: 600;
+  }
+
+  .toc__menu a:hover,
+  .toc .active > a {
+    text-decoration: none;
+    color: mix($text-color, #000, 94%);
+    background: rgba($primary-color, 0.12);
+  }
+
+  .page__meta-footer {
+    margin-top: 1.1rem;
+    padding: 1rem 1.05rem;
+    border: 1px solid mix($border-color, $primary-color, 88%);
+    border-radius: 1.35rem;
+    background: mix($background-color, $primary-color, 96%);
+  }
+
+  .page__meta-title {
+    margin-bottom: 0.8rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+  }
+
+  .page__taxonomy-item {
+    padding: 0.5rem 0.8rem;
+    border: 1px solid rgba($primary-color, 0.2);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: rgba($primary-color, 0.06);
+  }
+
+  .page__comments,
+  .page__related {
+    margin-top: 1.3rem;
+    padding: clamp(1.05rem, calc(0.92rem + 0.55vw), 1.55rem);
+    border: 1px solid mix($border-color, $primary-color, 88%);
+    border-radius: 1.5rem;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(mix($background-color, #fff, 98%), 0.99) 0%,
+        rgba(mix($background-color, $border-color, 95%), 0.99) 100%
+      );
+    box-shadow: 0 24px 44px -38px rgba(#000, 0.72);
+  }
+
+  .page__related {
+    padding-top: clamp(1.05rem, calc(0.92rem + 0.55vw), 1.55rem);
+    border-top-width: 1px;
+  }
+
+  .page__comments-title,
+  .page__related-title {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-top: 0;
+    border-top: 0;
+    font-size: clamp(1.05rem, calc(0.95rem + 0.3vw), 1.25rem);
+    text-transform: none;
+  }
+
+  .page__related .grid__wrapper {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @include breakpoint($medium) {
+    .page__related .grid__wrapper {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .page__related .grid__item,
+  .page__related .grid__item:nth-child(n) {
+    float: none;
+    clear: none;
+    width: auto;
+    margin: 0;
+  }
+
+  .page__related .archive__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    height: 100%;
+    padding: 0.9rem;
+    border: 1px solid mix($border-color, $primary-color, 88%);
+    border-radius: 1.15rem;
+    background: mix($background-color, $primary-color, 96%);
+  }
+
+  .page__related .archive__item-title {
+    margin-top: 0;
+    font-size: 1.06rem;
+    line-height: 1.25;
+  }
+
+  .page__related .archive__item-teaser {
+    max-height: none;
+    border-radius: 0.95rem;
+  }
+
+  .page__related .archive__item-excerpt {
+    display: none;
+  }
+
+  .page__related .page__meta {
+    font-size: 0.74rem;
+  }
+
+  .comment {
+    margin: 0;
+    padding: 1rem 0;
+  }
+
+  .comment__author {
+    font-size: 1rem;
+  }
+
+  .comment__content-wrapper {
+    font-size: 0.96rem;
+    line-height: 1.72;
+  }
+
+  .page__comments-form input,
+  .page__comments-form textarea {
+    padding: 0.78rem 0.9rem;
+    border: 1px solid mix($border-color, $primary-color, 84%);
+    border-radius: 0.95rem;
+    background: mix($background-color, $primary-color, 97%);
+  }
+
+  .page__comments-form button.btn {
+    border-radius: 999px;
+  }
+
+  .pagination {
+    float: none;
+    margin-top: 1.2rem;
+    padding-top: 0;
+  }
+
+  .pagination--pager {
+    float: none;
+    width: auto;
+    padding: 1rem 1.05rem;
+    border: 1px solid mix($border-color, $primary-color, 84%);
+    border-radius: 1.2rem;
+    background: mix($background-color, $primary-color, 96%);
+  }
+}
+
+@media (min-width: 1024px) and (orientation: landscape) {
+  .sidebar {
+    width: auto;
+  }
+
+  .sidebar .author__avatar img {
+    max-width: 116px;
+  }
+
+  .sidebar .author__name {
+    font-size: 1.1rem;
+  }
+
+  .sidebar .author__bio {
+    font-size: 0.9rem;
+  }
+
+  .sidebar .author__urls a {
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .nav__list--categories {
+    padding: 0.9rem;
+    border-radius: 1.3rem;
+  }
+
+  .nav__list--categories .nav__all-posts-title {
+    font-size: 0.88rem;
+  }
+
+  .nav__list--categories .nav__items--category-groups {
+    gap: 0.5rem;
+    font-size: 0.92rem;
+    max-height: 44vh;
+  }
+
+  .nav__list--categories .nav__sub-title--group {
+    padding-bottom: 0.28rem;
+    font-size: 0.8rem;
+  }
+
+  .nav__list--categories .nav__child-link {
+    min-height: 1.8rem;
+    padding: 0.28rem 0.42rem;
+  }
+
+  .nav__list--categories .nav__child-title {
+    font-size: 0.82rem;
+    line-height: 1.22;
+  }
+
+  .nav__list--categories .nav__child-count {
+    min-width: 1.35rem;
+    height: 1rem;
+    line-height: 1rem;
+    font-size: 0.58rem;
+  }
+}
