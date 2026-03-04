@@ -1902,6 +1902,14 @@ body::after {
    SINGLE PAGE FIXUPS
    ========================================================================== */
 
+.layout--single {
+  --db-single-stack-gap: clamp(1.4rem, calc(1.18rem + 0.38vw), 1.75rem);
+}
+
+.layout--single .page__inner-wrap > * + * {
+  margin-top: var(--db-single-stack-gap);
+}
+
 .layout--single .page__title {
   width: min(100%, 24ch);
   max-width: none;
@@ -1927,7 +1935,10 @@ body::after {
   }
 }
 
+.layout--single .page__header,
+.layout--single .page__body,
 .layout--single .page__meta-footer {
+  margin-top: 0;
   margin-bottom: 0;
 }
 
@@ -1936,7 +1947,7 @@ body::after {
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
   gap: 0.9rem;
   max-width: 50rem;
-  margin-top: 1.95rem;
+  margin-top: 0;
   padding-top: 0;
 }
 
@@ -1962,18 +1973,21 @@ body::after {
 
 .layout--single .pagination__card--next {
   flex-direction: row-reverse;
-  text-align: right;
+  text-align: left;
 }
 
 .layout--single .pagination__meta {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  align-items: flex-start;
   gap: 0.18rem;
   min-width: 0;
+  text-align: left;
 }
 
 .layout--single .pagination__card--next .pagination__meta {
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .layout--single .pagination__icon {
@@ -2006,6 +2020,11 @@ body::after {
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.layout--single .page__comments,
+.layout--single .page__related {
+  margin-top: var(--db-single-stack-gap);
 }
 
 .sidebar__top {
