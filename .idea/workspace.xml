@@ -4,11 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5ab5da4b-9e4e-4471-bd58-c33510926d7f" name="Changes" comment="feat: update til image">
-      <change beforePath="$PROJECT_DIR$/_includes/masthead.html" beforeDir="false" afterPath="$PROJECT_DIR$/_includes/masthead.html" afterDir="false" />
+    <list default="true" id="5ab5da4b-9e4e-4471-bd58-c33510926d7f" name="Changes" comment="fix: 세로모드 UI 버그 수정">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/assets/css/main.scss" beforeDir="false" afterPath="$PROJECT_DIR$/assets/css/main.scss" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/assets/css/main_dark.scss" beforeDir="false" afterPath="$PROJECT_DIR$/assets/css/main_dark.scss" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/js/dark-theme.js" beforeDir="false" afterPath="$PROJECT_DIR$/assets/js/dark-theme.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,6 +50,7 @@
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "watcher.settings",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -78,7 +78,9 @@
       <workItem from="1772112935261" duration="400000" />
       <workItem from="1772115797851" duration="45000" />
       <workItem from="1772115852210" duration="26000" />
-      <workItem from="1772152010290" duration="343000" />
+      <workItem from="1772152010290" duration="5824000" />
+      <workItem from="1772606663890" duration="92000" />
+      <workItem from="1772607444045" duration="74000" />
     </task>
     <task id="LOCAL-00001" summary="feat: update til image">
       <option name="closed" value="true" />
@@ -96,7 +98,63 @@
       <option name="project" value="LOCAL" />
       <updated>1772115834001</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="fix: nav 아이콘 정렬 문제 수정">
+      <option name="closed" value="true" />
+      <created>1772152365089</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1772152365089</updated>
+    </task>
+    <task id="LOCAL-00004" summary="feat: UI/UX 개선">
+      <option name="closed" value="true" />
+      <created>1772153825321</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1772153825321</updated>
+    </task>
+    <task id="LOCAL-00005" summary="feat: UX 개선">
+      <option name="closed" value="true" />
+      <created>1772154407439</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1772154407439</updated>
+    </task>
+    <task id="LOCAL-00006" summary="fix: UI 문제 수정">
+      <option name="closed" value="true" />
+      <created>1772155231498</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1772155231498</updated>
+    </task>
+    <task id="LOCAL-00007" summary="feat: 사용자 사용성 개선">
+      <option name="closed" value="true" />
+      <created>1772156088652</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1772156088652</updated>
+    </task>
+    <task id="LOCAL-00008" summary="fix: UI 버그 수정">
+      <option name="closed" value="true" />
+      <created>1772156910944</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1772156910944</updated>
+    </task>
+    <task id="LOCAL-00009" summary="fix: 세로모드 UI 버그 수정">
+      <option name="closed" value="true" />
+      <created>1772157635990</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1772157635990</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -115,6 +173,13 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="feat: update til image" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: update til image" />
+    <MESSAGE value="fix: nav 아이콘 정렬 문제 수정" />
+    <MESSAGE value="feat: UI/UX 개선" />
+    <MESSAGE value="feat: UX 개선" />
+    <MESSAGE value="fix: UI 문제 수정" />
+    <MESSAGE value="feat: 사용자 사용성 개선" />
+    <MESSAGE value="fix: UI 버그 수정" />
+    <MESSAGE value="fix: 세로모드 UI 버그 수정" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: 세로모드 UI 버그 수정" />
   </component>
 </project>
