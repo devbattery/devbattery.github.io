@@ -1916,13 +1916,6 @@ body::after {
 
 .layout--single .page__toc.sticky {
   @include breakpoint($x-large) {
-    position: static;
-    top: auto;
-  }
-}
-
-.layout--single .page__toc.sticky .toc {
-  @include breakpoint($x-large) {
     position: sticky;
     top: calc(4.9rem + 1rem);
   }
@@ -1943,7 +1936,7 @@ body::after {
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
   gap: 0.9rem;
   max-width: 50rem;
-  margin-top: 1.4rem;
+  margin-top: 1.95rem;
   padding-top: 0;
 }
 
