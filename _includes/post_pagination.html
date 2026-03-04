@@ -1,14 +1,34 @@
 {% if page.previous or page.next %}
-  <nav class="pagination">
+  <nav class="pagination pagination--post-nav" aria-label="Post navigation">
     {% if page.previous %}
-      <a href="{{ page.previous.url | relative_url }}" class="pagination--pager" title="{{ page.previous.title | markdownify | strip_html }}">{{ site.data.ui-text[site.locale].pagination_previous | default: "Previous" }}</a>
-    {% else %}
-      <a href="#" class="pagination--pager disabled">{{ site.data.ui-text[site.locale].pagination_previous | default: "Previous" }}</a>
+      <a
+        href="{{ page.previous.url | relative_url }}"
+        class="pagination--pager pagination__card pagination__card--prev"
+        title="{{ page.previous.title | markdownify | strip_html }}"
+      >
+        <span class="pagination__icon" aria-hidden="true">
+          <i class="fas fa-arrow-left"></i>
+        </span>
+        <span class="pagination__meta">
+          <span class="pagination__label">{{ site.data.ui-text[site.locale].pagination_previous | default: "Previous" }}</span>
+          <span class="pagination__title">{{ page.previous.title | markdownify | strip_html }}</span>
+        </span>
+      </a>
     {% endif %}
     {% if page.next %}
-      <a href="{{ page.next.url | relative_url }}" class="pagination--pager" title="{{ page.next.title | markdownify | strip_html }}">{{ site.data.ui-text[site.locale].pagination_next | default: "Next" }}</a>
-    {% else %}
-      <a href="#" class="pagination--pager disabled">{{ site.data.ui-text[site.locale].pagination_next | default: "Next" }}</a>
+      <a
+        href="{{ page.next.url | relative_url }}"
+        class="pagination--pager pagination__card pagination__card--next"
+        title="{{ page.next.title | markdownify | strip_html }}"
+      >
+        <span class="pagination__icon" aria-hidden="true">
+          <i class="fas fa-arrow-right"></i>
+        </span>
+        <span class="pagination__meta">
+          <span class="pagination__label">{{ site.data.ui-text[site.locale].pagination_next | default: "Next" }}</span>
+          <span class="pagination__title">{{ page.next.title | markdownify | strip_html }}</span>
+        </span>
+      </a>
     {% endif %}
   </nav>
 {% endif %}

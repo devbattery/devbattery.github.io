@@ -15,7 +15,7 @@
     {% seo %}
   </head>
 
-  <body class="layout--{{ page.layout | default: layout.layout }}{% if page.classes or layout.classes %}{{ page.classes | default: layout.classes | join: ' ' | prepend: ' ' }}{% endif %}">
+  <body id="top" class="layout--{{ page.layout | default: layout.layout }}{% if page.classes or layout.classes %}{{ page.classes | default: layout.classes | join: ' ' | prepend: ' ' }}{% endif %}">
     {% include_cached skip-links.html %}
     {% include_cached masthead.html %}
 
@@ -32,7 +32,10 @@
     {% include scripts.html %}
 
     <aside class="sidebar__top">
-      <a href="#site-nav"><i class="fas fa-angle-double-up fa-2x"></i></a>
+      <a href="#top" aria-label="Back to top" title="Back to top">
+        <span class="sidebar__top-text">Top</span>
+        <i class="fas fa-arrow-up" aria-hidden="true"></i>
+      </a>
     </aside>
   </body>
 </html>
