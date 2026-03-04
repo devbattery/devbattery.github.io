@@ -39,28 +39,30 @@ layout: default
         </header>
       {% endunless %}
 
-      <section class="page__content {% if page.toc %}page__content--with-toc{% endif %}" itemprop="text">
+      <div class="page__body {% if page.toc %}page__body--with-toc{% endif %}">
+        <section class="page__content" itemprop="text">
+          {{ content }}
+          {% if page.link %}<div><a href="{{ page.link }}" class="btn btn--primary">{{ site.data.ui-text[site.locale].ext_link_label | default: "Direct Link" }}</a></div>{% endif %}
+        </section>
+
         {% if page.toc %}
-          <aside class="sidebar__right {% if page.toc_sticky %}sticky{% endif %}">
+          <aside class="page__toc {% if page.toc_sticky %}sticky{% endif %}">
             <nav class="toc">
               <header><h4 class="nav__title"><i class="fas fa-{{ page.toc_icon | default: 'file-alt' }}"></i> {{ page.toc_label | default: site.data.ui-text[site.locale].toc_label | default: "On this page" }}</h4></header>
               {% include toc.html sanitize=true html=content h_min=1 h_max=6 class="toc__menu" skip_no_ids=true %}
             </nav>
           </aside>
         {% endif %}
-        {{ content }}
-        {% if page.link %}<div><a href="{{ page.link }}" class="btn btn--primary">{{ site.data.ui-text[site.locale].ext_link_label | default: "Direct Link" }}</a></div>{% endif %}
-      </section>
+      </div>
 
+      {% if page.tags[0] or page.categories[0] %}
       <footer class="page__meta page__meta-footer">
         {% if site.data.ui-text[site.locale].meta_label %}
           <h4 class="page__meta-title">{{ site.data.ui-text[site.locale].meta_label }}</h4>
         {% endif %}
         {% include page__taxonomy.html %}
-        {% if page.date %}
-          {% include page__date.html %}
-        {% endif %}
       </footer>
+      {% endif %}
 
       {% if page.share %}{% include social-share.html %}{% endif %}
 
