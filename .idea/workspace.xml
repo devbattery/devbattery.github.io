@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5ab5da4b-9e4e-4471-bd58-c33510926d7f" name="Changes" comment="fix: On This Page 복구 및 버튼 margin 추가">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/_sass/minimal-mistakes/_site-modern.scss" beforeDir="false" afterPath="$PROJECT_DIR$/_sass/minimal-mistakes/_site-modern.scss" afterDir="false" />
-    </list>
+    <list default="true" id="5ab5da4b-9e4e-4471-bd58-c33510926d7f" name="Changes" comment="fix: 간격 오버라이드 문제 수정" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -80,7 +77,7 @@
       <workItem from="1772152010290" duration="5824000" />
       <workItem from="1772606663890" duration="92000" />
       <workItem from="1772607444045" duration="74000" />
-      <workItem from="1772607522591" duration="5690000" />
+      <workItem from="1772607522591" duration="6475000" />
     </task>
     <task id="LOCAL-00001" summary="feat: update til image">
       <option name="closed" value="true" />
@@ -218,7 +215,23 @@
       <option name="project" value="LOCAL" />
       <updated>1772613147978</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="fix: 간격 수정">
+      <option name="closed" value="true" />
+      <created>1772613775718</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1772613775718</updated>
+    </task>
+    <task id="LOCAL-00019" summary="fix: 간격 오버라이드 문제 수정">
+      <option name="closed" value="true" />
+      <created>1772615105214</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1772615105214</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -252,6 +265,8 @@
     <MESSAGE value="style: 모던 톤 조정" />
     <MESSAGE value="fix: 상세 페이지 UI 버그 수정" />
     <MESSAGE value="fix: On This Page 복구 및 버튼 margin 추가" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: On This Page 복구 및 버튼 margin 추가" />
+    <MESSAGE value="fix: 간격 수정" />
+    <MESSAGE value="fix: 간격 오버라이드 문제 수정" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: 간격 오버라이드 문제 수정" />
   </component>
 </project>
