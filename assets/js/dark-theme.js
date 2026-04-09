@@ -109,7 +109,7 @@
       {
         giscus: {
           setConfig: {
-            theme: theme === "dark" ? "dark" : "light",
+            theme: theme === "dark" ? "dark_dimmed" : "light",
           },
         },
       },
@@ -144,12 +144,16 @@
 
     defaultTheme.media = isDarkMode ? "not all" : "all";
     darkTheme.media = isDarkMode ? "all" : "not all";
-    defaultTheme.disabled = isDarkMode;
-    darkTheme.disabled = !isDarkMode;
+    root.classList.add("theme-switching");
     root.setAttribute("data-theme", theme);
     root.style.colorScheme = isDarkMode ? "dark" : "light";
     renderToggleButton(theme);
     syncGiscusTheme(theme);
+
+    window.clearTimeout(applyTheme.transitionTimer);
+    applyTheme.transitionTimer = window.setTimeout(function () {
+      root.classList.remove("theme-switching");
+    }, 140);
 
     if (persistPreference) {
       writeThemePreference(theme);

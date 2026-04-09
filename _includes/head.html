@@ -68,6 +68,16 @@
 
 <!-- For all browsers -->
 <link
+  rel="preload"
+  as="style"
+  href="{{ '/assets/css/main.css' | relative_url }}"
+/>
+<link
+  rel="preload"
+  as="style"
+  href="{{ '/assets/css/main_dark.css' | relative_url }}"
+/>
+<link
   id="theme-default-css"
   rel="stylesheet"
   href="{{ '/assets/css/main.css' | relative_url }}"
@@ -89,8 +99,6 @@
 
     defaultTheme.media = isDarkMode ? "not all" : "all";
     darkTheme.media = isDarkMode ? "all" : "not all";
-    defaultTheme.disabled = isDarkMode;
-    darkTheme.disabled = !isDarkMode;
   })();
 </script>
 
