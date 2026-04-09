@@ -19,20 +19,28 @@
     {% include_cached skip-links.html %}
     {% include_cached masthead.html %}
 
-    <div class="initial-content">
-      {{ content }}
+    <div class="db-site-shell">
+      <div class="initial-content">
+        {{ content }}
+      </div>
+
+      {% if site.search == true %}
+        <div class="search-content">
+          {% include_cached search/search_form.html %}
+        </div>
+      {% endif %}
     </div>
 
-    {% if site.search == true %}
-      <div class="search-content">
-        {% include_cached search/search_form.html %}
+    <footer class="page__footer">
+      <div class="page__footer-inner">
+        {% include footer.html %}
       </div>
-    {% endif %}
+    </footer>
 
     {% include scripts.html %}
 
     <aside class="sidebar__top">
-      <a href="#top" aria-label="Back to top" title="Back to top">
+      <a href="#top" data-scroll-ignore aria-label="Back to top" title="Back to top">
         <span class="sidebar__top-text">Top</span>
         <i class="fas fa-arrow-up" aria-hidden="true"></i>
       </a>

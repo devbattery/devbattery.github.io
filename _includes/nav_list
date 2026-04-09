@@ -2,14 +2,14 @@
 {% assign sum = site.posts | size %}
 {% assign all_posts_url = site.category_archive.path | default: "/categories/" %}
 
-<nav class="nav__list nav__list--categories">
-  {% if page.sidebar.title %}<h3 class="nav__title nav__title--sidebar">{{ page.sidebar.title }}</h3>{% endif %}
-  <input id="ac-toc" name="accordion-toc" type="checkbox" />
-  <label for="ac-toc">Browse categories</label>
-
+<nav class="nav__list nav__list--categories db-nav-list">
+  <div class="db-nav-list__header">
+    <p class="db-nav-list__eyebrow">Browse</p>
+    <h3 class="nav__title nav__title--sidebar">{{ page.sidebar.title | default: "Categories" }}</h3>
+  </div>
   <a
     href="{{ all_posts_url | relative_url }}"
-    class="nav__all-posts-link{% if page.url == all_posts_url %} is-active{% endif %}"
+    class="nav__all-posts-link db-nav-list__all-posts-link{% if page.url == all_posts_url %} is-active{% endif %}"
   >
     <span class="nav__all-posts-title">All Posts</span>
     <span class="nav__all-posts-count">{{ sum }}</span>
@@ -17,15 +17,8 @@
 
   <ul class="nav__items nav__items--category-groups">
     {% for nav in navigation %}
-      <li class="nav__group">
-        {% if nav.url %}
-          <a class="nav__group-title-link" href="{{ nav.url | relative_url }}">
-            <span class="nav__sub-title nav__sub-title--group">{{ nav.title }}</span>
-          </a>
-        {% else %}
-          <span class="nav__sub-title nav__sub-title--group">{{ nav.title }}</span>
-        {% endif %}
-
+      <li class="nav__group db-nav-list__group">
+        <span class="nav__sub-title nav__sub-title--group">{{ nav.title }}</span>
         {% if nav.children != null %}
         <ul class="nav__group-links">
           {% for child in nav.children %}

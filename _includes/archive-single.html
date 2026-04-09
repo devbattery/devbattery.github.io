@@ -1,39 +1,54 @@
 {%- capture _auto_teaser -%}{% include auto-teaser-path.html %}{%- endcapture -%}
 {%- assign _auto_teaser = _auto_teaser | strip -%}
-{%- assign teaser = post.header.teaser | default: _auto_teaser | default: site.teaser -%} {%- comment -%} TITLE BLOCK
-(must exist) {%- endcomment -%} {% if post.id %} {% assign title = post.title |
-markdownify | remove: "
-<p>" | remove: "</p>
-" %} {% else %} {% assign title = post.title %} {% endif %}
+{%- assign teaser = post.header.teaser | default: _auto_teaser | default: site.teaser -%}
+{%- assign entry_type = include.type | default: 'list' -%}
+{%- if post.id -%}
+  {%- assign title = post.title | markdownify | remove: "<p>" | remove: "</p>" -%}
+{%- else -%}
+  {%- assign title = post.title -%}
+{%- endif -%}
 
-<div class="{{ include.type | default: 'list' }}__item">
-  <article
-    class="archive__item"
-    itemscope
-    itemtype="https://schema.org/CreativeWork"
-  >
-    {% if include.type == "grid" and teaser %}
-    <div class="archive__item-teaser">
-      <img src="{{ teaser | relative_url }}" alt="" />
-    </div>
-    {% endif %}
-
-    <h2 class="archive__item-title no_toc" itemprop="headline">
-      {% if post.link %}
-      <a href="{{ post.link }}">{{ title }}</a>
-      <a href="{{ post.url | relative_url }}" rel="permalink">
-        <i class="fas fa-link" aria-hidden="true" title="permalink"></i>
-        <span class="sr-only">Permalink</span>
+<div class="{{ entry_type }}__item">
+  <article class="archive__item db-archive-item db-archive-item--{{ entry_type }}" itemscope itemtype="https://schema.org/CreativeWork">
+    {% if teaser %}
+      <a class="archive__item-teaser db-archive-item__media" href="{{ post.url | relative_url }}" rel="permalink">
+        <img src="{{ teaser | relative_url }}" alt="">
       </a>
-      {% else %}
-      <a href="{{ post.url | relative_url }}" rel="permalink">{{ title }}</a>
-      {% endif %}
-    </h2>
-
-    {% include page__meta.html type=include.type %} {% if post.excerpt %}
-    <p class="archive__item-excerpt" itemprop="description">
-      {{ post.excerpt | markdownify | strip_html | truncate: 160 }}
-    </p>
     {% endif %}
+
+    <div class="db-archive-item__content">
+      <div class="db-archive-item__topline">
+        {% if post.categories[0] %}
+          <span class="db-eyebrow-chip">{{ post.categories[0] }}</span>
+        {% endif %}
+        {% include page__meta.html type=entry_type %}
+      </div>
+
+      <h2 class="archive__item-title no_toc" itemprop="headline">
+        {% if post.link %}
+          <a href="{{ post.link }}">{{ title }}</a>
+          <a href="{{ post.url | relative_url }}" rel="permalink">
+            <i class="fas fa-link" aria-hidden="true" title="permalink"></i>
+            <span class="sr-only">Permalink</span>
+          </a>
+        {% else %}
+          <a href="{{ post.url | relative_url }}" rel="permalink">{{ title }}</a>
+        {% endif %}
+      </h2>
+
+      {% if post.excerpt %}
+        <p class="archive__item-excerpt" itemprop="description">
+          {{ post.excerpt | markdownify | strip_html | truncate: 190 }}
+        </p>
+      {% endif %}
+
+      {% if post.tags[0] %}
+        <div class="db-archive-item__tags">
+          {% for tag in post.tags limit: 3 %}
+            <span class="db-tag-chip">{{ tag }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
   </article>
 </div>

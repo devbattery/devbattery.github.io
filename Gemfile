@@ -5,3 +5,5 @@ gem 'jekyll-seo-tag'
 gem 'faraday-retry'
 
 gem 'rouge'
+gem 'csv'
+gem 'bigdecimal'

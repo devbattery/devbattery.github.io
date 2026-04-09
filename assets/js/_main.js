@@ -32,6 +32,13 @@ $(document).ready(function () {
     }, 400);
   });
 
+  // Keep TOC jumps and back-to-top instant.
+  document
+    .querySelectorAll('nav.toc a, a.back-to-top, a[href="#top"]')
+    .forEach(function (link) {
+      link.setAttribute("data-scroll-ignore", "");
+    });
+
   // Smooth scrolling
   var scroll = new SmoothScroll('a[href*="#"]', {
     offset: 20,
@@ -123,21 +130,23 @@ $(document).ready(function () {
   });
 
   // Add anchors for headings
-  document
-    .querySelector(".page__content")
-    .querySelectorAll("h1, h2, h3, h4, h5, h6")
-    .forEach(function (element) {
-      var id = element.getAttribute("id");
-      if (id) {
-        var anchor = document.createElement("a");
-        anchor.className = "header-link";
-        anchor.href = "#" + id;
-        anchor.innerHTML =
-          '<span class="sr-only">Permalink</span><i class="fas fa-link"></i>';
-        anchor.title = "Permalink";
-        element.appendChild(anchor);
-      }
-    });
+  var pageContent = document.querySelector(".page__content");
+  if (pageContent) {
+    pageContent
+      .querySelectorAll("h1, h2, h3, h4, h5, h6")
+      .forEach(function (element) {
+        var id = element.getAttribute("id");
+        if (id) {
+          var anchor = document.createElement("a");
+          anchor.className = "header-link";
+          anchor.href = "#" + id;
+          anchor.innerHTML =
+            '<span class="sr-only">Permalink</span><i class="fas fa-link"></i>';
+          anchor.title = "Permalink";
+          element.appendChild(anchor);
+        }
+      });
+  }
 
   // Add copy button for <pre> blocks
   var copyText = function (text) {

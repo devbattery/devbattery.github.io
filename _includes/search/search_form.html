@@ -1,14 +1,59 @@
-<div class="search-content__inner-wrap">
+<div class="search-content__inner-wrap db-search-panel">
   {%- assign search_provider = site.search_provider | default: "lunr" -%}
   {%- case search_provider -%}
   {%- when "lunr" -%}
-  <form class="search-content__form" onkeydown="return event.key != 'Enter';" role="search">
-    <label class="sr-only" for="search">
-      {{ site.data.ui-text[site.locale].search_label_text | default: 'Enter your search term...' }}
-    </label>
-    <input type="search" id="search" class="search-input" tabindex="-1" placeholder="{{ site.data.ui-text[site.locale].search_placeholder_text | default: 'Enter your search term...' }}" />
-  </form>
-  <div id="results" class="results"></div>
+  <div class="db-search-panel__header">
+    <p class="db-search-panel__brand">{{ site.title }}</p>
+    <button class="search__toggle db-search-panel__close" type="button">
+      <span class="visually-hidden">{{ site.data.ui-text[site.locale].search_label | default: 'Close search' }}</span>
+      <i class="fas fa-fw fa-xmark" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="db-search-panel__body">
+    <form class="search-content__form db-search-panel__form" onkeydown="return event.key != 'Enter';" role="search">
+      <label class="sr-only" for="search">
+        {{ site.data.ui-text[site.locale].search_label_text | default: 'Enter your search term...' }}
+      </label>
+      <i class="fas fa-fw fa-search" aria-hidden="true"></i>
+      <input type="search" id="search" class="search-input" tabindex="-1" placeholder="Search insights, tags, or articles..." />
+    </form>
+
+    <div class="db-search-panel__grid">
+      <section class="db-search-panel__sidebar">
+        <div class="db-search-panel__section">
+          <h3>Popular Categories</h3>
+          <div class="db-search-panel__chips">
+            {% for group in site.data.navigation.categories limit: 4 %}
+              {% for child in group.children limit: 3 %}
+                <a href="{{ child.url | relative_url }}" class="db-search-panel__chip">{{ child.title }}</a>
+              {% endfor %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="db-search-panel__section">
+          <h3>Shortcuts</h3>
+          <ul class="db-search-panel__shortcuts">
+            <li><a href="{{ '/categories/' | relative_url }}">Browse all categories</a></li>
+            <li><a href="{{ '/tags/' | relative_url }}">Open tag archive</a></li>
+            <li><a href="{{ '/about/' | relative_url }}">Read about this blog</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="db-search-panel__results">
+        <div class="db-search-panel__results-head">
+          <h3>Live Results</h3>
+          <p>Search across posts, tags, and pages.</p>
+        </div>
+        <div id="results" class="results"></div>
+      </section>
+    </div>
+  </div>
+  <div class="db-search-panel__footer">
+    <span><kbd>ESC</kbd> close</span>
+    <span><kbd>ENTER</kbd> open result</span>
+  </div>
   {%- when "google" -%}
   <form onsubmit="return googleCustomSearchExecute();" id="cse-search-box-form-id" role="search">
     <label class="sr-only" for="cse-search-input-box-id">

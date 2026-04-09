@@ -1,2 +1,13 @@
 _site/
 Gemfile.lock
+.jekyll-cache/
+.jekyll-metadata
+.sass-cache/
+.bundle/
+vendor/
+node_modules/
+.DS_Store
+search-lunr-requests.txt
+playwright-*.png
+.idea/workspace.xml
+.idea/shelf/

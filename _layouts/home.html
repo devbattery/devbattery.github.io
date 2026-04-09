@@ -2,17 +2,53 @@
 layout: archive
 ---
 
-{{ content }}
-
-<h3 class="archive__subtitle">{{ site.data.ui-text[site.locale].recent_posts | default: "Recent Posts" }}</h3>
-
 {% if paginator %}
   {% assign posts = paginator.posts %}
 {% else %}
   {% assign posts = site.posts %}
 {% endif %}
 
-{% assign entries_layout = page.entries_layout | default: 'list' %}
+{% assign featured_post = posts.first %}
+
+<header class="db-archive-hero db-archive-hero--home">
+  <p class="db-archive-hero__eyebrow">The Digital Architect</p>
+  <h1 class="page__title">{{ site.title }}</h1>
+  <p class="db-archive-hero__lede">{{ site.description }}</p>
+</header>
+
+{{ content }}
+
+{% if featured_post %}
+  {%- assign post = featured_post -%}
+  {%- capture _auto_teaser -%}{% include auto-teaser-path.html %}{%- endcapture -%}
+  {%- assign _auto_teaser = _auto_teaser | strip -%}
+  {%- assign featured_teaser = featured_post.header.teaser | default: _auto_teaser | default: site.teaser -%}
+  <article class="db-featured-post">
+    {% if featured_teaser %}
+      <a class="db-featured-post__media" href="{{ featured_post.url | relative_url }}" rel="permalink">
+        <img src="{{ featured_teaser | relative_url }}" alt="">
+      </a>
+    {% endif %}
+    <div class="db-featured-post__content">
+      {% if featured_post.categories[0] %}
+        <span class="db-eyebrow-chip">{{ featured_post.categories[0] }}</span>
+      {% endif %}
+      <h2 class="db-featured-post__title">
+        <a href="{{ featured_post.url | relative_url }}" rel="permalink">{{ featured_post.title }}</a>
+      </h2>
+      {% if featured_post.excerpt %}
+        <p class="db-featured-post__excerpt">{{ featured_post.excerpt | markdownify | strip_html | truncate: 240 }}</p>
+      {% endif %}
+      <div class="db-featured-post__meta">
+        {% include page__meta.html document=featured_post type="featured" %}
+      </div>
+    </div>
+  </article>
+{% endif %}
+
+<h3 class="archive__subtitle">{{ site.data.ui-text[site.locale].recent_posts | default: "Recent Posts" }}</h3>
+
+{% assign entries_layout = page.entries_layout | default: 'grid' %}
 <div class="entries-{{ entries_layout }}">
   {% for post in posts %}
     {% include archive-single.html type=entries_layout %}

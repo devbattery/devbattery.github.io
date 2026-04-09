@@ -1,107 +1,74 @@
-{% capture logo_path %}{{ site.logo }}{% endcapture %}
+<div class="masthead db-topbar">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <a class="site-title" href="{{ '/' | relative_url }}">
+          <span class="db-topbar__brand">{{ site.masthead_title | default: site.title }}</span>
+          {% if site.subtitle %}
+            <span class="site-subtitle">{{ site.subtitle }}</span>
+          {% endif %}
+        </a>
 
-<div class="masthead">
-    <div class="masthead__inner-wrap">
-        <div class="masthead__menu">
-            <nav id="site-nav" class="greedy-nav">
-                {% unless logo_path == empty %}
-                <a class="site-logo" href="{{ '/' | relative_url }}"
-                    ><img
-                        src="{{ logo_path | relative_url }}"
-                        alt="{{ site.masthead_title | default: site.title }}"
-                /></a>
-                {% endunless %}
-                <a class="site-title" href="{{ '/' | relative_url }}">
-                    {{ site.masthead_title | default: site.title }} {% if
-                    site.subtitle %}<span class="site-subtitle"
-                        >{{ site.subtitle }}</span
-                    >{% endif %}
-                </a>
-                <ul class="visible-links">
-                    <!-- {%- for link in site.data.navigation.main -%}
-                    <li class="masthead__menu-item">
-                        <a
-                            href="{{ link.url | relative_url }}"
-                            {%
-                            if
-                            link.description
-                            %}
-                            title="{{ link.description }}"
-                            {%
-                            endif
-                            %}
-                            {%
-                            if
-                            link.target
-                            %}
-                            target="{{ link.target }}"
-                            {%
-                            endif
-                            %}
-                            >{{ link.title }}</a
-                        >
-                    </li>
-                    {%- endfor -%} -->
-                    <li class="masthead__menu-item">
-                        <button
-                            id="toggle-theme"
-                            class="theme-toggle"
-                            type="button"
-                            aria-label="Toggle dark mode"
-                            title="Toggle dark mode"
-                            aria-pressed="false"
-                        >
-                            <span class="visually-hidden">Toggle dark mode</span>
-                        </button>
-                    </li>
-                    <li class="masthead__menu-item">
-                        <a href="/about/" aria-label="About" title="About"
-                            ><i class="fa-solid fa-fw fa-address-card"></i
-                        ></a>
-                    </li>
-                    <li class="masthead__menu-item">
-                        <a
-                            href="https://github.com/devbattery"
-                            aria-label="GitHub"
-                            title="GitHub"
-                            ><i class="fa-brands fa-fw fa-github"></i
-                        ></a>
-                    </li>
-                    <li class="masthead__menu-item">
-                        <a href="/tags/" aria-label="Tags" title="Tags"
-                            ><i class="fa-solid fa-fw fa-tags"></i
-                        ></a>
-                    </li>
-                </ul>
-                {% if site.search == true %}
-                <button class="search__toggle" type="button">
-                    <span class="visually-hidden"
-                        >{{ site.data.ui-text[site.locale].search_label |
-                        default: "Toggle search" }}</span
-                    >
-                    <i class="fas fa-fw fa-search"></i>
-                </button>
-                {% endif %}
-                {% assign menu_open_label = site.data.ui-text[site.locale].menu_label | default: "Open navigation menu" %}
-                {% assign menu_close_label = site.data.ui-text[site.locale].menu_close_label | default: "Close navigation menu" %}
-                <button
-                    class="greedy-nav__toggle hidden"
-                    type="button"
-                    aria-expanded="false"
-                    aria-label="{{ menu_open_label }}"
-                    title="{{ menu_open_label }}"
-                    aria-haspopup="true"
-                    aria-controls="site-nav-hidden-links"
-                    data-menu-open-label="{{ menu_open_label }}"
-                    data-menu-close-label="{{ menu_close_label }}"
-                >
-                    <span class="visually-hidden"
-                        >{{ menu_open_label }}</span
-                    >
-                    <div class="navicon"></div>
-                </button>
-                <ul id="site-nav-hidden-links" class="hidden-links hidden" aria-hidden="true"></ul>
-            </nav>
+        <div class="db-topbar__dock" aria-label="Primary navigation">
+          <ul class="visible-links">
+            <li class="masthead__menu-item">
+              <a class="db-topbar__icon db-topbar__icon-link" href="{{ '/about/' | relative_url }}" aria-label="About" title="About">
+                <i class="fa-solid fa-fw fa-address-card" aria-hidden="true"></i>
+              </a>
+            </li>
+            <li class="masthead__menu-item">
+              <a class="db-topbar__icon db-topbar__icon-link" href="{{ '/categories/' | relative_url }}" aria-label="Categories" title="Categories">
+                <i class="fa-solid fa-fw fa-layer-group" aria-hidden="true"></i>
+              </a>
+            </li>
+            <li class="masthead__menu-item">
+              <a class="db-topbar__icon db-topbar__icon-link" href="{{ '/tags/' | relative_url }}" aria-label="Tags" title="Tags">
+                <i class="fa-solid fa-fw fa-bookmark" aria-hidden="true"></i>
+              </a>
+            </li>
+          </ul>
+
+          <div class="db-topbar__actions">
+            {% if site.search == true %}
+              <button class="search__toggle db-topbar__icon" type="button">
+                <span class="visually-hidden">{{ site.data.ui-text[site.locale].search_label | default: "Toggle search" }}</span>
+                <i class="fas fa-fw fa-search" aria-hidden="true"></i>
+              </button>
+            {% endif %}
+            <button
+              id="toggle-theme"
+              class="theme-toggle db-topbar__icon"
+              type="button"
+              aria-label="Toggle dark mode"
+              title="Toggle dark mode"
+              aria-pressed="false"
+            >
+              <span class="visually-hidden">Toggle dark mode</span>
+            </button>
+            <a class="db-topbar__icon db-topbar__icon-link" href="https://github.com/devbattery" aria-label="GitHub" title="GitHub">
+              <i class="fa-brands fa-fw fa-github" aria-hidden="true"></i>
+            </a>
+          </div>
         </div>
+
+        {% assign menu_open_label = site.data.ui-text[site.locale].menu_label | default: "Open navigation menu" %}
+        {% assign menu_close_label = site.data.ui-text[site.locale].menu_close_label | default: "Close navigation menu" %}
+        <button
+          class="greedy-nav__toggle hidden"
+          type="button"
+          aria-expanded="false"
+          aria-label="{{ menu_open_label }}"
+          title="{{ menu_open_label }}"
+          aria-haspopup="true"
+          aria-controls="site-nav-hidden-links"
+          data-menu-open-label="{{ menu_open_label }}"
+          data-menu-close-label="{{ menu_close_label }}"
+        >
+          <span class="visually-hidden">{{ menu_open_label }}</span>
+          <div class="navicon"></div>
+        </button>
+        <ul id="site-nav-hidden-links" class="hidden-links hidden" aria-hidden="true"></ul>
+      </nav>
     </div>
+  </div>
 </div>
