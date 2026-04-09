@@ -1,5 +1,5 @@
 ---
-title: "[DataBase] Docker로 MongoDB 설치 방법 - MacOS M4"
+title: "[Database] Docker로 MongoDB 설치 방법 - MacOS M4"
 excerpt: "database, docker, mongodb"
 
 categories:

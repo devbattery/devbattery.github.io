@@ -1,11 +1,11 @@
 ---
 title: "[Project] Spring Boot와 S3를 이용한 이미지 업로드"
-excerpt: "movlit, image, s3, spring boot, aws"
+excerpt: "movlit, image, s3, spring-boot, aws"
 
 categories:
   - Project
 tags:
-  - [movlit, image, s3, spring boot, aws]
+  - [movlit, image, s3, spring-boot, aws]
 
 toc: true
 toc_sticky: true

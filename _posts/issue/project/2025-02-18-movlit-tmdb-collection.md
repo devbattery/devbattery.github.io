@@ -1,11 +1,11 @@
 ---
 title: "[Project] Spring Boot와 TMDB API로 영화 데이터 수집"
-excerpt: "movlit, tmdb, springboot, jpa, api, batch"
+excerpt: "movlit, tmdb, spring-boot, jpa, api, batch"
 
 categories:
   - Project
 tags:
-  - [movlit, tmdb, springboot, jpa, api, batch]
+  - [movlit, tmdb, spring-boot, jpa, api, batch]
 
 toc: true
 toc_sticky: true

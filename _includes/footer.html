@@ -6,7 +6,10 @@
 
 <div class="db-footer__links">
   {% for link in site.data.navigation.main %}
-    <a href="{{ link.url | relative_url }}">{{ link.title }}</a>
+    <a
+      href="{% if link.external %}{{ link.url }}{% else %}{{ link.url | relative_url }}{% endif %}"
+      {% if link.external %}target="_blank" rel="noopener noreferrer"{% endif %}
+    >{{ link.title }}</a>
   {% endfor %}
   {% unless site.atom_feed.hide %}
     <a href="{% if site.atom_feed.path %}{{ site.atom_feed.path }}{% else %}{{ '/feed.xml' | relative_url }}{% endif %}">RSS</a>

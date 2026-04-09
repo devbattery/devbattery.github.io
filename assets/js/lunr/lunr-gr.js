@@ -476,6 +476,20 @@ var idx = lunr(function () {
 });
 
 $(document).ready(function() {
+  function getMaxResults() {
+    return window.matchMedia('(max-width: 767px)').matches ? 5 : 10;
+  }
+
+  function renderResultsFound(total, shown) {
+    var message = total + ' {{ site.data.ui-text[site.locale].results_found | default: "Result(s) found" }}';
+
+    if (total > shown) {
+      message += ' · Showing top ' + shown;
+    }
+
+    return '<p class="results__found">' + message + '</p>';
+  }
+
   function renderSearchMeta(items, modifier) {
     if (!items || !items.length) {
       return '';
@@ -524,9 +538,10 @@ $(document).ready(function() {
     );
   }
 
-  $('input#search').on('keyup', function () {
+  function handleSearchInput() {
     var resultdiv = $('#results');
     var query = $(this).val().toLowerCase();
+    var maxResults = getMaxResults();
     var result =
       idx.query(function (q) {
         query.split(lunr.tokenizer.separator).forEach(function (term) {
@@ -540,7 +555,6 @@ $(document).ready(function() {
         })
       });
     resultdiv.empty();
-    resultdiv.prepend('<p class="results__found">'+result.length+' {{ site.data.ui-text[site.locale].results_found | default: "Result(s) found" }}</p>');
     if (query.trim() === '') {
       resultdiv.append('<div class="db-search-empty"><p>Start typing to see matching posts, tags, and categories.</p></div>');
       return;
@@ -549,9 +563,15 @@ $(document).ready(function() {
       resultdiv.append('<div class="db-search-empty"><p>No matching posts found. Try another keyword.</p></div>');
       return;
     }
-    for (var item in result) {
-      var ref = result[item].ref;
+
+    var visibleResults = result.slice(0, maxResults);
+    resultdiv.append(renderResultsFound(result.length, visibleResults.length));
+
+    for (var item in visibleResults) {
+      var ref = visibleResults[item].ref;
       resultdiv.append(renderSearchItem(store[ref]));
     }
-  });
+  }
+
+  $('input#search').on('input', handleSearchInput);
 });

@@ -1,7 +1,8 @@
 # main links
 main:
-  - title: "About"
-    url: /about/
+  - title: "LinkedIn"
+    url: "https://www.linkedin.com/in/wonjun-jeong-095b823a4?utm_source=share_via&utm_content=profile&utm_medium=member_ios"
+    external: true
 
   - title: "Category"
     url: /categories/
@@ -83,4 +84,3 @@ categories:
       - title: "Data Structure"
         url: /data-structure/
         category: "data-structure"
-

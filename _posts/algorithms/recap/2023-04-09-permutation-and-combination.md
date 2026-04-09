@@ -5,7 +5,7 @@ excerpt: "Permutation, Combination, 재귀, 백트래킹, 그리디"
 categories:
   - Recap
 tags:
-  - [python, permutation, combinaiton]
+  - [python, permutation, combination]
 
 toc: true
 toc_sticky: true

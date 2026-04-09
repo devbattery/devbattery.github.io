@@ -18,7 +18,7 @@ layout: default
   {% include sidebar.html %}
 
   <div class="archive db-archive">
-    {% unless page.header.overlay_color or page.header.overlay_image %}
+    {% unless page.header.overlay_color or page.header.overlay_image or page.url == "/" %}
       <header class="db-archive-hero">
         <p class="db-archive-hero__eyebrow">Archive</p>
         <h1 id="page-title" class="page__title">{{ page.title }}</h1>

@@ -16,6 +16,7 @@ baseurl: "" # the subpath of your site, e.g. "/blog"
 repository: "devbattery/devbattery.github.io"
 logo: "assets/images/nature.png"
 words_per_minute: 200
+linkedin_url: "https://www.linkedin.com/in/wonjun-jeong-095b823a4?utm_source=share_via&utm_content=profile&utm_medium=member_ios"
 
 # Comments Settings
 comments:
@@ -73,6 +74,9 @@ author:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
       url: "https://github.com/devbattery/"
+    - label: "LinkedIn"
+      icon: "fab fa-fw fa-linkedin"
+      url: "https://www.linkedin.com/in/wonjun-jeong-095b823a4?utm_source=share_via&utm_content=profile&utm_medium=member_ios"
 
 # Site Footer
 footer:
@@ -235,6 +239,7 @@ date_format: "%Y-%m-%d"
 after_footer_scripts:
   - /assets/js/dark-theme.js
   - /assets/js/nav-menu-enhancement.js
+  - /assets/js/archive-taxonomy-filter.js
   - https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js
   - /assets/js/clipboardrouge.js
 

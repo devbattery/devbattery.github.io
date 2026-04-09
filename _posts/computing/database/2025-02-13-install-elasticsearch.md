@@ -1,5 +1,5 @@
 ---
-title: "[DataBase] Docker Compose로 Elastic Search 설치 방법 - MacOS M4"
+title: "[Database] Docker Compose로 Elastic Search 설치 방법 - MacOS M4"
 excerpt: "database, docker, docker-compose, elastic-search"
 
 categories:

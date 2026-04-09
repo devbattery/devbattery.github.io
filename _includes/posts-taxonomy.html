@@ -5,33 +5,59 @@
   {% endif %}
 {% endfor %}
 
-<ul class="taxonomy__index">
-  {% for i in (1..items_max) reversed %}
-    {% for item in include.taxonomies %}
-      {% if item[1].size == i %}
-        <li>
-          <a href="#{{ item[0] | slugify }}">
-            <strong>{{ item[0] }}</strong> <span class="taxonomy__count">{{ i }}</span>
-          </a>
-        </li>
-      {% endif %}
-    {% endfor %}
-  {% endfor %}
-</ul>
+{% assign taxonomy_filter_label = 'Filter taxonomies' %}
+{% if page.url == '/categories/' %}
+  {% assign taxonomy_filter_label = 'Filter categories' %}
+{% elsif page.url == '/tags/' %}
+  {% assign taxonomy_filter_label = 'Filter tags' %}
+{% endif %}
 
-{% assign entries_layout = page.entries_layout | default: 'grid' %}
-{% for i in (1..items_max) reversed %}
-  {% for taxonomy in include.taxonomies %}
-    {% if taxonomy[1].size == i %}
-      <section id="{{ taxonomy[0] | slugify }}" class="taxonomy__section">
-        <h2 class="archive__subtitle">{{ taxonomy[0] }}</h2>
-        <div class="entries-{{ entries_layout }}">
-          {% for post in taxonomy.last %}
-            {% include archive-single.html type=entries_layout %}
-          {% endfor %}
-        </div>
-        <a href="#page-title" class="back-to-top">{{ site.data.ui-text[site.locale].back_to_top | default: 'Back to Top' }} &uarr;</a>
-      </section>
-    {% endif %}
-  {% endfor %}
-{% endfor %}
+<div class="db-taxonomy-browser" data-taxonomy-browser>
+  <div class="db-taxonomy-browser__tools">
+    <label class="sr-only" for="taxonomy-filter">{{ taxonomy_filter_label }}</label>
+    <input
+      id="taxonomy-filter"
+      class="db-taxonomy-browser__input"
+      type="search"
+      placeholder="{{ taxonomy_filter_label }}..."
+      autocomplete="off"
+      data-taxonomy-filter
+    >
+    <p class="db-taxonomy-browser__hint">Type to narrow the list and jump to the right section faster.</p>
+  </div>
+
+  <ul class="taxonomy__index" data-taxonomy-index>
+    {% for i in (1..items_max) reversed %}
+      {% for item in include.taxonomies %}
+        {% if item[1].size == i %}
+          <li data-taxonomy-item>
+            <a href="#{{ item[0] | slugify }}">
+              <strong>{{ item[0] }}</strong> <span class="taxonomy__count">{{ i }}</span>
+            </a>
+          </li>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </ul>
+
+  <p class="db-taxonomy-browser__empty" data-taxonomy-empty hidden>No matching sections found. Try another keyword.</p>
+
+  {% assign entries_layout = page.entries_layout | default: 'grid' %}
+  <div data-taxonomy-sections>
+    {% for i in (1..items_max) reversed %}
+      {% for taxonomy in include.taxonomies %}
+        {% if taxonomy[1].size == i %}
+          <section id="{{ taxonomy[0] | slugify }}" class="taxonomy__section" data-taxonomy-section>
+            <h2 class="archive__subtitle">{{ taxonomy[0] }}</h2>
+            <div class="entries-{{ entries_layout }}">
+              {% for post in taxonomy.last %}
+                {% include archive-single.html type=entries_layout %}
+              {% endfor %}
+            </div>
+            <a href="#page-title" class="back-to-top">{{ site.data.ui-text[site.locale].back_to_top | default: 'Back to Top' }} &uarr;</a>
+          </section>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>
