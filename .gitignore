@@ -6,6 +6,7 @@ Gemfile.lock
 .bundle/
 vendor/
 node_modules/
+.codex-screens/
 .DS_Store
 search-lunr-requests.txt
 playwright-*.png

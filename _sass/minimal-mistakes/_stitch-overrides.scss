@@ -929,6 +929,9 @@ html[data-theme="dark"] .nav__child-link.active {
   display: flex;
   flex-direction: column;
   gap: 1.6rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .db-single .page__inner-wrap,
@@ -944,6 +947,16 @@ html[data-theme="dark"] .nav__child-link.active {
 
 .db-single .page__inner-wrap {
   margin-top: 0;
+}
+
+.layout--single .db-single .page__inner-wrap > .page__body,
+.layout--single .db-single .page__inner-wrap > .page__content,
+.layout--single .db-single .page__body > .page__content,
+.layout--single .db-single .page__body > .page__toc {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  float: none;
 }
 
 .db-single .page__header,
@@ -1131,8 +1144,11 @@ html[data-theme="dark"] .nav__child-link.active {
 .db-single .page__content pre,
 .db-single .page__content div.highlighter-rouge,
 .db-single .page__content figure.highlight {
+  width: 100%;
+  max-width: 100%;
   border-radius: 1rem;
   background: var(--db-code-bg);
+  overflow-x: auto;
 }
 
 .db-single .page__content code {
@@ -1144,6 +1160,12 @@ html[data-theme="dark"] .nav__child-link.active {
 .db-single .page__content pre code {
   background: transparent;
   color: inherit;
+}
+
+.db-single .page__content .highlight,
+.db-single .page__content pre.highlight {
+  width: 100%;
+  max-width: 100%;
 }
 
 .db-single .page__toc {
@@ -2024,6 +2046,10 @@ html[data-theme="dark"] #giscus-comments {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .db-author-card__links {
+    display: none;
   }
 
   .layout--single .db-single .page__body--with-toc > .page__content {

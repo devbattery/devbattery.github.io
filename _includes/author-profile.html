@@ -33,7 +33,8 @@
 
   {% if author.links %}
     <ul class="author__urls social-icons db-author-card__links">
-      {% for link in author.links limit: 3 %}
+      {% assign profile_links = author.links | where: "label", "Email" %}
+      {% for link in profile_links %}
         {% if link.label and link.url %}
           <li>
             <a href="{{ link.url }}" rel="nofollow noopener noreferrer me"{% if link.url contains 'http' %} itemprop="sameAs"{% endif %}>
