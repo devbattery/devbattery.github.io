@@ -8,7 +8,16 @@ layout: archive
   {% assign posts = site.posts %}
 {% endif %}
 
-{% assign featured_post = posts.first %}
+{% assign show_featured_post = true %}
+{% if paginator and paginator.page != 1 %}
+  {% assign show_featured_post = false %}
+{% endif %}
+
+{% if show_featured_post %}
+  {% assign featured_post = posts.first %}
+{% else %}
+  {% assign featured_post = nil %}
+{% endif %}
 
 <header class="db-archive-hero db-archive-hero--home">
   <p class="db-archive-hero__eyebrow">The Digital Architect</p>
