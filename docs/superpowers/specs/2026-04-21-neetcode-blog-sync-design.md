@@ -24,7 +24,7 @@ When `devbattery/neetcode-submissions` receives a new synced submission commit, 
 ### Post identity
 
 - A post is identified by `neetcode_problem_slug` in front matter.
-- The generated file path lives under `_posts/algorithms/leetcode/<created-date>-<slug>.md`.
+- The generated file path lives under `_posts/algorithms/neetcode/<created-date>-<slug>.md`.
 - The first sync creates the file.
 - Later syncs search by `neetcode_problem_slug` and update the same file.
 
@@ -49,7 +49,7 @@ Each appended attempt block includes:
 
 - The blog workflow derives the problem slug and language from the dispatch payload.
 - The workflow fetches a human-readable problem title from NeetCode when possible and falls back to a titleized slug.
-- The post title format is `[NeetCode] <Problem Title> (<Language>)`.
+- The post title format is `[NeetCode] <Problem Title>`.
 - Tags always include `algorithms` and `neetcode`, plus the normalized language tag.
 
 ### Update rules

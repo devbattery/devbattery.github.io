@@ -5,7 +5,9 @@ _document.categories | join: '|' | downcase -%} {%- if _cats_joined contains
 elsif _cats_joined contains 'recap' -%} {%- assign _auto_teaser =
 '/assets/images/teasers/recap.jpg' -%} {%- elsif _cats_joined contains
 'leetcode' -%} {%- assign _auto_teaser = '/assets/images/teasers/leetcode.webp'
--%} {%- elsif _cats_joined contains 'hackerrank' -%} {%- assign _auto_teaser =
+-%} {%- elsif _cats_joined contains 'neetcode' -%} {%- assign _auto_teaser =
+'/assets/images/teasers/leetcode.webp' -%} {%- elsif _cats_joined contains
+'hackerrank' -%} {%- assign _auto_teaser =
 '/assets/images/teasers/hackerrank.webp' -%} {%- elsif _cats_joined contains
 'codeforces' -%} {%- assign _auto_teaser =
 '/assets/images/teasers/codeforces.jpg' -%} {%- elsif _cats_joined contains

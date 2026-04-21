@@ -1,7 +1,7 @@
 import path from "node:path";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 
-const POSTS_ROOT = ["_posts", "algorithms", "leetcode"];
+const POSTS_ROOT = ["_posts", "algorithms", "neetcode"];
 const ATTEMPTS_START = "<!-- neetcode-attempts:start -->";
 const ATTEMPTS_END = "<!-- neetcode-attempts:end -->";
 
@@ -189,7 +189,7 @@ function buildNewPost({
     `excerpt: ${quoteYaml(excerpt)}`,
     "",
     "categories:",
-    "  - LeetCode",
+    "  - NeetCode",
     "tags:",
     "  - algorithms",
     "  - neetcode",

@@ -10,6 +10,8 @@
 
 ---
 
+Posts live under `_posts/algorithms/neetcode` and use the `NeetCode` category so the sidebar can expose a dedicated `NeetCode` child link under `Algorithm`.
+
 ## File Map
 
 - Create: `scripts/sync-neetcode-post.mjs`

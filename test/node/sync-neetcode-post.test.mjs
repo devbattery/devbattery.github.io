@@ -11,7 +11,7 @@ test("creates one post per problem and appends later attempts", async () => {
   const blogRoot = path.join(tempRoot, "blog");
   const sourceRoot = path.join(tempRoot, "source");
 
-  await mkdir(path.join(blogRoot, "_posts", "algorithms", "leetcode"), { recursive: true });
+  await mkdir(path.join(blogRoot, "_posts", "algorithms", "neetcode"), { recursive: true });
   await mkdir(path.join(sourceRoot, "Data Structures & Algorithms", "is-anagram"), {
     recursive: true,
   });
@@ -63,13 +63,15 @@ test("creates one post per problem and appends later attempts", async () => {
     titleResolver: async () => "Is Anagram",
   });
 
-  const postsDir = path.join(blogRoot, "_posts", "algorithms", "leetcode");
+  const postsDir = path.join(blogRoot, "_posts", "algorithms", "neetcode");
   const files = await readdir(postsDir);
 
   assert.equal(files.length, 1);
   assert.equal(secondResult.filePath, firstResult.filePath);
 
   const updated = await readFile(secondResult.filePath, "utf8");
+  assert.match(secondResult.filePath, /_posts\/algorithms\/neetcode\//);
+  assert.match(updated, /categories:\n  - NeetCode/);
   assert.match(updated, /neetcode_problem_slug: 'is-anagram'/);
   assert.match(updated, /last_modified_at: 2026-04-22/);
   assert.match(updated, /Manual note stays here\./);
@@ -82,7 +84,7 @@ test("supports env-driven execution and skips duplicate attempts", async () => {
   const blogRoot = path.join(tempRoot, "blog");
   const sourceRoot = path.join(tempRoot, "source");
 
-  await mkdir(path.join(blogRoot, "_posts", "algorithms", "leetcode"), { recursive: true });
+  await mkdir(path.join(blogRoot, "_posts", "algorithms", "neetcode"), { recursive: true });
   await mkdir(path.join(sourceRoot, "Data Structures & Algorithms", "two-integer-sum"), {
     recursive: true,
   });

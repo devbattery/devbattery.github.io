@@ -30,6 +30,9 @@ categories:
       - title: "LeetCode"
         url: /leetcode/
         category: "LeetCode"
+      - title: "NeetCode"
+        url: /neetcode/
+        category: "NeetCode"
       - title: "HackerRank"
         url: /hackerrank/
         category: "HackerRank"
