@@ -1,0 +1,114 @@
+name: Dispatch Blog Sync
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Collect changed submission files
+        id: changes
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          zero_sha="0000000000000000000000000000000000000000"
+          if [ "${BEFORE_SHA:-}" = "$zero_sha" ] || [ -z "${BEFORE_SHA:-}" ]; then
+            changed_files="$(git show --pretty='' --name-only "$AFTER_SHA" || true)"
+          else
+            changed_files="$(git diff --name-only --diff-filter=AM "$BEFORE_SHA" "$AFTER_SHA" || true)"
+          fi
+
+          submission_files="$(printf '%s\n' "$changed_files" | grep '/submission-.*\.[^/]*$' || true)"
+
+          if [ -z "$submission_files" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<EOF"
+            printf '%s\n' "$submission_files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch blog sync events
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          BLOG_REPO_DISPATCH_TOKEN: ${{ secrets.BLOG_REPO_DISPATCH_TOKEN }}
+          SOURCE_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+          SYNCED_AT: ${{ github.event.head_commit.timestamp }}
+          CHANGED_FILES: ${{ steps.changes.outputs.files }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BLOG_REPO_DISPATCH_TOKEN:-}" ]; then
+            echo "BLOG_REPO_DISPATCH_TOKEN is required." >&2
+            exit 1
+          fi
+
+          sync_timestamp="${SYNCED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+
+          while IFS= read -r file_path; do
+            [ -z "$file_path" ] && continue
+
+            problem_slug="$(basename "$(dirname "$file_path")")"
+            extension="${file_path##*.}"
+
+            case "$extension" in
+              py) language="python" ;;
+              js) language="javascript" ;;
+              ts) language="typescript" ;;
+              java) language="java" ;;
+              cpp) language="cpp" ;;
+              cs) language="csharp" ;;
+              go) language="go" ;;
+              rs) language="rust" ;;
+              kt) language="kotlin" ;;
+              swift) language="swift" ;;
+              sql) language="sql" ;;
+              *) language="$extension" ;;
+            esac
+
+            payload="$(jq -nc \
+              --arg event_type "neetcode_submission_synced" \
+              --arg source_repo "$SOURCE_REPO" \
+              --arg source_sha "$SOURCE_SHA" \
+              --arg synced_at "$sync_timestamp" \
+              --arg problem_slug "$problem_slug" \
+              --arg language "$language" \
+              --arg submission_path "$file_path" \
+              '{
+                event_type: $event_type,
+                client_payload: {
+                  source_repo: $source_repo,
+                  source_sha: $source_sha,
+                  synced_at: $synced_at,
+                  problem_slug: $problem_slug,
+                  language: $language,
+                  submission_path: $submission_path
+                }
+              }')"
+
+            curl -fsSL \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $BLOG_REPO_DISPATCH_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              https://api.github.com/repos/devbattery/devbattery.github.io/dispatches \
+              -d "$payload"
+          done <<< "$CHANGED_FILES"

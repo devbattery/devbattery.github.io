@@ -1,0 +1,150 @@
+name: Sync NeetCode Post
+
+on:
+  repository_dispatch:
+    types:
+      - neetcode_submission_synced
+  workflow_dispatch:
+    inputs:
+      problem_slug:
+        description: Problem slug from NeetCode submissions
+        required: true
+        type: string
+      language:
+        description: Submission language
+        required: true
+        type: string
+      submission_path:
+        description: Path to the submission file in the source repository
+        required: true
+        type: string
+      source_sha:
+        description: Commit SHA in the source repository
+        required: true
+        type: string
+      problem_title:
+        description: Optional resolved problem title
+        required: false
+        type: string
+      synced_at:
+        description: Optional sync timestamp in ISO-8601
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: neetcode-blog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release
+
+      - name: Resolve dispatch payload
+        id: payload
+        env:
+          INPUT_PROBLEM_SLUG: ${{ inputs.problem_slug }}
+          INPUT_LANGUAGE: ${{ inputs.language }}
+          INPUT_SUBMISSION_PATH: ${{ inputs.submission_path }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_PROBLEM_TITLE: ${{ inputs.problem_title }}
+          INPUT_SYNCED_AT: ${{ inputs.synced_at }}
+          PAYLOAD_PROBLEM_SLUG: ${{ github.event.client_payload.problem_slug }}
+          PAYLOAD_LANGUAGE: ${{ github.event.client_payload.language }}
+          PAYLOAD_SUBMISSION_PATH: ${{ github.event.client_payload.submission_path }}
+          PAYLOAD_SOURCE_SHA: ${{ github.event.client_payload.source_sha }}
+          PAYLOAD_SOURCE_REPO: ${{ github.event.client_payload.source_repo }}
+          PAYLOAD_PROBLEM_TITLE: ${{ github.event.client_payload.problem_title }}
+          PAYLOAD_SYNCED_AT: ${{ github.event.client_payload.synced_at }}
+        run: |
+          set -euo pipefail
+
+          problem_slug="${INPUT_PROBLEM_SLUG:-${PAYLOAD_PROBLEM_SLUG:-}}"
+          language="${INPUT_LANGUAGE:-${PAYLOAD_LANGUAGE:-}}"
+          submission_path="${INPUT_SUBMISSION_PATH:-${PAYLOAD_SUBMISSION_PATH:-}}"
+          source_sha="${INPUT_SOURCE_SHA:-${PAYLOAD_SOURCE_SHA:-}}"
+          source_repo="${PAYLOAD_SOURCE_REPO:-devbattery/neetcode-submissions}"
+          problem_title="${INPUT_PROBLEM_TITLE:-${PAYLOAD_PROBLEM_TITLE:-}}"
+          synced_at="${INPUT_SYNCED_AT:-${PAYLOAD_SYNCED_AT:-}}"
+
+          if [ -z "$problem_slug" ] || [ -z "$language" ] || [ -z "$submission_path" ] || [ -z "$source_sha" ]; then
+            echo "Missing required NeetCode sync payload." >&2
+            exit 1
+          fi
+
+          if [ -z "$synced_at" ]; then
+            synced_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          fi
+
+          {
+            printf 'problem_slug=%s\n' "$problem_slug"
+            printf 'language=%s\n' "$language"
+            printf 'submission_path=%s\n' "$submission_path"
+            printf 'source_sha=%s\n' "$source_sha"
+            printf 'source_repo=%s\n' "$source_repo"
+            printf 'problem_title=%s\n' "$problem_title"
+            printf 'synced_at=%s\n' "$synced_at"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Checkout NeetCode source repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.payload.outputs.source_repo }}
+          ref: ${{ steps.payload.outputs.source_sha }}
+          path: .neetcode-source
+          fetch-depth: 0
+
+      - name: Sync post markdown
+        id: sync
+        env:
+          BLOG_ROOT: ${{ github.workspace }}
+          SOURCE_ROOT: ${{ github.workspace }}/.neetcode-source
+          SOURCE_REPO: ${{ steps.payload.outputs.source_repo }}
+          PROBLEM_SLUG: ${{ steps.payload.outputs.problem_slug }}
+          LANGUAGE: ${{ steps.payload.outputs.language }}
+          SUBMISSION_PATH: ${{ steps.payload.outputs.submission_path }}
+          SOURCE_SHA: ${{ steps.payload.outputs.source_sha }}
+          PROBLEM_TITLE: ${{ steps.payload.outputs.problem_title }}
+          SYNCED_AT: ${{ steps.payload.outputs.synced_at }}
+        run: |
+          set -euo pipefail
+          post_path="$(node scripts/sync-neetcode-post.mjs | tail -n 1)"
+          printf 'post_path=%s\n' "$post_path" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.3
+          bundler-cache: true
+
+      - name: Build site
+        run: bundle exec jekyll build
+
+      - name: Commit and push
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A _posts
+          if git diff --cached --quiet; then
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+            echo "No NeetCode post changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(neetcode): sync ${{ steps.payload.outputs.problem_slug }}"
+          git push origin release
+          echo "committed=true" >> "$GITHUB_OUTPUT"
