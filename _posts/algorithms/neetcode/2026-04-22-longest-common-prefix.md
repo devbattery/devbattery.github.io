@@ -15,8 +15,8 @@ toc_sticky: true
 sidebar:
   nav: "categories"
 
-date: 2026-04-22
-last_modified_at: 2026-04-22
+date: 2026-04-22T11:34:25+09:00
+last_modified_at: 2026-04-22T11:34:25+09:00
 neetcode_problem_slug: 'longest-common-prefix'
 neetcode_source_repo: 'devbattery/neetcode-submissions'
 ---

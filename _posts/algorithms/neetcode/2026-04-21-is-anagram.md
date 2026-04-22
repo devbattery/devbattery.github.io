@@ -15,8 +15,8 @@ toc_sticky: true
 sidebar:
   nav: "categories"
 
-date: 2026-04-21
-last_modified_at: 2026-04-21
+date: 2026-04-21T15:19:27+09:00
+last_modified_at: 2026-04-21T15:19:27+09:00
 neetcode_problem_slug: 'is-anagram'
 neetcode_source_repo: 'devbattery/neetcode-submissions'
 ---
