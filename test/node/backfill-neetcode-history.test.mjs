@@ -105,5 +105,7 @@ test("replays submission history into one post per problem with ordered attempts
   assert.match(alphaContent, /### Attempt 2 · 2026-04-02 · Python/);
   assert.match(alphaContent, /print\('alpha-0'\)/);
   assert.match(alphaContent, /print\('alpha-1'\)/);
+  assert.match(alphaContent, /date: 2026-04-01T09:00:00\+09:00/);
+  assert.match(alphaContent, /last_modified_at: 2026-04-02T10:30:00\+09:00/);
   assert.match(alphaContent, /neetcode_problem_slug: 'alpha-problem'/);
 });

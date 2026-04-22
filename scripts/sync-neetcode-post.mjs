@@ -9,13 +9,39 @@ function escapeRegex(input) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function formatSeoulDate(input) {
-  return new Intl.DateTimeFormat("en-CA", {
+function formatSeoulParts(input) {
+  const date = new Date(input);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid syncedAt timestamp: ${input}`);
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date(input));
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  return Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+}
+
+function formatSeoulDate(input) {
+  const { year, month, day } = formatSeoulParts(input);
+  return `${year}-${month}-${day}`;
+}
+
+function formatSeoulTimestamp(input) {
+  const { year, month, day, hour, minute, second } = formatSeoulParts(input);
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}+09:00`;
 }
 
 function titleizeSlug(slug) {
@@ -263,6 +289,7 @@ export async function syncNeetCodePost({
   await mkdir(postsDir, { recursive: true });
 
   const createdDate = formatSeoulDate(syncedAt);
+  const createdTimestamp = formatSeoulTimestamp(syncedAt);
   const existingPath = await findExistingPost(path.join(blogRoot, "_posts"), problemSlug);
   const filePath = existingPath || path.join(postsDir, `${createdDate}-${problemSlug}.md`);
   const title = (await titleResolver(problemSlug)) || titleizeSlug(problemSlug);
@@ -285,8 +312,8 @@ export async function syncNeetCodePost({
     const content = buildNewPost({
       title,
       excerpt,
-      createdDate,
-      modifiedDate: createdDate,
+      createdDate: createdTimestamp,
+      modifiedDate: createdTimestamp,
       problemSlug,
       sourceRepo,
       attemptBlock: attemptFactory(1),
@@ -306,7 +333,7 @@ export async function syncNeetCodePost({
   }
 
   let updatedFrontMatter = frontMatter;
-  updatedFrontMatter = upsertFrontMatter(updatedFrontMatter, "last_modified_at", createdDate);
+  updatedFrontMatter = upsertFrontMatter(updatedFrontMatter, "last_modified_at", createdTimestamp);
   updatedFrontMatter = upsertFrontMatter(updatedFrontMatter, "neetcode_problem_slug", quoteYaml(problemSlug));
   updatedFrontMatter = upsertFrontMatter(updatedFrontMatter, "neetcode_source_repo", quoteYaml(sourceRepo));
 
@@ -318,7 +345,7 @@ export async function syncNeetCodePost({
     );
   }
   if (!frontMatterValue(updatedFrontMatter, "date")) {
-    updatedFrontMatter = upsertFrontMatter(updatedFrontMatter, "date", createdDate);
+    updatedFrontMatter = upsertFrontMatter(updatedFrontMatter, "date", createdTimestamp);
   }
 
   const rebuilt = `---\n${updatedFrontMatter}\n---\n${updatedBody.startsWith("\n") ? "" : "\n"}${updatedBody}`;

@@ -71,9 +71,11 @@ test("creates one post per problem and appends later attempts", async () => {
 
   const updated = await readFile(secondResult.filePath, "utf8");
   assert.match(secondResult.filePath, /_posts\/algorithms\/neetcode\//);
+  assert.match(path.basename(secondResult.filePath), /^2026-04-21-is-anagram\.md$/);
   assert.match(updated, /categories:\n  - NeetCode/);
   assert.match(updated, /neetcode_problem_slug: 'is-anagram'/);
-  assert.match(updated, /last_modified_at: 2026-04-22/);
+  assert.match(updated, /date: 2026-04-21T09:00:00\+09:00/);
+  assert.match(updated, /last_modified_at: 2026-04-22T10:30:00\+09:00/);
   assert.match(updated, /Manual note stays here\./);
   assert.match(updated, /<!-- neetcode-attempt:abc1234:Data Structures & Algorithms\/is-anagram\/submission-0\.py -->/);
   assert.match(updated, /<!-- neetcode-attempt:def5678:Data Structures & Algorithms\/is-anagram\/submission-1\.py -->/);
@@ -116,4 +118,7 @@ test("supports env-driven execution and skips duplicate attempts", async () => {
   const content = await readFile(firstRun.filePath, "utf8");
   const attemptMatches = content.match(/<!-- neetcode-attempt:/g) || [];
   assert.equal(attemptMatches.length, 1);
+  assert.match(path.basename(firstRun.filePath), /^2026-04-23-two-integer-sum\.md$/);
+  assert.match(content, /date: 2026-04-23T08:00:00\+09:00/);
+  assert.match(content, /last_modified_at: 2026-04-23T08:00:00\+09:00/);
 });
