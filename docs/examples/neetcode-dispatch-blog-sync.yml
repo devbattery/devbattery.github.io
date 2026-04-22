@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Dispatch blog sync events
         env:
@@ -34,9 +36,9 @@ jobs:
 
           zero_sha="0000000000000000000000000000000000000000"
           if [ "${BEFORE_SHA:-}" = "$zero_sha" ] || [ -z "${BEFORE_SHA:-}" ]; then
-            changed_files="$(git show --pretty='' --name-only "$AFTER_SHA" || true)"
+            changed_files="$(git show --pretty='' --name-only "$AFTER_SHA")"
           else
-            changed_files="$(git diff --name-only --diff-filter=AM "$BEFORE_SHA" "$AFTER_SHA" || true)"
+            changed_files="$(git diff --name-only --diff-filter=AM "$BEFORE_SHA" "$AFTER_SHA")"
           fi
 
           submission_files="$(printf '%s\n' "$changed_files" | grep '/submission-.*\.[^/]*$' || true)"
