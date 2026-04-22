@@ -49,4 +49,25 @@ class Solution:
         return list(answer.values())
 ```
 
+<!-- neetcode-attempt:b1d69f0cb02a7978acc0f076b89f039b68980de2:Data Structures & Algorithms/anagram-groups/submission-2.py -->
+### Attempt 2 · 2026-04-22 · Python
+
+- Commit: [`b1d69f0`](https://github.com/devbattery/neetcode-submissions/commit/b1d69f0cb02a7978acc0f076b89f039b68980de2)
+- Source: [`Data Structures & Algorithms/anagram-groups/submission-2.py`](https://github.com/devbattery/neetcode-submissions/blob/b1d69f0cb02a7978acc0f076b89f039b68980de2/Data%20Structures%20%26%20Algorithms/anagram-groups/submission-2.py)
+
+```python
+class Solution:
+    def groupAnagrams(self, strs: List[str]) -> List[List[str]]:
+        answer = defaultdict(list)
+
+        for s in strs:
+            cnt = [0] * 26  # a to z
+
+            for c in s:
+                cnt[ord(c) - ord('a')] += 1  # a: 0, b: 1, ...
+            
+            answer[tuple(cnt)].append(s)  # key of defaultdict(list) can't be list
+        
+        return list(answer.values())
+```
 <!-- neetcode-attempts:end -->
