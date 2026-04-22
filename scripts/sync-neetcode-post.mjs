@@ -223,7 +223,7 @@ function buildNewPost({
   ].join("\n");
 }
 
-async function fetchProblemTitle(problemSlug) {
+export async function fetchProblemTitle(problemSlug) {
   try {
     const response = await fetch(`https://neetcode.io/solutions/${problemSlug}`);
     if (!response.ok) {
@@ -256,6 +256,7 @@ export async function syncNeetCodePost({
   submissionPath,
   sourceSha,
   syncedAt,
+  sourceCode,
   titleResolver = async (slug) => titleizeSlug(slug),
 }) {
   const postsDir = path.join(blogRoot, ...POSTS_ROOT);
@@ -265,7 +266,7 @@ export async function syncNeetCodePost({
   const existingPath = await findExistingPost(path.join(blogRoot, "_posts"), problemSlug);
   const filePath = existingPath || path.join(postsDir, `${createdDate}-${problemSlug}.md`);
   const title = (await titleResolver(problemSlug)) || titleizeSlug(problemSlug);
-  const code = await readFile(path.join(sourceRoot, submissionPath), "utf8");
+  const code = sourceCode ?? (await readFile(path.join(sourceRoot, submissionPath), "utf8"));
   const excerpt = `NeetCode synced attempts for ${title}.`;
   const attemptDate = createdDate;
 
