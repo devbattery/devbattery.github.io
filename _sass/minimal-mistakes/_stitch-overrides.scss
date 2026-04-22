@@ -745,6 +745,7 @@ html[data-theme="dark"] .nav__child-link.active {
 .db-featured-post__content,
 .db-archive-item__content {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 0.7rem;
   padding: clamp(0.9rem, 1.5vw, 1.25rem);
@@ -754,10 +755,32 @@ html[data-theme="dark"] .nav__child-link.active {
 .archive__item-title {
   margin: 0;
   line-height: 1.1;
+  height: calc(2 * 1.1em);
 }
 
 .db-featured-post__title {
   font-size: clamp(1.45rem, 1.8vw, 2.2rem);
+}
+
+.archive__item-title a {
+  display: -webkit-box;
+  overflow: hidden;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.archive__item-excerpt {
+  display: -webkit-box;
+  height: calc(3 * 1.72em);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.db-archive-item__tags {
+  margin-top: auto;
 }
 
 .archive__subtitle {
