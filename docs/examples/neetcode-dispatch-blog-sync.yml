@@ -72,22 +72,20 @@ jobs:
             esac
 
             payload="$(jq -nc \
-              --arg event_type "neetcode_submission_synced" \
-              --arg source_repo "$SOURCE_REPO" \
-              --arg source_sha "$SOURCE_SHA" \
-              --arg synced_at "$sync_timestamp" \
+              --arg ref "release" \
               --arg problem_slug "$problem_slug" \
               --arg language "$language" \
               --arg submission_path "$file_path" \
+              --arg source_sha "$SOURCE_SHA" \
+              --arg synced_at "$sync_timestamp" \
               '{
-                event_type: $event_type,
-                client_payload: {
-                  source_repo: $source_repo,
-                  source_sha: $source_sha,
-                  synced_at: $synced_at,
+                ref: $ref,
+                inputs: {
                   problem_slug: $problem_slug,
                   language: $language,
-                  submission_path: $submission_path
+                  submission_path: $submission_path,
+                  source_sha: $source_sha,
+                  synced_at: $synced_at
                 }
               }')"
 
@@ -96,6 +94,6 @@ jobs:
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer $BLOG_REPO_DISPATCH_TOKEN" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
-              https://api.github.com/repos/devbattery/devbattery.github.io/dispatches \
+              https://api.github.com/repos/devbattery/devbattery.github.io/actions/workflows/sync-neetcode-post.yml/dispatches \
               -d "$payload"
           done <<< "$submission_files"
