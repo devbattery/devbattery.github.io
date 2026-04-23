@@ -117,13 +117,39 @@ jobs:
               return `post-${issueNumber}`;
             }
 
-            function formatDate(input) {
-              return new Intl.DateTimeFormat("en-CA", {
+            function formatSeoulParts(input) {
+              const date = new Date(input);
+
+              if (Number.isNaN(date.getTime())) {
+                throw new Error(`유효하지 않은 날짜입니다: ${input}`);
+              }
+
+              const parts = new Intl.DateTimeFormat("en-CA", {
                 timeZone: "Asia/Seoul",
                 year: "numeric",
                 month: "2-digit",
-                day: "2-digit"
-              }).format(input);
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false
+              }).formatToParts(date);
+
+              return Object.fromEntries(
+                parts
+                  .filter((part) => part.type !== "literal")
+                  .map((part) => [part.type, part.value])
+              );
+            }
+
+            function formatDate(input) {
+              const { year, month, day } = formatSeoulParts(input);
+              return `${year}-${month}-${day}`;
+            }
+
+            function formatTimestamp(input) {
+              const { year, month, day, hour, minute, second } = formatSeoulParts(input);
+              return `${year}-${month}-${day}T${hour}:${minute}:${second}+09:00`;
             }
 
             function resolveDate(raw, fallback, fieldName) {
@@ -132,16 +158,22 @@ jobs:
                 return fallback;
               }
 
-              const isValidFormat = /^\d{4}-\d{2}-\d{2}$/.test(value);
-              const parsed = new Date(`${value}T00:00:00+09:00`);
-              const isValidDate = !Number.isNaN(parsed.getTime());
+              if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                const parsed = new Date(`${value}T00:00:00+09:00`);
+                if (Number.isNaN(parsed.getTime())) {
+                  core.warning(`${fieldName} 형식이 올바르지 않아 기본값을 사용합니다: ${value}`);
+                  return fallback;
+                }
+                return `${value}T00:00:00+09:00`;
+              }
 
-              if (!isValidFormat || !isValidDate) {
+              const parsed = new Date(value);
+              if (Number.isNaN(parsed.getTime())) {
                 core.warning(`${fieldName} 형식이 올바르지 않아 기본값을 사용합니다: ${value}`);
                 return fallback;
               }
 
-              return value;
+              return formatTimestamp(parsed);
             }
 
             function sanitizeFolder(raw) {
@@ -269,19 +301,20 @@ jobs:
               categories.push("TIL");
             }
 
-            const createdDate = resolveDate(
+            const createdTimestamp = resolveDate(
               dateInput,
-              formatDate(new Date(issue.created_at)),
+              formatTimestamp(issue.created_at),
               "작성일"
             );
-            const modifiedDate = resolveDate(
+            const modifiedTimestamp = resolveDate(
               lastModifiedInput,
-              formatDate(new Date()),
+              formatTimestamp(issue.updated_at || new Date()),
               "수정일"
             );
+            const fileDate = createdTimestamp.slice(0, 10);
             const slug = resolveSlug(fileSlugInput, title);
             const folder = resolveFolder(categories, folderInput);
-            const fileName = `${createdDate}-${slug}.md`;
+            const fileName = `${fileDate}-${slug}.md`;
             const targetPath = folder
               ? path.join(postsDir, folder, fileName)
               : path.join(postsDir, fileName);
@@ -323,8 +356,8 @@ jobs:
             lines.push("sidebar:");
             lines.push('  nav: "categories"');
             lines.push("");
-            lines.push(`date: ${createdDate}`);
-            lines.push(`last_modified_at: ${modifiedDate}`);
+            lines.push(`date: ${createdTimestamp}`);
+            lines.push(`last_modified_at: ${modifiedTimestamp}`);
             lines.push(`issue_id: ${issueNumber}`);
             lines.push("---");
             lines.push("");
