@@ -125,6 +125,7 @@ exclude:
   - README
   - tmp
   - /docs
+  - /output
   - /test
 keep_files:
   - .git

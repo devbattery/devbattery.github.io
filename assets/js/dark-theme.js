@@ -126,11 +126,14 @@
     var nextActionLabel = isDarkMode
       ? "Switch to light mode"
       : "Switch to dark mode";
-    var iconClass = "fa-solid fa-fw fa-circle-half-stroke";
+    var iconClass = isDarkMode
+      ? "fa-solid fa-fw fa-sun"
+      : "fa-solid fa-fw fa-moon";
 
     toggleThemeBtn.setAttribute("aria-label", nextActionLabel);
     toggleThemeBtn.setAttribute("title", nextActionLabel);
     toggleThemeBtn.setAttribute("aria-pressed", isDarkMode ? "true" : "false");
+    toggleThemeBtn.setAttribute("data-theme-state", theme);
     toggleThemeBtn.innerHTML =
       '<i class="' +
       iconClass +

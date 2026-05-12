@@ -23,7 +23,7 @@ textarea {
     "Noto Sans KR",
     "Segoe UI",
     sans-serif;
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -81,7 +81,7 @@ h6 {
     "Apple SD Gothic Neo",
     "Noto Sans KR",
     sans-serif;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 code,
@@ -472,7 +472,7 @@ samp {
     color: mix($text-color, $primary-color, 78%);
     font-size: 0.86rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     background: transparent;
   }
 

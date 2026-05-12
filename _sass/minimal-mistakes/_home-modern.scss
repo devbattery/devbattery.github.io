@@ -36,7 +36,7 @@
 
   .archive .page__title {
     margin-bottom: 0.35rem;
-    letter-spacing: -0.04em;
+    letter-spacing: 0;
     line-height: 0.95;
     font-size: clamp(2.2rem, 4vw, 3.4rem);
   }
@@ -135,7 +135,7 @@
     margin-bottom: 0;
     font-size: clamp(1.12rem, calc(1rem + 0.35vw), 1.45rem);
     line-height: 1.24;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
   }
 
   .grid__item .archive__item-title a[rel="permalink"] {

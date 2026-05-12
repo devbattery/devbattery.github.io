@@ -3,13 +3,13 @@
    ========================================================================== */
 
 /* Colors */
-$background-color: #121212 !default;
-$text-color: #e4e4e4 !default;
-$primary-color: #3bb73f !default;
+$background-color: #0f1220 !default;
+$text-color: #e7eaf6 !default;
+$primary-color: #9aa8ff !default;
 $focus-color: $primary-color !default;
 $border-color: mix(#fff, $background-color, 20%) !default;
-$code-background-color: #363636 !default;
-$code-background-color-dark: #363636 !default;
+$code-background-color: #111626 !default;
+$code-background-color-dark: #111626 !default;
 $form-background-color: mix(#000, $background-color, 15%) !default;
 $footer-background-color: mix(#000, $background-color, 30%) !default;
 $link-color: mix($primary-color, $text-color, 40%) !default;
