@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] Is Anagram'
-excerpt: 'NeetCode synced attempts for Is Anagram.'
+excerpt: 'Synced attempt history for Is Anagram.'
 
 categories:
   - NeetCode

@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] Duplicate Integer'
-excerpt: 'NeetCode synced attempts for Duplicate Integer.'
+excerpt: 'Synced attempt history for Duplicate Integer.'
 
 categories:
   - NeetCode

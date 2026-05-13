@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] 706. Design HashMap'
-excerpt: 'NeetCode synced attempts for 706. Design HashMap.'
+excerpt: 'Synced attempt history for LeetCode 706: Design HashMap.'
 
 categories:
   - NeetCode

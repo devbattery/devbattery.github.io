@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] 14. Longest Common Prefix'
-excerpt: 'NeetCode synced attempts for 14. Longest Common Prefix.'
+excerpt: 'Synced attempt history for LeetCode 14: Longest Common Prefix.'
 
 categories:
   - NeetCode

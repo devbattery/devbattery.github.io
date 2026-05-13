@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] 1929. Concatenation of Array'
-excerpt: 'NeetCode synced attempts for 1929. Concatenation of Array.'
+excerpt: 'Synced attempt history for LeetCode 1929: Concatenation of Array.'
 
 categories:
   - NeetCode

@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] 912. Sort an Array'
-excerpt: 'NeetCode synced attempts for 912. Sort an Array.'
+excerpt: 'Synced attempt history for LeetCode 912: Sort an Array.'
 
 categories:
   - NeetCode

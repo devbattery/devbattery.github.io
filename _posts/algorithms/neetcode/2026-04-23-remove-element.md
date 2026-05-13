@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] 27. Remove Element'
-excerpt: 'NeetCode synced attempts for 27. Remove Element.'
+excerpt: 'Synced attempt history for LeetCode 27: Remove Element.'
 
 categories:
   - NeetCode

@@ -52,6 +52,15 @@ function titleizeSlug(slug) {
     .join(" ");
 }
 
+function buildExcerptTitle(title) {
+  const leetcodeTitle = title.match(/^(\d+)\.\s+(.+)$/);
+  if (leetcodeTitle) {
+    return `LeetCode ${leetcodeTitle[1]}: ${leetcodeTitle[2]}`;
+  }
+
+  return title;
+}
+
 function languageLabel(language) {
   const raw = String(language || "").trim().toLowerCase();
   if (!raw) {
@@ -294,7 +303,7 @@ export async function syncNeetCodePost({
   const filePath = existingPath || path.join(postsDir, `${createdDate}-${problemSlug}.md`);
   const title = (await titleResolver(problemSlug)) || titleizeSlug(problemSlug);
   const code = sourceCode ?? (await readFile(path.join(sourceRoot, submissionPath), "utf8"));
-  const excerpt = `NeetCode synced attempts for ${title}.`;
+  const excerpt = `Synced attempt history for ${buildExcerptTitle(title)}.`;
   const attemptDate = createdDate;
 
   const attemptFactory = (attemptNumber) =>

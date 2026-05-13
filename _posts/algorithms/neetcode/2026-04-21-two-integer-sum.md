@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] Two Integer Sum'
-excerpt: 'NeetCode synced attempts for Two Integer Sum.'
+excerpt: 'Synced attempt history for Two Integer Sum.'
 
 categories:
   - NeetCode

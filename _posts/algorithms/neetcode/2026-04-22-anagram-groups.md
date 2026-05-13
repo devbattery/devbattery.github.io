@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] Anagram Groups'
-excerpt: 'NeetCode synced attempts for Anagram Groups.'
+excerpt: 'Synced attempt history for Anagram Groups.'
 
 categories:
   - NeetCode

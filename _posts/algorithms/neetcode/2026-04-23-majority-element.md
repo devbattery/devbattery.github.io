@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] 169. Majority Element'
-excerpt: 'NeetCode synced attempts for 169. Majority Element.'
+excerpt: 'Synced attempt history for LeetCode 169: Majority Element.'
 
 categories:
   - NeetCode

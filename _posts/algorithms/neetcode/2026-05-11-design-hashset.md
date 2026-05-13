@@ -1,6 +1,6 @@
 ---
 title: '[NeetCode] 705. Design HashSet'
-excerpt: 'NeetCode synced attempts for 705. Design HashSet.'
+excerpt: 'Synced attempt history for LeetCode 705: Design HashSet.'
 
 categories:
   - NeetCode
