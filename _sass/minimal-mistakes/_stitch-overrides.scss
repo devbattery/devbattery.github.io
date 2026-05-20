@@ -1800,7 +1800,7 @@ html[data-theme="dark"] .db-dashboard-charge {
   box-shadow: var(--db-shadow-strong);
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -0.45rem);
+  transform: translate(-50%, 0.25rem);
   transition:
     opacity 100ms ease,
     transform 100ms ease;
@@ -1808,7 +1808,7 @@ html[data-theme="dark"] .db-dashboard-charge {
 
 .db-momentum-tooltip.is-visible {
   opacity: 1;
-  transform: translate(-50%, -0.75rem);
+  transform: translate(-50%, 0);
 }
 
 .db-momentum-tooltip::after {

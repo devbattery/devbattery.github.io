@@ -214,7 +214,7 @@
   function positionMomentumTooltip(cell, tooltip) {
     var rect = cell.getBoundingClientRect();
     var x = rect.left + rect.width / 2;
-    var y = rect.top - 10;
+    var y = rect.top - tooltip.offsetHeight - 8;
     tooltip.style.left = x + "px";
     tooltip.style.top = y + "px";
   }
