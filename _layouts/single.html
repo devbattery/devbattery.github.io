@@ -39,6 +39,7 @@ layout: default
             <p class="db-single__lede">{{ page.excerpt | markdownify | strip_html }}</p>
           {% endif %}
           {% include page__meta.html context="header" %}
+          {% include post-metrics.html context="header" increment_views=true %}
           {% if page.tags[0] or page.categories[0] %}
             <div class="db-single__taxonomy">
               {% include page__taxonomy.html %}

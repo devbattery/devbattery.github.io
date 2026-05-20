@@ -4,64 +4,181 @@ layout: archive
 
 {% if paginator %}
   {% assign posts = paginator.posts %}
+  {% assign current_page = paginator.page %}
+  {% assign total_pages = paginator.total_pages %}
 {% else %}
   {% assign posts = site.posts %}
+  {% assign current_page = 1 %}
+  {% assign total_pages = 1 %}
 {% endif %}
-
-{% assign show_featured_post = true %}
-{% if paginator and paginator.page != 1 %}
-  {% assign show_featured_post = false %}
-{% endif %}
-
-{% if show_featured_post %}
-  {% assign featured_post = posts.first %}
-{% else %}
-  {% assign featured_post = nil %}
-{% endif %}
-
-<header class="db-archive-hero db-archive-hero--home">
-  <p class="db-archive-hero__eyebrow">Engineering Notes</p>
-  <h1 class="page__title">{{ site.title }}</h1>
-  <p class="db-archive-hero__lede">{{ site.description }}</p>
-</header>
-
-{{ content }}
-
-{% if featured_post %}
-  {%- assign post = featured_post -%}
-  {%- capture _auto_teaser -%}{% include auto-teaser-path.html %}{%- endcapture -%}
-  {%- assign _auto_teaser = _auto_teaser | strip -%}
-  {%- assign featured_teaser = featured_post.header.teaser | default: _auto_teaser | default: site.teaser -%}
-  <article class="db-featured-post">
-    {% if featured_teaser %}
-      <a class="db-featured-post__media" href="{{ featured_post.url | relative_url }}" rel="permalink">
-        <img src="{{ featured_teaser | relative_url }}" alt="">
-      </a>
-    {% endif %}
-    <div class="db-featured-post__content">
-      {% if featured_post.categories[0] %}
-        <span class="db-eyebrow-chip">{{ featured_post.categories[0] }}</span>
-      {% endif %}
-      <h2 class="db-featured-post__title">
-        <a href="{{ featured_post.url | relative_url }}" rel="permalink">{{ featured_post.title }}</a>
-      </h2>
-      {% if featured_post.excerpt %}
-        <p class="db-featured-post__excerpt">{{ featured_post.excerpt | markdownify | strip_html | truncate: 240 }}</p>
-      {% endif %}
-      <div class="db-featured-post__meta">
-        {% include page__meta.html document=featured_post type="featured" %}
-      </div>
-    </div>
-  </article>
-{% endif %}
-
-<h3 class="archive__subtitle">{{ site.data.ui-text[site.locale].recent_posts | default: "Recent Posts" }}</h3>
 
 {% assign entries_layout = page.entries_layout | default: 'grid' %}
-<div class="entries-{{ entries_layout }}">
-  {% for post in posts %}
-    {% include archive-single.html type=entries_layout %}
-  {% endfor %}
-</div>
+{% assign total_posts = site.posts | size %}
+{% assign newest_post = site.posts | first %}
+{% assign dashboard_author = site.author %}
+{% assign supabase_ready = false %}
+{% if site.supabase.url and site.supabase.url != "" and site.supabase.anon_key and site.supabase.anon_key != "" %}
+  {% assign supabase_ready = true %}
+{% endif %}
 
-{% include paginator.html %}
+<div class="db-dashboard">
+  <aside class="db-dashboard__sidebar" aria-label="Dev Battery dashboard">
+    <section class="db-dashboard-card db-dashboard-profile">
+      <div class="db-dashboard-profile__identity">
+        {% if dashboard_author.avatar %}
+          <img
+            class="db-dashboard-profile__avatar"
+            src="{{ dashboard_author.avatar | relative_url }}"
+            alt="{{ dashboard_author.name | default: site.title }}"
+          >
+        {% else %}
+          <div class="db-dashboard-profile__avatar" aria-hidden="true">
+            <i class="fa-solid fa-user-astronaut"></i>
+          </div>
+        {% endif %}
+        <div>
+          <h2>{{ dashboard_author.name | default: site.title }}</h2>
+          <p>{{ dashboard_author.bio | default: "Backend engineering notes" }}</p>
+          <span>Continuous practice mode</span>
+        </div>
+      </div>
+
+      <div class="db-dashboard-energy">
+        <div class="db-dashboard-energy__label">
+          <span>Learning Capacity</span>
+          <strong data-dashboard-battery-text>78%</strong>
+        </div>
+        <div class="db-dashboard-energy__track" aria-hidden="true">
+          <span data-dashboard-battery-fill></span>
+        </div>
+        <p>Reading, searching, and interacting with posts charges your local profile.</p>
+      </div>
+
+      <button class="db-dashboard-charge" type="button" data-dashboard-charge="10">
+        <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+        <span>Charge +10%</span>
+      </button>
+    </section>
+
+    <section class="db-dashboard-card db-dashboard-integrations">
+      <div class="db-dashboard-card__heading">
+        <span><i class="fa-solid fa-microchip" aria-hidden="true"></i> Integrations</span>
+        <strong>Hybrid Jekyll</strong>
+      </div>
+      <dl>
+        <div>
+          <dt>Local gauge / level</dt>
+          <dd>Browser LocalStorage</dd>
+          <span>Active</span>
+        </div>
+        <div>
+          <dt>Global views & likes</dt>
+          <dd>Supabase RPC + RLS</dd>
+          <span class="{% if supabase_ready %}is-active{% else %}is-waiting{% endif %}">
+            {% if supabase_ready %}Connected{% else %}Waiting for keys{% endif %}
+          </span>
+        </div>
+      </dl>
+    </section>
+
+    <section class="db-dashboard-card db-dashboard-categories">
+      <h2><i class="fa-solid fa-folder-tree" aria-hidden="true"></i> Categories</h2>
+      <nav aria-label="Categories">
+        <a href="{{ '/' | relative_url }}" class="is-active">
+          <span>All</span>
+          <strong>{{ total_posts }}</strong>
+        </a>
+        {% assign sorted_categories = site.categories | sort %}
+        {% for category in sorted_categories %}
+          {% assign category_name = category[0] %}
+          {% assign category_posts = category[1] %}
+          <a href="{{ category_name | slugify | prepend: '/' | append: '/' | relative_url }}">
+            <span>{{ category_name }}</span>
+            <strong>{{ category_posts | size }}</strong>
+          </a>
+        {% endfor %}
+      </nav>
+    </section>
+  </aside>
+
+  <section class="db-dashboard__main" aria-label="Post feed">
+    <header class="db-dashboard-hero">
+      <div>
+        <p>Engineering Notes</p>
+        <h1>{{ site.title }}</h1>
+        <span>{{ site.description }}</span>
+      </div>
+      <div class="db-dashboard-hero__stats" aria-label="Site statistics">
+        <span><strong>{{ total_posts }}</strong> articles</span>
+        <span><strong>{{ site.categories | size }}</strong> categories</span>
+        <span><strong>LV <span data-dashboard-level>1</span></strong> local profile</span>
+      </div>
+    </header>
+
+    <section class="db-dashboard-card db-momentum" aria-label="Practice calendar">
+      <div class="db-momentum__header">
+        <div>
+          <h2><i class="fa-regular fa-calendar" aria-hidden="true"></i> Practice Calendar</h2>
+          <p>Recent reading momentum visualized as a compact contribution grid.</p>
+        </div>
+        <strong>{{ "now" | date: "%Y.%m.%d" }} active</strong>
+      </div>
+
+      <div class="db-momentum__grid" aria-hidden="true">
+        {% for week in (1..28) %}
+          <div>
+            {% for day in (1..7) %}
+              {% assign intensity = week | plus: day | plus: forloop.index0 | modulo: 5 %}
+              <span class="db-momentum__cell db-momentum__cell--{{ intensity }}"></span>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="db-momentum__legend">
+        <span>Idle</span>
+        <span class="db-momentum__legend-cells">
+          <i class="db-momentum__cell db-momentum__cell--0"></i>
+          <i class="db-momentum__cell db-momentum__cell--1"></i>
+          <i class="db-momentum__cell db-momentum__cell--2"></i>
+          <i class="db-momentum__cell db-momentum__cell--3"></i>
+          <i class="db-momentum__cell db-momentum__cell--4"></i>
+        </span>
+        <span>Charged</span>
+      </div>
+    </section>
+
+    {% if newest_post %}
+      <section class="db-dashboard-latest">
+        <div>
+          <span>Latest signal</span>
+          <h2><a href="{{ newest_post.url | relative_url }}">{{ newest_post.title }}</a></h2>
+        </div>
+        {% include page__meta.html document=newest_post type="featured" %}
+      </section>
+    {% endif %}
+
+    <div class="db-feed-heading">
+      <div>
+        <h2>Technical Articles</h2>
+        <span>{{ posts | size }} shown on page {{ current_page }} of {{ total_pages }}</span>
+      </div>
+      {% if site.search == true %}
+        <button class="search__toggle db-feed-heading__search" type="button">
+          <i class="fas fa-search" aria-hidden="true"></i>
+          <span>Search</span>
+        </button>
+      {% endif %}
+    </div>
+
+    {{ content }}
+
+    <div class="entries-{{ entries_layout }} db-dashboard-feed">
+      {% for post in posts %}
+        {% include archive-single.html type=entries_layout %}
+      {% endfor %}
+    </div>
+
+    {% include paginator.html %}
+  </section>
+</div>

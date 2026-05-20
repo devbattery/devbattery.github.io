@@ -2,11 +2,16 @@
   <div class="masthead__inner-wrap">
     <div class="masthead__menu">
       <nav id="site-nav" class="greedy-nav">
-        <a class="site-title" href="{{ '/' | relative_url }}">
-          <span class="db-topbar__brand">{{ site.masthead_title | default: site.title }}</span>
-          {% if site.subtitle %}
-            <span class="site-subtitle">{{ site.subtitle }}</span>
-          {% endif %}
+        <a class="site-title db-battery-brand" href="{{ '/' | relative_url }}">
+          <span class="db-battery-brand__cell" aria-hidden="true">
+            <span class="db-battery-brand__fill" data-dashboard-battery-fill></span>
+          </span>
+          <span class="db-battery-brand__copy">
+            <span class="db-topbar__brand">{{ site.masthead_title | default: site.title }}</span>
+            {% if site.subtitle %}
+              <span class="site-subtitle">{{ site.subtitle }}</span>
+            {% endif %}
+          </span>
         </a>
 
         <div class="db-topbar__dock" aria-label="Primary navigation">
@@ -40,6 +45,10 @@
             <a class="db-topbar__icon db-topbar__icon-link" href="{{ '/tags/' | relative_url }}" aria-label="Tags" title="Tags">
               <i class="fa-solid fa-fw fa-bookmark" aria-hidden="true"></i>
             </a>
+            <span class="db-topbar__level" title="Local reading level">
+              <span class="db-topbar__pulse" aria-hidden="true"></span>
+              LV <span data-dashboard-level>1</span>
+            </span>
             {% if site.search == true %}
               <button class="search__toggle db-topbar__icon" type="button">
                 <span class="visually-hidden">{{ site.data.ui-text[site.locale].search_label | default: "Toggle search" }}</span>

@@ -32,3 +32,18 @@ analytics.html %} {% include comments-providers/scripts.html %}
 {% if site.after_footer_scripts %} {% for script in site.after_footer_scripts %}
 <script src="{{ script | relative_url }}"></script>
 {% endfor %} {% endif %}
+<script src="{{ '/assets/js/dashboard-energy.js' | relative_url }}"></script>
+
+{% assign supabase_url = site.supabase.url | default: "" %}
+{% assign supabase_anon_key = site.supabase.anon_key | default: "" %}
+{% if supabase_url != "" and supabase_anon_key != "" %}
+<script>
+  window.DEV_BLOG_SUPABASE = {
+    url: "{{ supabase_url | escape }}",
+    anonKey: "{{ supabase_anon_key | escape }}",
+    metricsTable: "{{ site.supabase.metrics_table | default: 'dev_blog_metrics' | escape }}"
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="{{ '/assets/js/post-metrics.js' | relative_url }}"></script>
+{% endif %}

@@ -18,6 +18,13 @@ logo: "assets/images/nature.png"
 words_per_minute: 200
 linkedin_url: "https://www.linkedin.com/in/wonjun-jeong-095b823a4?utm_source=share_via&utm_content=profile&utm_medium=member_ios"
 
+# Supabase-backed post metrics. The anon key is intentionally public; keep
+# writes constrained with the RLS policies and RPC functions in supabase/.
+supabase:
+  url: "https://esmjkgtpryykjttewqqj.supabase.co"
+  anon_key: "sb_publishable_HofZIUYPB5Zo0S2zNilmCQ_OyY_lwfn"
+  metrics_table: "dev_blog_metrics"
+
 # Comments Settings
 comments:
   provider: "giscus"

@@ -1,0 +1,29 @@
+{% assign metrics_document = include.document | default: post | default: page %}
+{% assign metrics_post_id = metrics_document.id | default: metrics_document.url %}
+{% assign supabase_url = site.supabase.url | default: "" %}
+{% assign supabase_anon_key = site.supabase.anon_key | default: "" %}
+
+{% if supabase_url != "" and supabase_anon_key != "" and metrics_post_id and metrics_document.collection == "posts" %}
+<div
+  class="db-post-metrics db-post-metrics--{{ include.context | default: 'inline' }}"
+  data-post-metrics
+  data-post-id="{{ metrics_post_id | strip | escape }}"
+  {% if include.increment_views %}data-increment-views="true"{% endif %}
+>
+  <button
+    class="db-post-metrics__item db-post-metrics__button"
+    type="button"
+    data-post-like
+    aria-label="Like this post"
+    aria-pressed="false"
+  >
+    <i class="fas fa-heart" aria-hidden="true"></i>
+    <span data-post-likes>0</span>
+  </button>
+  <span class="db-post-metrics__item" aria-label="Post views">
+    <i class="fas fa-eye" aria-hidden="true"></i>
+    <span data-post-views>0</span>
+  </span>
+  <span class="db-post-metrics__status" data-post-metrics-status aria-live="polite"></span>
+</div>
+{% endif %}
