@@ -58,12 +58,12 @@
         if (!postId || button.getAttribute("data-pending") === "true") return;
 
         if (likedPosts[postId]) {
-          setStatus(postId, "이미 이 브라우저에서 좋아요를 눌렀습니다.");
+          setStatus(postId, "Already liked");
           return;
         }
 
         button.setAttribute("data-pending", "true");
-        setStatus(postId, "좋아요 저장 중.");
+        setStatus(postId, "Saving...");
 
         client
           .rpc("increment_post_like", { p_post_id: postId })
@@ -74,10 +74,11 @@
             writeLikedPosts();
             renderMetrics(postId, row);
             syncLikedState(postId);
-            setStatus(postId, "좋아요 저장 완료.");
+            awardEnergy(5, "like:" + postId);
+            setStatus(postId, "Liked");
           })
           .catch(function () {
-            setStatus(postId, "좋아요 저장에 실패했습니다.", true);
+            setStatus(postId, "Could not like", true);
           })
           .finally(function () {
             button.removeAttribute("data-pending");
@@ -155,10 +156,15 @@
       button.setAttribute("aria-pressed", isLiked ? "true" : "false");
       button.setAttribute(
         "aria-label",
-        isLiked ? "이미 좋아요를 누른 글" : "이 글 좋아요"
+        isLiked ? "Already liked" : "Like this post"
       );
-      button.title = isLiked ? "이미 좋아요를 누른 글" : "이 글 좋아요";
+      button.title = isLiked ? "Already liked" : "Like this post";
     });
+  }
+
+  function awardEnergy(amount, key) {
+    if (!window.DevBatteryEnergy || !window.DevBatteryEnergy.award) return;
+    window.DevBatteryEnergy.award(amount, key);
   }
 
   function setStatus(postId, message, persist) {
