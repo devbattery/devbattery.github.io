@@ -16,7 +16,7 @@ sidebar:
   nav: "categories"
 
 date: 2026-05-20T18:10:00+09:00
-last_modified_at: 2026-05-20T18:10:00+09:00
+last_modified_at: 2026-05-20T18:11:39+09:00
 neetcode_problem_slug: 'top-k-elements-in-list'
 neetcode_source_repo: 'devbattery/neetcode-submissions'
 ---
@@ -55,4 +55,27 @@ class Solution:
                     return answer
 ```
 
+<!-- neetcode-attempt:ccada537d0631104a59276d9e7b68863721a4bd4:Data Structures & Algorithms/top-k-elements-in-list/submission-2.py -->
+### Attempt 2 · 2026-05-20 · Python
+
+- Commit: [`ccada53`](https://github.com/devbattery/neetcode-submissions/commit/ccada537d0631104a59276d9e7b68863721a4bd4)
+- Source: [`Data Structures & Algorithms/top-k-elements-in-list/submission-2.py`](https://github.com/devbattery/neetcode-submissions/blob/ccada537d0631104a59276d9e7b68863721a4bd4/Data%20Structures%20%26%20Algorithms/top-k-elements-in-list/submission-2.py)
+
+```python
+class Solution:
+    def topKFrequent(self, nums: List[int], k: int) -> List[int]:
+        cnt_dict = collections.Counter(nums)
+        buckets = [[] for _ in range(len(nums) + 1)]  # 0 to len(nums)
+
+        for num, freq in cnt_dict.items():
+            buckets[freq].append(num)  # num by freq
+        
+        answer = []
+        for i in range(len(buckets) - 1, 0, -1):
+            for num in buckets[i]:
+                answer.append(num)
+
+                if k == len(answer):
+                    return answer
+```
 <!-- neetcode-attempts:end -->
