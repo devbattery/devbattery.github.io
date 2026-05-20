@@ -14,12 +14,9 @@ layout: archive
 
 {% assign entries_layout = page.entries_layout | default: 'grid' %}
 {% assign total_posts = site.posts | size %}
-{% assign newest_post = site.posts | first %}
 {% assign dashboard_author = site.author %}
-{% assign supabase_ready = false %}
-{% if site.supabase.url and site.supabase.url != "" and site.supabase.anon_key and site.supabase.anon_key != "" %}
-  {% assign supabase_ready = true %}
-{% endif %}
+{% assign today_timestamp = "now" | date: "%s" %}
+{% assign seconds_per_day = 86400 %}
 
 <div class="db-dashboard">
   <aside class="db-dashboard__sidebar" aria-label="Dev Battery dashboard">
@@ -60,27 +57,6 @@ layout: archive
       </button>
     </section>
 
-    <section class="db-dashboard-card db-dashboard-integrations">
-      <div class="db-dashboard-card__heading">
-        <span><i class="fa-solid fa-microchip" aria-hidden="true"></i> Integrations</span>
-        <strong>Hybrid Jekyll</strong>
-      </div>
-      <dl>
-        <div>
-          <dt>Local gauge / level</dt>
-          <dd>Browser LocalStorage</dd>
-          <span>Active</span>
-        </div>
-        <div>
-          <dt>Global views & likes</dt>
-          <dd>Supabase RPC + RLS</dd>
-          <span class="{% if supabase_ready %}is-active{% else %}is-waiting{% endif %}">
-            {% if supabase_ready %}Connected{% else %}Waiting for keys{% endif %}
-          </span>
-        </div>
-      </dl>
-    </section>
-
     <section class="db-dashboard-card db-dashboard-categories">
       <h2><i class="fa-solid fa-folder-tree" aria-hidden="true"></i> Categories</h2>
       <nav aria-label="Categories">
@@ -119,21 +95,42 @@ layout: archive
       <div class="db-momentum__header">
         <div>
           <h2><i class="fa-regular fa-calendar" aria-hidden="true"></i> Practice Calendar</h2>
-          <p>Recent reading momentum visualized as a compact contribution grid.</p>
+          <p>Daily publishing activity from the last 28 weeks.</p>
         </div>
         <strong>{{ "now" | date: "%Y.%m.%d" }} active</strong>
       </div>
 
-      <div class="db-momentum__grid" aria-hidden="true">
-        {% for week in (1..28) %}
+      <div class="db-momentum__grid" aria-label="Daily post counts for the last 28 weeks">
+        {% for week in (0..27) %}
+          {% assign week_offset = 27 | minus: week | times: 7 %}
           <div>
-            {% for day in (1..7) %}
-              {% assign intensity = week | plus: day | plus: forloop.index0 | modulo: 5 %}
-              <span class="db-momentum__cell db-momentum__cell--{{ intensity }}"></span>
+            {% for day in (0..6) %}
+              {% assign day_offset = 6 | minus: day %}
+              {% assign offset_days = week_offset | plus: day_offset %}
+              {% assign offset_seconds = offset_days | times: seconds_per_day %}
+              {% assign cell_timestamp = today_timestamp | minus: offset_seconds %}
+              {% assign cell_date = cell_timestamp | date: "%Y-%m-%d" %}
+              {% assign cell_date_label = cell_timestamp | date: "%b %-d, %Y" %}
+              {% capture tooltip_text %}No posts on {{ cell_date_label }}{% endcapture %}
+              <span
+                class="db-momentum__cell db-momentum__cell--0"
+                tabindex="0"
+                role="img"
+                aria-label="{{ tooltip_text | strip }}"
+                data-momentum-cell
+                data-tooltip="{{ tooltip_text | strip }}"
+                data-post-count="0"
+                data-date="{{ cell_date }}"
+                data-date-label="{{ cell_date_label }}"
+              ></span>
             {% endfor %}
           </div>
         {% endfor %}
       </div>
+
+      <script type="application/json" id="db-post-calendar-data">
+        [{% for calendar_post in site.posts %}"{{ calendar_post.date | date: "%Y-%m-%d" }}"{% unless forloop.last %},{% endunless %}{% endfor %}]
+      </script>
 
       <div class="db-momentum__legend">
         <span>Idle</span>
@@ -147,16 +144,6 @@ layout: archive
         <span>Charged</span>
       </div>
     </section>
-
-    {% if newest_post %}
-      <section class="db-dashboard-latest">
-        <div>
-          <span>Latest signal</span>
-          <h2><a href="{{ newest_post.url | relative_url }}">{{ newest_post.title }}</a></h2>
-        </div>
-        {% include page__meta.html document=newest_post type="featured" %}
-      </section>
-    {% endif %}
 
     <div class="db-feed-heading">
       <div>

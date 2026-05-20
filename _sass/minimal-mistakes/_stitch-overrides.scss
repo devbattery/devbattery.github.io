@@ -1753,7 +1753,7 @@ html[data-theme="dark"] .db-dashboard-charge {
   gap: 0.24rem;
   max-width: 100%;
   overflow-x: auto;
-  padding: 0.1rem 0 0.2rem;
+  padding: 0.1rem 0 0.45rem;
 }
 
 .db-momentum__grid > div {
@@ -1766,8 +1766,62 @@ html[data-theme="dark"] .db-dashboard-charge {
   display: block;
   width: 0.58rem;
   height: 0.58rem;
+  border: 0;
   border-radius: 0.15rem;
   background: var(--db-surface-softest);
+  cursor: default;
+  transition:
+    box-shadow 120ms ease,
+    outline-color 120ms ease,
+    transform 120ms ease;
+}
+
+.db-momentum__cell[data-momentum-cell]:hover,
+.db-momentum__cell[data-momentum-cell]:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--db-accent) 44%, transparent);
+  outline-offset: 2px;
+  transform: scale(1.18);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--db-accent) 10%, transparent);
+}
+
+.db-momentum-tooltip {
+  position: fixed;
+  z-index: 120;
+  max-width: min(16rem, calc(100vw - 2rem));
+  padding: 0.55rem 0.72rem;
+  border: 1px solid var(--db-border-soft);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--db-text) 96%, black);
+  color: var(--db-surface);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  box-shadow: var(--db-shadow-strong);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -0.45rem);
+  transition:
+    opacity 100ms ease,
+    transform 100ms ease;
+}
+
+.db-momentum-tooltip.is-visible {
+  opacity: 1;
+  transform: translate(-50%, -0.75rem);
+}
+
+.db-momentum-tooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.33rem;
+  width: 0.62rem;
+  height: 0.62rem;
+  background: inherit;
+  border-right: 1px solid var(--db-border-soft);
+  border-bottom: 1px solid var(--db-border-soft);
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .db-momentum__cell--1 {

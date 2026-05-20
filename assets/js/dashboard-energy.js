@@ -15,6 +15,8 @@
   exposeApi();
   bindSearchReward();
   bindReadingReward();
+  renderMomentumCalendar();
+  bindMomentumTooltips();
 
   buttons.forEach(function (button) {
     button.addEventListener("click", function () {
@@ -118,6 +120,103 @@
 
   function todayKey() {
     return new Date().toISOString().slice(0, 10);
+  }
+
+  function bindMomentumTooltips() {
+    var cells = Array.prototype.slice.call(
+      document.querySelectorAll("[data-momentum-cell]")
+    );
+    if (!cells.length) return;
+
+    var tooltip = document.createElement("div");
+    tooltip.className = "db-momentum-tooltip";
+    tooltip.setAttribute("role", "tooltip");
+    document.body.appendChild(tooltip);
+
+    cells.forEach(function (cell) {
+      cell.addEventListener("mouseenter", function () {
+        showMomentumTooltip(cell, tooltip);
+      });
+      cell.addEventListener("focus", function () {
+        showMomentumTooltip(cell, tooltip);
+      });
+      cell.addEventListener("mousemove", function () {
+        positionMomentumTooltip(cell, tooltip);
+      });
+      cell.addEventListener("mouseleave", function () {
+        hideMomentumTooltip(tooltip);
+      });
+      cell.addEventListener("blur", function () {
+        hideMomentumTooltip(tooltip);
+      });
+    });
+  }
+
+  function renderMomentumCalendar() {
+    var dataEl = document.getElementById("db-post-calendar-data");
+    var cells = Array.prototype.slice.call(
+      document.querySelectorAll("[data-momentum-cell]")
+    );
+    if (!dataEl || !cells.length) return;
+
+    var dates = [];
+    try {
+      dates = JSON.parse(dataEl.textContent) || [];
+    } catch (error) {
+      dates = [];
+    }
+
+    var countsByDate = dates.reduce(function (acc, date) {
+      acc[date] = (acc[date] || 0) + 1;
+      return acc;
+    }, {});
+
+    cells.forEach(function (cell) {
+      var date = cell.getAttribute("data-date");
+      var dateLabel = cell.getAttribute("data-date-label") || date;
+      var count = countsByDate[date] || 0;
+      var intensity = getMomentumIntensity(count);
+      var countLabel = count === 0 ? "No posts" : count + " post";
+      if (count > 1) countLabel += "s";
+
+      cell.classList.remove(
+        "db-momentum__cell--0",
+        "db-momentum__cell--1",
+        "db-momentum__cell--2",
+        "db-momentum__cell--3",
+        "db-momentum__cell--4"
+      );
+      cell.classList.add("db-momentum__cell--" + intensity);
+      cell.setAttribute("data-post-count", String(count));
+      cell.setAttribute("data-tooltip", countLabel + " on " + dateLabel);
+      cell.setAttribute("aria-label", countLabel + " on " + dateLabel);
+    });
+  }
+
+  function getMomentumIntensity(count) {
+    if (count <= 0) return 0;
+    if (count === 1) return 1;
+    if (count === 2) return 2;
+    if (count <= 4) return 3;
+    return 4;
+  }
+
+  function showMomentumTooltip(cell, tooltip) {
+    tooltip.textContent = cell.getAttribute("data-tooltip") || "";
+    positionMomentumTooltip(cell, tooltip);
+    tooltip.classList.add("is-visible");
+  }
+
+  function hideMomentumTooltip(tooltip) {
+    tooltip.classList.remove("is-visible");
+  }
+
+  function positionMomentumTooltip(cell, tooltip) {
+    var rect = cell.getBoundingClientRect();
+    var x = rect.left + rect.width / 2;
+    var y = rect.top - 10;
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
   }
 
   function sync() {
